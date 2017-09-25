@@ -1,0 +1,53 @@
+#! /usr/bin/env python3
+
+import configparser
+import sys
+from PoloMallet import PoloConfig as pconfig
+from PoloMallet import PoloMallet as mallet
+
+if __name__ == '__main__':
+    
+    print("Welcome to Polo")
+
+    # Open config -- test if it is there
+    config = configparser.ConfigParser()
+    config._interpolation = configparser.ExtendedInterpolation()
+    config.read('config.ini')
+    
+    # Get the trials and show them to the user if no command has been given
+    # Assume we want to run the first trial for now
+    trials = config.sections()
+    trial = trials[0]
+    print('Doing', trials[0])
+
+    # Configure mallet with confing.ini
+    # Still not sure if this is the best way to configure the object. The 
+    # idea is to keep the method clean of any knowledge of where the config
+    # comes from, so we configure it outside of the object (with another)
+    mc = pconfig()
+    mc.trial          = trial
+    mc.slug            = config['DEFAULT']['slug']
+    mc.mallet_path     = config['DEFAULT']['mallet_path']
+    mc.output_dir      = config['DEFAULT']['mallet_out_dir']
+    mc.base_path       = config['DEFAULT']['base_path']
+    mc.input_corpus    = config[trial]['mallet_corpus_input']
+    mc.num_topics      = config[trial]['num_topics']
+    mc.num_iterations  = config[trial]['num_iterations']
+    mc.extra_stops     = config[trial]['extra_stops']
+    mc.replacements    = config[trial]['replacements']
+    mc.verbose         = False
+    m = mallet(mc)
+
+    print("Initializing")
+    m.mallet_init()
+
+    print('Importing corpus')
+    m.mallet_import()
+
+    print('Training model')
+    m.mallet_train()
+
+    print("Putting data into database")
+    m.tables_to_db()
+
+    print("Done")
