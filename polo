@@ -48,6 +48,7 @@ if __name__ == '__main__':
     m.mallet_train()
 
     print("Putting data into database")
+    # Should probably take the trial prefix as an argument
     m.tables_to_db()
 
-    print("Done")
+    print("Done with", m.config.trial_name)

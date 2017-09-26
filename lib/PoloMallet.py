@@ -26,14 +26,18 @@ class PoloMallet:
     def __init__(self, config):
         self.config = config
         self.generate_trial_name()
-        self.dbname = "{}-{}".format(self.config.slug, self.config.trial) # Reconcile with trail_name at some point
+        self.dbname = "{}-{}".format(self.config.slug, self.config.trial)
+        # Reconcile with trail_name at some point
         self.dbfile = "{}/{}.db".format(self.config.base_path, self.dbname)
+        self.config.num_topics = int(self.config.num_topics)
 
     def generate_trial_name(self):
         """Generate a trial name that reflects the parameters and time of running"""
         ts = time.time()
         self.ts = ts
-        self.config.trial_name = '{}-model-z{}-i{}-{}'.format(self.config.trial, self.config.num_topics, self.config.num_iterations,int(ts))
+        self.config.trial_name = '{}-model-z{}-i{}-{}'.format(self.config.trial,
+                                                              self.config.num_topics,
+                                                              self.config.num_iterations,int(ts))
     
     def mallet_init(self):
         if not os.path.exists(self.config.mallet_path):
@@ -47,11 +51,15 @@ class PoloMallet:
         else:
             self.mallet['import-file']['extra-stopwords'] = self.extra_stops
         if os.path.exists(self.config.replacements):
-            self.mallet['import-file']['replacement-files'] = self.config.replacements # Can be used to add phrases
+            self.mallet['import-file']['replacement-files'] = self.config.replacements
+            # Can be used to add phrases
         self.mallet['import-file']['input'] = self.config.input_corpus
-        self.mallet['import-file']['output'] = '%s/%s-corpus.mallet' % (self.config.output_dir,self.config.trial)
-        self.mallet['import-file']['keep-sequence'] = 'TRUE' # WAS Delete key to remove option
-        self.mallet['import-file']['remove-stopwords'] = 'TRUE' # WAS Delete key to remove option
+        self.mallet['import-file']['output'] = '%s/%s-corpus.mallet' % (self.config.output_dir,
+                                                                        self.config.trial)
+        self.mallet['import-file']['keep-sequence'] = 'TRUE'
+        # WAS Delete key to remove option
+        self.mallet['import-file']['remove-stopwords'] = 'TRUE'
+        # WAS Delete key to remove option
 
         self.mallet['train-topics']['num-topics'] = self.config.num_topics
         self.mallet['train-topics']['num-top-words'] = self.config.num_top_words
@@ -59,7 +67,11 @@ class PoloMallet:
         self.mallet['train-topics']['optimize-interval'] = self.config.optimize_interval
         self.mallet['train-topics']['num-threads'] = self.config.num_threads
         self.mallet['train-topics']['input'] = self.mallet['import-file']['output']
-        self.mallet['train-topics']['output-topic-keys'] = '%s/%s-topic-keys.txt' % (self.config.output_dir,self.config.trial_name)
+
+        # These are the output files, and their names are sacred.
+        # They should be generated from functions that take the trial_name as an argument
+        # so they can be used consistently in other contexts
+        self.mallet['train-topics']['output-topic-keys'] = '%s/%s-topic-keys.txt' % (self.config.output_dir, self.config.trial_name)
         self.mallet['train-topics']['output-doc-topics'] = '%s/%s-doc-topics.txt' % (self.config.output_dir,self.config.trial_name)
         self.mallet['train-topics']['word-topic-counts-file'] = '%s/%s-word-topic-counts.txt' % (self.config.output_dir,self.config.trial_name)
         self.mallet['train-topics']['xml-topic-report'] = '%s/%s-topic-report.xml' % (self.config.output_dir,self.config.trial_name)
@@ -74,7 +86,9 @@ class PoloMallet:
             #print(my_cmd)
             os.system(my_cmd)
             # The following does not work with new version of mallet
-            #self.mallet_output = subprocess.check_output([self.config.mallet_path, op] + my_args, shell=False)
+            # self.mallet_output =
+            # subprocess.check_output([self.config.mallet_path, op] +
+            # my_args, shell=False)
         except:
             print('Command would not execute:', my_cmd)
             sys.exit(0)
@@ -93,9 +107,7 @@ class PoloMallet:
         except:
             print('Unable to delete files: {}'.format(file_mask))
 
-
-
-
+    # TABLE IMPORT METHODS
 
     def tables_to_db(self):
         self.import_table_topic()
@@ -133,16 +145,32 @@ class PoloMallet:
         doctopic_file = self.mallet['train-topics']['output-doc-topics']
         doctopic = pd.read_csv(doctopic_file, sep='\t', header=None, skiprows=1, index_col=None)
         doctopic.drop(1, axis = 1, inplace=True)
-        doctopic.drop(doctopic.columns[[-1,]], axis=1, inplace=True)
         doctopic.rename(columns={0:'doc_id'}, inplace=True)
-        x = [col for col in doctopic.columns[1:] if col % 2 == 0]
-        y = [col for col in doctopic.columns[1:] if col % 2 == 1]
-        i = pd.DataFrame([col for col in doctopic['doc_id'] for i in range(len(x))])
-        doctopic_narrow = pd.lreshape(doctopic, {'topic_id': x,'topic_weight': y})
-        doctopic_narrow = pd.concat([i, doctopic_narrow], axis = 1)
-        doctopic_narrow.drop('doc_id', axis=1, inplace=True)       # Not sure why we have to do this
-        doctopic_narrow.rename(columns={0:'doc_id'}, inplace=True) # ditto
+
+        if len(doctopic.columns) == self.config.num_topics + 1:
+            y = [col for col in doctopic.columns[1:]]
+            z = pd.DataFrame([i for i in range(self.config.num_topics) for doc_id in doctopic['doc_id']])
+            doctopic_narrow = pd.lreshape(doctopic, {'topic_weight': y})
+            doctopic_narrow = pd.concat([z, doctopic_narrow], axis = 1)
+            doctopic_narrow.rename(columns={0:'topic_id'}, inplace=True)
+        elif len(doctopic.columns) == (self.config.num_topics * 2):
+            # Not sure if the preceding condition is valid
+            doctopic.drop(doctopic.columns[[-1,]], axis=1, inplace=True)
+            # Not sure if needed (related to above)
+            x = [col for col in doctopic.columns[1:] if col % 2 == 0]
+            y = [col for col in doctopic.columns[1:] if col % 2 == 1]
+            z = pd.DataFrame([col for col in doctopic['doc_id'] for i in range(len(x))])
+            doctopic_narrow = pd.lreshape(doctopic, {'topic_id': x,'topic_weight': y})
+            doctopic_narrow = pd.concat([z, doctopic_narrow], axis = 1)
+            doctopic_narrow.drop('doc_id', axis=1, inplace=True)
+            # Not sure why we have to do this
+            doctopic_narrow.rename(columns={0:'doc_id'}, inplace=True)
+            # ditto
+        else:
+            doctopic_narrow = pd.DataFrame()
+        
         doctopic_narrow = doctopic_narrow[['doc_id', 'topic_id', 'topic_weight']]
+
         with sqlite3.connect(self.dbfile) as db:
             doctopic_narrow.to_sql('doctopic', db, if_exists='replace')
     
@@ -159,6 +187,8 @@ class PoloMallet:
                     phrase_count = int(phrase.xpath('@count')[0])
                     topic_phrase = phrase.xpath('text()')[0]
                     TOPICPHRASE.append((topic_id, topic_phrase, phrase_weight, phrase_count))
-        topicphrase = pd.DataFrame(TOPICPHRASE, columns=['topic_id', 'topic_phrase', 'phrase_weight', 'phrase_count'])
+        topicphrase = pd.DataFrame(TOPICPHRASE,
+                                   columns=['topic_id', 'topic_phrase', 'phrase_weight',
+                                            'phrase_count'])
         with sqlite3.connect(self.dbfile) as db:
             topicphrase.to_sql('topicphrase', db, if_exists='replace')
