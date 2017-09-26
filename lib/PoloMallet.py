@@ -1,10 +1,10 @@
-import os, configparser, subprocess, sys, sqlite3, re, time
+import os, sys, sqlite3, time
 import pandas as pd
-from math import log
 from lxml import etree
 
 class PoloConfig:
     """Paramaters to be passed to mallet as well as other things"""
+    slug                = 'test'
     trial               = 'my_trial'
     num_top_words       = 10
     mallet_path         = '/opt/mallet/bin/mallet'
@@ -15,7 +15,6 @@ class PoloConfig:
     replacements        = ''
     num_topics          = 20
     num_iterations      = 100
-    num_top_words       = 7
     optimize_interval   = 10
     num_threads         = 1
     verbose             = False
@@ -25,14 +24,13 @@ class PoloMallet:
     
     def __init__(self, config):
         self.config = config
-        self.generate_trial_name()
         self.dbname = "{}-{}".format(self.config.slug, self.config.trial)
-        # Reconcile with trail_name at some point
         self.dbfile = "{}/{}.db".format(self.config.base_path, self.dbname)
+        self.generate_trial_name()
+        self.file_prefix = '{}/{}'.format(self.config.output_dir, self.config.trial_name)
         self.config.num_topics = int(self.config.num_topics)
 
     def generate_trial_name(self):
-        """Generate a trial name that reflects the parameters and time of running"""
         ts = time.time()
         self.ts = ts
         self.config.trial_name = '{}-model-z{}-i{}-{}'.format(self.config.trial,
@@ -71,11 +69,11 @@ class PoloMallet:
         # These are the output files, and their names are sacred.
         # They should be generated from functions that take the trial_name as an argument
         # so they can be used consistently in other contexts
-        self.mallet['train-topics']['output-topic-keys'] = '%s/%s-topic-keys.txt' % (self.config.output_dir, self.config.trial_name)
-        self.mallet['train-topics']['output-doc-topics'] = '%s/%s-doc-topics.txt' % (self.config.output_dir,self.config.trial_name)
-        self.mallet['train-topics']['word-topic-counts-file'] = '%s/%s-word-topic-counts.txt' % (self.config.output_dir,self.config.trial_name)
-        self.mallet['train-topics']['xml-topic-report'] = '%s/%s-topic-report.xml' % (self.config.output_dir,self.config.trial_name)
-        self.mallet['train-topics']['xml-topic-phrase-report'] = '%s/%s-topic-phrase-report.xml' % (self.config.output_dir,self.config.trial_name)
+        self.mallet['train-topics']['output-topic-keys']        = '{}-topic-keys.txt'.format(self.file_prefix)
+        self.mallet['train-topics']['output-doc-topics']        = '{}-doc-topics.txt'.format(self.file_prefix)
+        self.mallet['train-topics']['word-topic-counts-file']   = '{}-word-topic-counts.txt'.format(self.file_prefix)
+        self.mallet['train-topics']['xml-topic-report']         = '{}-topic-report.xml'.format(self.file_prefix)
+        self.mallet['train-topics']['xml-topic-phrase-report']  = '{}-topic-phrase-report.xml'.format(self.file_prefix)
 
         self.mallet['trial_name'] = self.config.trial_name
 
@@ -83,12 +81,7 @@ class PoloMallet:
         my_args = ['--{} {}'.format(arg,self.mallet[op][arg]) for arg in self.mallet[op]]
         my_cmd = self.config.mallet_path + ' ' + op + ' ' + ' '.join(my_args)
         try:
-            #print(my_cmd)
             os.system(my_cmd)
-            # The following does not work with new version of mallet
-            # self.mallet_output =
-            # subprocess.check_output([self.config.mallet_path, op] +
-            # my_args, shell=False)
         except:
             print('Command would not execute:', my_cmd)
             sys.exit(0)
@@ -115,19 +108,18 @@ class PoloMallet:
         self.import_table_doctopic()
         self.import_table_topicphrase()
 
-    def import_table_topic(self):
-        topic_file = self.mallet['train-topics']['output-topic-keys']
-        db_file = self.dbname
-        topic = pd.read_csv(topic_file, sep='\t', header=None)
+    def import_table_topic(self, src_file=None):
+        if not src_file: src_file = self.mallet['train-topics']['output-topic-keys']
+        topic = pd.read_csv(src_file, sep='\t', header=None)
         topic.rename(columns={0:'topic_id', 1:'topic_alpha', 2:'topic_words'}, inplace=True)
         with sqlite3.connect(self.dbfile) as db:
             topic.to_sql('topic', db, if_exists='replace')
     
-    def import_tables_topicword_and_word(self):
+    def import_tables_topicword_and_word(self, src_file=None):
         WORD = []
         TOPICWORD = []
-        topicword_file = self.mallet['train-topics']['word-topic-counts-file']
-        with open(topicword_file, 'r') as src:
+        if not src_file: src_file = self.mallet['train-topics']['word-topic-counts-file']
+        with open(src_file, 'r') as src:
             for line in src:
                 row = line.strip().split(' ')
                 (word_id, word_str) = row[0:2]
@@ -141,9 +133,9 @@ class PoloMallet:
             word.to_sql('word', db, if_exists='replace')
             topicword.to_sql('topicword', db, if_exists='replace')
 
-    def import_table_doctopic(self):
-        doctopic_file = self.mallet['train-topics']['output-doc-topics']
-        doctopic = pd.read_csv(doctopic_file, sep='\t', header=None, skiprows=1, index_col=None)
+    def import_table_doctopic(self, src_file=None):
+        if not src_file: src_file = self.mallet['train-topics']['output-doc-topics']
+        doctopic = pd.read_csv(src_file, sep='\t', header=None)
         doctopic.drop(1, axis = 1, inplace=True)
         doctopic.rename(columns={0:'doc_id'}, inplace=True)
 
@@ -173,11 +165,11 @@ class PoloMallet:
 
         with sqlite3.connect(self.dbfile) as db:
             doctopic_narrow.to_sql('doctopic', db, if_exists='replace')
-    
-    def import_table_topicphrase(self):
+        
+    def import_table_topicphrase(self, src_file=None):
         TOPICPHRASE = []
-        topicphrase_file = self.mallet['train-topics']['xml-topic-phrase-report']
-        with open(topicphrase_file, 'r') as f:
+        if not src_file: src_file = self.mallet['train-topics']['xml-topic-phrase-report']
+        with open(src_file, 'r') as f:
             tree = etree.parse(f)
             for topic in tree.xpath('/topics/topic'):
                 topic_id = int(topic.xpath('@id')[0])
@@ -192,3 +184,7 @@ class PoloMallet:
                                             'phrase_count'])
         with sqlite3.connect(self.dbfile) as db:
             topicphrase.to_sql('topicphrase', db, if_exists='replace')
+
+if __name__ == '__main__':
+
+    print('Run polo instead')
