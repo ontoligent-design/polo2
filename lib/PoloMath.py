@@ -1,4 +1,4 @@
-import pandas as pd
+import scipy as sp
 import math
 
 def JSdivergence(p1,p2):

@@ -19,10 +19,6 @@ if __name__ == '__main__':
     trial = trials[0]
     print('Doing', trials[0])
 
-    # Configure mallet with confing.ini
-    # Still not sure if this is the best way to configure the object. The 
-    # idea is to keep the method clean of any knowledge of where the config
-    # comes from, so we configure it outside of the object (with another)
     mc = pconfig()
     mc.import_ini(config, trial)
     m = mallet(mc)
