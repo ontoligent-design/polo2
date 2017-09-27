@@ -24,17 +24,7 @@ if __name__ == '__main__':
     # idea is to keep the method clean of any knowledge of where the config
     # comes from, so we configure it outside of the object (with another)
     mc = pconfig()
-    mc.trial          = trial
-    mc.slug            = config['DEFAULT']['slug']
-    mc.mallet_path     = config['DEFAULT']['mallet_path']
-    mc.output_dir      = config['DEFAULT']['mallet_out_dir']
-    mc.base_path       = config['DEFAULT']['base_path']
-    mc.input_corpus    = config[trial]['mallet_corpus_input']
-    mc.num_topics      = config[trial]['num_topics']
-    mc.num_iterations  = config[trial]['num_iterations']
-    mc.extra_stops     = config[trial]['extra_stops']
-    mc.replacements    = config[trial]['replacements']
-    mc.verbose         = False
+    mc.import_ini(config, trial)
     m = mallet(mc)
 
     print("Initializing")
@@ -49,5 +39,8 @@ if __name__ == '__main__':
     print("Putting data into database")
     # Should probably take the trial prefix as an argument
     m.tables_to_db()
+
+    print("Cleaning up")
+    m.del_mallet_files()
 
     print("Done with", m.config.trial_name)

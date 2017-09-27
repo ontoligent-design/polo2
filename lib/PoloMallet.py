@@ -3,7 +3,8 @@ import pandas as pd
 from lxml import etree
 
 class PoloConfig:
-    """Paramaters to be passed to mallet as well as other things"""
+    """Paramaters to be passed to mallet as well as other things."""
+    """Define more sensible defaults."""
     slug                = 'test'
     trial               = 'my_trial'
     num_top_words       = 10
@@ -19,6 +20,22 @@ class PoloConfig:
     num_threads         = 1
     verbose             = False
     dbname              = 'bar'
+
+    def import_ini(self, ini, trial):
+        """Import config from local ini file. Handle default
+        case when no trial given."""
+        self.trial = trial
+        self.slug = ini['DEFAULT']['slug']
+        self.mallet_path = ini['DEFAULT']['mallet_path']
+        self.output_dir = ini['DEFAULT']['mallet_out_dir']
+        self.base_path = ini['DEFAULT']['base_path']
+        self.input_corpus = ini[trial]['mallet_corpus_input']
+        self.num_topics = ini[trial]['num_topics']
+        self.num_iterations = ini[trial]['num_iterations']
+        self.extra_stops = ini[trial]['extra_stops']
+        self.replacements = ini[trial]['replacements']
+        self.verbose = False
+
 
 class PoloMallet:
     
@@ -114,6 +131,7 @@ class PoloMallet:
         topic.rename(columns={0:'topic_id', 1:'topic_alpha', 2:'topic_words'}, inplace=True)
         with sqlite3.connect(self.dbfile) as db:
             topic.to_sql('topic', db, if_exists='replace')
+        del topic
     
     def import_tables_topicword_and_word(self, src_file=None):
         WORD = []
@@ -132,6 +150,8 @@ class PoloMallet:
         with sqlite3.connect(self.dbfile) as db:
             word.to_sql('word', db, if_exists='replace')
             topicword.to_sql('topicword', db, if_exists='replace')
+        del topicword
+        del word
 
     def import_table_doctopic(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['output-doc-topics']
@@ -139,14 +159,19 @@ class PoloMallet:
         doctopic.drop(1, axis = 1, inplace=True)
         doctopic.rename(columns={0:'doc_id'}, inplace=True)
 
+        empty_col = range(len(doctopic.doc_id) * self.config.num_topics)
+        #doctopic_narrow = pd.DataFrame(columns=['doc_id', 'topic_id', 'topic_weight'])
+
         if len(doctopic.columns) == self.config.num_topics + 1:
             y = [col for col in doctopic.columns[1:]]
             z = pd.DataFrame([i for i in range(self.config.num_topics) for doc_id in doctopic['doc_id']])
             doctopic_narrow = pd.lreshape(doctopic, {'topic_weight': y})
             doctopic_narrow = pd.concat([z, doctopic_narrow], axis = 1)
             doctopic_narrow.rename(columns={0:'topic_id'}, inplace=True)
+
         elif len(doctopic.columns) == (self.config.num_topics * 2):
-            # Not sure if the preceding condition is valid
+            """This has not been tested. Need older version of Mallet.
+            Not sure if the preceding condition is valid"""
             doctopic.drop(doctopic.columns[[-1,]], axis=1, inplace=True)
             # Not sure if needed (related to above)
             x = [col for col in doctopic.columns[1:] if col % 2 == 0]
@@ -158,13 +183,16 @@ class PoloMallet:
             # Not sure why we have to do this
             doctopic_narrow.rename(columns={0:'doc_id'}, inplace=True)
             # ditto
+
         else:
-            doctopic_narrow = pd.DataFrame()
-        
+            pass
+
         doctopic_narrow = doctopic_narrow[['doc_id', 'topic_id', 'topic_weight']]
 
         with sqlite3.connect(self.dbfile) as db:
             doctopic_narrow.to_sql('doctopic', db, if_exists='replace')
+        del doctopic
+        del doctopic_narrow
         
     def import_table_topicphrase(self, src_file=None):
         TOPICPHRASE = []
@@ -184,7 +212,19 @@ class PoloMallet:
                                             'phrase_count'])
         with sqlite3.connect(self.dbfile) as db:
             topicphrase.to_sql('topicphrase', db, if_exists='replace')
+        del topicphrase
+
+        # CREATE ADDITIONAL TABLES
+        def create_table_topicpair(self):
+            with sqlite3.connect(self.dbfile) as db:
+                topic = pd.read_sql_query('select * from topic', db)
+
+    def del_mallet_files(self):
+        file_keys = ['output-topic-keys', 'output-doc-topics',
+                     'word-topic-counts-file', 'xml-topic-report', 'xml-topic-phrase-report']
+        for fk in file_keys:
+            os.remove(str(self.mallet['train-topics'][fk]))
+
 
 if __name__ == '__main__':
-
     print('Run polo instead')
