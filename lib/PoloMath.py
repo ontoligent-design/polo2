@@ -1,11 +1,11 @@
-import scipy as sp
+import scipy.stats as sps
 import math
 
 def JSdivergence(p1,p2):
     P1 = p1/np.sum(p1)
     P2 = p2/np.sum(p2)
-    M = .5 * (P1+P2)
-    return .5 * (sp.stats.entropy(P1,M) + sp.stats.entropy(P2,M))
+    M = .5 * (P1 + P2)
+    return .5 * (sps.entropy(P1,M) + sps.entropy(P2,M))
 
 def get_mutual_info(p_iAj, p_i, p_j):
     if p_iAj == 0:
