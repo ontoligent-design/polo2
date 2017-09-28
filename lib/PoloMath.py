@@ -1,20 +1,19 @@
+import numpy as np
 import scipy.stats as sps
 import math
 
-def JSdivergence(p1,p2):
+def JSdivergence(p1, p2):
     P1 = p1/np.sum(p1)
     P2 = p2/np.sum(p2)
     M = .5 * (P1 + P2)
     return .5 * (sps.entropy(P1,M) + sps.entropy(P2,M))
 
-def get_mutual_info(p_iAj, p_i, p_j):
-    if p_iAj == 0:
-        return 0
-    x = p_iAj / (p_i * p_j)
-    i_ij = 0
-    try:
-        i_ij = p_iAj * math.log(x)
-    except ValueError:
-        print("Log bogged at {} ({}) :-(".format(x,round(x,4)))
-    finally:
-        return i_ij
+def pwmi(p_a, p_b, p_ab):
+    if p_ab > 0:
+        i_ab = math.log(p_ab / (p_a * p_b))
+        i_ab = i_ab / (math.log2(p_ab) * -1)
+    else:
+        i_ab = None
+    return i_ab
+
+

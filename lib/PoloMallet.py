@@ -1,6 +1,7 @@
 import os, sys, sqlite3, time
 import pandas as pd
 from lxml import etree
+import PoloMath
 
 class PoloConfig:
     """Paramaters to be passed to mallet as well as other things."""
@@ -256,13 +257,15 @@ class PoloMallet:
                 p_a = topic.loc[a, 'topic_rel_freq']
                 p_b = topic.loc[b, 'topic_rel_freq']
                 p_ab = len(doctopic_wide[doctopic_wide[a] >= thresh][doctopic_wide[b] >= thresh]) / doc_num
+                if p_ab == 0: p_ab = .000001 # To prevent crazy
                 p_aGb = p_ab / p_b
                 p_bGa = p_ab / p_a
-                if p_ab > 0:
-                    i_ab = math.log(p_ab / (p_a * p_b))
-                    i_ab = i_ab / (math.log2(p_ab) * -1)
-                else:
-                    i_ab = None
+                i_ab = pm.pwmi(p_a, p_b, p_ab)
+                #if p_ab > 0:
+                #    i_ab = math.log(p_ab / (p_a * p_b))
+                #    i_ab = i_ab / (math.log2(p_ab) * -1)
+                #else:
+                #    i_ab = None
                 c_ab = (1 - p_a) / (1 - p_aGb)
                 TOPICPAIR.append([a, b, p_a, p_b, p_ab, p_aGb, p_bGa, i_ab, c_ab])
             topicpair = pd.DataFrame(TOPICPAIR, columns=['topic_a', 'topic_b', 'p_a', 'p_b', 'p_ab', 'p_aGb', 'p_bGa', 'i_ab', 'c_ab'])
