@@ -6,7 +6,7 @@ def JSdivergence(p1, p2):
     P1 = p1/np.sum(p1)
     P2 = p2/np.sum(p2)
     M = .5 * (P1 + P2)
-    return .5 * (sps.entropy(P1,M) + sps.entropy(P2,M))
+    return .5 * (sps.entropy(P1, M) + sps.entropy(P2, M))
 
 def pwmi(p_a, p_b, p_ab):
     if p_ab > 0:

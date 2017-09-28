@@ -1,7 +1,7 @@
 import os, sys, sqlite3, time
 import pandas as pd
 from lxml import etree
-import PoloMath
+import PoloMath as pm
 
 class PoloConfig:
     """Paramaters to be passed to mallet as well as other things."""
@@ -187,7 +187,7 @@ class PoloMallet:
         doctopic_narrow = doctopic_narrow[['doc_id', 'topic_id', 'topic_weight']]
 
         with sqlite3.connect(self.dbfile) as db:
-            doctopic_narrow.to_sql('doctopic', db, if_exists='replace')
+            doctopic_narrow.to_sql('doctopic', db, if_exists='replace', index=None)
 
     def import_table_topicphrase(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['xml-topic-phrase-report']
@@ -215,9 +215,9 @@ class PoloMallet:
         cfg['thresh'] = self.config.thresh
         cfg['slug'] = self.config.slug
         cfg['num_topics'] = self.config.num_topics
-        myconfig = pd.DataFrame({'key': list(cfg.keys()), 'value': list(cfg.values())})
+        config = pd.DataFrame({'key': list(cfg.keys()), 'value': list(cfg.values())})
         with sqlite3.connect(self.dbfile) as db:
-            myconfig.to_sql('myconfig', db, if_exists='replace')
+            config.to_sql('config', db, if_exists='replace')
 
     def del_mallet_files(self):
         file_keys = ['output-topic-keys', 'output-doc-topics',
@@ -247,8 +247,8 @@ class PoloMallet:
             topic['topic_rel_freq'] = [len(doctopic[doctopic.topic_id == t][doctopic.topic_weight >= thresh]) / doc_num
                      for t in range(self.config.num_topics)]
             doctopic_wide = doctopic.pivot(index='doc_id', columns='topic_id', values='topic_weight')
-            with sqlite3.connect(self.dbfile) as db:
-                doctopic_wide.to_sql('doctopic_wide', db, if_exists='replace')
+            #with sqlite3.connect(self.dbfile) as db:
+            #    doctopic_wide.to_sql('doctopic_wide', db, if_exists='replace')
             TOPICPAIR = []
             from itertools import combinations
             for pair in list(combinations(topic.topic_id, 2)):
@@ -257,15 +257,11 @@ class PoloMallet:
                 p_a = topic.loc[a, 'topic_rel_freq']
                 p_b = topic.loc[b, 'topic_rel_freq']
                 p_ab = len(doctopic_wide[doctopic_wide[a] >= thresh][doctopic_wide[b] >= thresh]) / doc_num
+                #p_ab = len(doctopic_wide[(doctopic_wide[a] >= thresh) & (doctopic_wide[b] >= thresh)]) / doc_num
                 if p_ab == 0: p_ab = .000001 # To prevent crazy
                 p_aGb = p_ab / p_b
                 p_bGa = p_ab / p_a
                 i_ab = pm.pwmi(p_a, p_b, p_ab)
-                #if p_ab > 0:
-                #    i_ab = math.log(p_ab / (p_a * p_b))
-                #    i_ab = i_ab / (math.log2(p_ab) * -1)
-                #else:
-                #    i_ab = None
                 c_ab = (1 - p_a) / (1 - p_aGb)
                 TOPICPAIR.append([a, b, p_a, p_b, p_ab, p_aGb, p_bGa, i_ab, c_ab])
             topicpair = pd.DataFrame(TOPICPAIR, columns=['topic_a', 'topic_b', 'p_a', 'p_b', 'p_ab', 'p_aGb', 'p_bGa', 'i_ab', 'c_ab'])
