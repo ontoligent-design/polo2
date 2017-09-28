@@ -31,6 +31,9 @@ if __name__ == '__main__':
     print("Putting data into database")
     m.tables_to_db()
 
+    print("Adding diagnostics tables")
+    m.add_diagnostics()
+
     print("Adding doc table with topic entropy")
     m.add_topic_entropy()
 
@@ -38,6 +41,6 @@ if __name__ == '__main__':
     m.create_table_topicpair()
 
     print("Cleaning up")
-    m.del_mallet_files()
+    #m.del_mallet_files()
 
     print("Done with", m.config.trial_name)

@@ -1,4 +1,4 @@
-import os, sys, sqlite3, time
+import os, sys, sqlite3, time, re
 import pandas as pd
 from lxml import etree
 import PoloMath as pm
@@ -54,14 +54,25 @@ class PoloConfig:
 class PoloMallet:
     
     def __init__(self, config):
+
         self.config = config
-        self.dbname = "{}-{}".format(self.config.slug, self.config.trial)
-        self.dbfile = "{}/{}.db".format(self.config.base_path, self.dbname)
         self.generate_trial_name()
         self.file_prefix = '{}/{}'.format(self.config.output_dir, self.config.trial_name)
         self.config.num_topics = int(self.config.num_topics)
         self.mallet = {'import-file': {}, 'train-topics': {}}
         self.mallet_init()
+        self.dbfile = "{}/{}-{}.db".format(self.config.base_path, self.config.slug, self.config.trial)
+        try:
+            self.conn = sqlite3.connect(self.dbfile)
+        except sqlite3.Error as e:
+            print("Can't connect to database:", e.args[0])
+            sys.exit(0)
+
+    def __del__(self):
+        try:
+            self.conn.close()
+        except sqlite3.Error as e:
+            print("Can't close database:", e.args[0])
 
     def generate_trial_name(self):
         ts = time.time()
@@ -92,14 +103,23 @@ class PoloMallet:
         self.mallet['train-topics']['output-topic-keys']        = '{}-topic-keys.txt'.format(self.file_prefix)
         self.mallet['train-topics']['output-doc-topics']        = '{}-doc-topics.txt'.format(self.file_prefix)
         self.mallet['train-topics']['word-topic-counts-file']   = '{}-word-topic-counts.txt'.format(self.file_prefix)
+        self.mallet['train-topics']['topic-word-weights-file']  = '{}-topic-word-weights.txt'.format(self.file_prefix)
         self.mallet['train-topics']['xml-topic-report']         = '{}-topic-report.xml'.format(self.file_prefix)
         self.mallet['train-topics']['xml-topic-phrase-report']  = '{}-topic-phrase-report.xml'.format(self.file_prefix)
+        self.mallet['train-topics']['diagnostics-file']         = '{}-diagnostics.xml'.format(self.file_prefix)
+        #self.mallet['train-topics']['output-topic-docs']        = '{}-topic-docs.txt'.format(self.file_prefix)
+
+        self.mallet['train-topics']['num-top-docs']             = 100 # ADD TO CONFIG
+        #self.mallet['train-topics']['doc-topics-threshold']     = self.config.thresh
+        self.mallet['train-topics']['doc-topics-max']           = 10 # ADD TO CONFIG
+        self.mallet['train-topics']['show-topics-interval']     = 100 # ADD TO CONFIG
 
         self.mallet['trial_name'] = self.config.trial_name
 
     def mallet_run_command(self,op):
         my_args = ['--{} {}'.format(arg,self.mallet[op][arg]) for arg in self.mallet[op]]
         my_cmd = self.config.mallet_path + ' ' + op + ' ' + ' '.join(my_args)
+        print(my_cmd)
         try:
             os.system(my_cmd)
         except:
@@ -107,7 +127,7 @@ class PoloMallet:
             sys.exit(0)
 
     def mallet_import(self):
-        """Consider option of using previous version."""
+        """Consider option of using previously generated file."""
         self.mallet_run_command('import-file')
 
     def mallet_train(self):
@@ -134,8 +154,7 @@ class PoloMallet:
         if not src_file: src_file = self.mallet['train-topics']['output-topic-keys']
         topic = pd.read_csv(src_file, sep='\t', header=None)
         topic.rename(columns={0:'topic_id', 1:'topic_alpha', 2:'topic_words'}, inplace=True)
-        with sqlite3.connect(self.dbfile) as db:
-            topic.to_sql('topic', db, if_exists='replace', index=False)
+        self.df_to_db(topic, 'topic')
 
     def import_tables_topicword_and_word(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['word-topic-counts-file']
@@ -151,43 +170,35 @@ class PoloMallet:
                     TOPICWORD.append((int(word_id), int(topic_id), int(word_count)))
         word = pd.DataFrame(WORD, columns=['word_id', 'word_str'])
         topicword = pd.DataFrame(TOPICWORD, columns=['word_id', 'topic_id', 'word_count'])
-        with sqlite3.connect(self.dbfile) as db:
-            word.to_sql('word', db, if_exists='replace', index=False)
-            topicword.to_sql('topicword', db, if_exists='replace', index=False)
+        self.df_to_db(word, 'word')
+        self.df_to_db(topicword, 'topicword')
 
     def import_table_doctopic(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['output-doc-topics']
-        doctopic = pd.read_csv(src_file, sep='\t', header=None)
-        doctopic.drop(1, axis = 1, inplace=True)
-        doctopic.rename(columns={0:'doc_id'}, inplace=True)
-
-        if len(doctopic.columns) == self.config.num_topics + 1:
+        if 'doc-topics-threshold' in self.mallet['train-topics']:
+            DOCTOPIC = []
+            with open(src_file, 'r') as src:
+                next(src) # Skip header -- BUT THIS IS A CLUE
+                for line in src:
+                    row = line.split('\t')
+                    row.pop() # Pretty sure this is right
+                    doc_id = row[0]
+                    for i in range(2, len(row), 2):
+                        topic_id = row[i]
+                        topic_weight = row[i+1]
+                        DOCTOPIC.append([doc_id, topic_id, topic_weight])
+            doctopic = pd.DataFrame(DOCTOPIC, columns=['doc_id', 'topic_id', 'topic_weight'])
+            self.df_to_db(doctopic, 'doctopic')
+        else:
+            doctopic = pd.read_csv(src_file, sep='\t', header=None)
+            doctopic.drop(1, axis = 1, inplace=True)
+            doctopic.rename(columns={0:'doc_id'}, inplace=True)
             y = [col for col in doctopic.columns[1:]]
             doctopic_narrow = pd.lreshape(doctopic, {'topic_weight': y})
             doctopic_narrow['topic_id'] = [i for i in range(self.config.num_topics) for doc_id in doctopic['doc_id']]
+            doctopic_narrow = doctopic_narrow[['doc_id', 'topic_id', 'topic_weight']]
+            self.df_to_db(doctopic_narrow, 'doctopic')
 
-        elif len(doctopic.columns) == (self.config.num_topics * 2):
-            """This has not been tested. Need older version of Mallet.
-            Not sure if the preceding condition is valid"""
-            doctopic.drop(doctopic.columns[[-1,]], axis=1, inplace=True)
-            # Not sure if needed (related to above)
-            x = [col for col in doctopic.columns[1:] if col % 2 == 0]
-            y = [col for col in doctopic.columns[1:] if col % 2 == 1]
-            z = pd.DataFrame([col for col in doctopic['doc_id'] for i in range(len(x))])
-            doctopic_narrow = pd.lreshape(doctopic, {'topic_id': x,'topic_weight': y})
-            doctopic_narrow = pd.concat([z, doctopic_narrow], axis = 1)
-            doctopic_narrow.drop('doc_id', axis=1, inplace=True)
-            # Not sure why we have to do this
-            doctopic_narrow.rename(columns={0:'doc_id'}, inplace=True)
-            # ditto
-
-        else:
-            pass
-
-        doctopic_narrow = doctopic_narrow[['doc_id', 'topic_id', 'topic_weight']]
-
-        with sqlite3.connect(self.dbfile) as db:
-            doctopic_narrow.to_sql('doctopic', db, if_exists='replace', index=None)
 
     def import_table_topicphrase(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['xml-topic-phrase-report']
@@ -202,11 +213,9 @@ class PoloMallet:
                     phrase_count = int(phrase.xpath('@count')[0])
                     topic_phrase = phrase.xpath('text()')[0]
                     TOPICPHRASE.append((topic_id, topic_phrase, phrase_weight, phrase_count))
-        topicphrase = pd.DataFrame(TOPICPHRASE,
-                                   columns=['topic_id', 'topic_phrase', 'phrase_weight',
-                                            'phrase_count'])
-        with sqlite3.connect(self.dbfile) as db:
-            topicphrase.to_sql('topicphrase', db, if_exists='replace', index=False)
+        topicphrase = pd.DataFrame(TOPICPHRASE, columns=['topic_id', 'topic_phrase',
+                                                         'phrase_weight', 'phrase_count'])
+        self.df_to_db(topicphrase, 'topicphrase')
 
     def import_table_config(self):
         cfg = {}
@@ -215,9 +224,53 @@ class PoloMallet:
         cfg['thresh'] = self.config.thresh
         cfg['slug'] = self.config.slug
         cfg['num_topics'] = self.config.num_topics
+        cfg['base_path'] = self.config.base_path
+        cfg['file_prefix'] = self.file_prefix
         config = pd.DataFrame({'key': list(cfg.keys()), 'value': list(cfg.values())})
         with sqlite3.connect(self.dbfile) as db:
             config.to_sql('config', db, if_exists='replace')
+
+    def add_diagnostics(self, src_file=None):
+        if not src_file: src_file = self.mallet['train-topics']['diagnostics-file']
+        TOPIC = []
+        TOPICWORD = []
+        tkeys = ['id', 'tokens', 'document_entropy', 'word-length', 'coherence', 'uniform_dist', 'corpus_dist',
+                 'eff_num_words', 'token-doc-diff', 'rank_1_docs', 'allocation_ratio', 'allocation_count',
+                 'exclusivity']
+        tints = ['id', 'tokens']
+        wkeys = ['rank', 'count', 'prob', 'cumulative', 'docs', 'word-length', 'coherence',
+                 'uniform_dist', 'corpus_dist', 'token-doc-diff', 'exclusivity']
+        wints = ['rank', 'count', 'docs', 'word-length']
+        with open(src_file, 'r') as f:
+            tree = etree.parse(f)
+            for topic in tree.xpath('/model/topic'):
+                tvals = []
+                for key in tkeys:
+                    xpath = '@{}'.format(key)
+                    if key in tints:
+                        tvals.append(int(float(topic.xpath(xpath)[0])))
+                    else:
+                        tvals.append(float(topic.xpath(xpath)[0]))
+                TOPIC.append(tvals)
+                for word in topic.xpath('word'):
+                    wvals = []
+                    topic_id = tvals[0] # Hopefully
+                    wvals.append(topic_id)
+                    word_str = word.xpath('text()')[0]
+                    wvals.append(word_str)
+                    for key in wkeys:
+                        xpath = '@{}'.format(key)
+                        if key in wints:
+                            wvals.append(int(float(word.xpath(xpath)[0])))
+                        else:
+                            wvals.append(float(word.xpath(xpath)[0]))
+                    TOPICWORD.append(wvals)
+        tkeys = ['topic_{}'.format(re.sub('-', '_', k)) for k in tkeys]
+        wkeys = ['topic_id', 'word_str'] + wkeys
+        topic = pd.DataFrame(TOPIC, columns=tkeys)
+        topicword = pd.DataFrame(TOPICWORD, columns=wkeys)
+        self.df_to_db(topic, 'topic_diags')
+        self.df_to_db(topicword, 'topicword_diags')
 
     def del_mallet_files(self):
         file_keys = ['output-topic-keys', 'output-doc-topics',
@@ -229,46 +282,54 @@ class PoloMallet:
     def add_topic_entropy(self):
         """This method also creates the doc table"""
         import scipy.stats as sp
-        with sqlite3.connect(self.dbfile) as db:
-            doctopic = pd.read_sql_query("select * from doctopic", db)
-            topic_entropy = doctopic.groupby('doc_id')['topic_weight'].apply(lambda x: sp.entropy(x))
-            doc = pd.DataFrame({'topic_entropy': topic_entropy})
-            doc.to_sql('doc', db, if_exists='replace', index_label='doc_id')
+        doctopic = self.db_to_df('doctopic')
+
+        topic_entropy = doctopic.groupby('doc_id')['topic_weight'].apply(lambda x: sp.entropy(x))
+        doc = pd.DataFrame({'topic_entropy': topic_entropy})
+
+        # Also get topic sigs for each topic
+        # ONLY DO THIS IF NOT SHORT ALREADY
+        #dt1 = doctopic[doctopic.topic_weight >= self.config.thresh]
+        #self.df_to_db(dt1, 'doctopic_short')
+
+        self.df_to_db(doc, 'doc', index=True)
 
     def create_table_topicpair(self):
-        import math
         thresh = self.config.thresh
-        with sqlite3.connect(self.dbfile) as db:
-            doctopic = pd.read_sql_query('select * from doctopic', db)
-            doc_num = len(doctopic.doc_id)
-            topic = pd.read_sql_query('select * from topic', db)
-            topic['topic_freq'] = [len(doctopic[doctopic.topic_id == t][doctopic.topic_weight >= thresh])
-                     for t in range(self.config.num_topics)]
-            topic['topic_rel_freq'] = [len(doctopic[doctopic.topic_id == t][doctopic.topic_weight >= thresh]) / doc_num
-                     for t in range(self.config.num_topics)]
-            doctopic_wide = doctopic.pivot(index='doc_id', columns='topic_id', values='topic_weight')
-            #with sqlite3.connect(self.dbfile) as db:
-            #    doctopic_wide.to_sql('doctopic_wide', db, if_exists='replace')
-            TOPICPAIR = []
-            from itertools import combinations
-            for pair in list(combinations(topic.topic_id, 2)):
-                a = pair[0]
-                b = pair[1]
-                p_a = topic.loc[a, 'topic_rel_freq']
-                p_b = topic.loc[b, 'topic_rel_freq']
-                p_ab = len(doctopic_wide[doctopic_wide[a] >= thresh][doctopic_wide[b] >= thresh]) / doc_num
-                #p_ab = len(doctopic_wide[(doctopic_wide[a] >= thresh) & (doctopic_wide[b] >= thresh)]) / doc_num
-                if p_ab == 0: p_ab = .000001 # To prevent crazy
-                p_aGb = p_ab / p_b
-                p_bGa = p_ab / p_a
-                i_ab = pm.pwmi(p_a, p_b, p_ab)
-                c_ab = (1 - p_a) / (1 - p_aGb)
-                TOPICPAIR.append([a, b, p_a, p_b, p_ab, p_aGb, p_bGa, i_ab, c_ab])
-            topicpair = pd.DataFrame(TOPICPAIR, columns=['topic_a', 'topic_b', 'p_a', 'p_b', 'p_ab', 'p_aGb', 'p_bGa', 'i_ab', 'c_ab'])
-            with sqlite3.connect(self.dbfile) as db:
-                topic.to_sql('topic', db, if_exists='replace', index=False)
-                topicpair.to_sql('topicpair', db, if_exists='replace', index=False)
+        doctopic = self.db_to_df('doctopic')
+        doc_num = len(doctopic.doc_id)
+        topic = self.db_to_df('topic')
+        topic['topic_freq'] = [len(doctopic[doctopic.topic_id == t][doctopic.topic_weight >= thresh])
+                 for t in range(self.config.num_topics)]
+        topic['topic_rel_freq'] = [len(doctopic[doctopic.topic_id == t][doctopic.topic_weight >= thresh]) / doc_num
+                 for t in range(self.config.num_topics)]
+        doctopic_wide = doctopic.pivot(index='doc_id', columns='topic_id', values='topic_weight')
+        TOPICPAIR = []
+        from itertools import combinations
+        for pair in list(combinations(topic.topic_id, 2)):
+            a = pair[0]
+            b = pair[1]
+            p_a = topic.loc[a, 'topic_rel_freq']
+            p_b = topic.loc[b, 'topic_rel_freq']
+            p_ab = len(doctopic_wide[doctopic_wide[a] >= thresh][doctopic_wide[b] >= thresh]) / doc_num
+            if p_ab == 0: p_ab = .000001 # To prevent craziness in prob calcs
+            p_aGb = p_ab / p_b
+            p_bGa = p_ab / p_a
+            i_ab = pm.pwmi(p_a, p_b, p_ab)
+            c_ab = (1 - p_a) / (1 - p_aGb)
+            TOPICPAIR.append([a, b, p_a, p_b, p_ab, p_aGb, p_bGa, i_ab, c_ab])
+        topicpair = pd.DataFrame(TOPICPAIR, columns=['topic_a', 'topic_b', 'p_a', 'p_b', 'p_ab',
+                                                     'p_aGb', 'p_bGa', 'i_ab', 'c_ab'])
+        self.df_to_db(topic, 'topic')
+        self.df_to_db(topicpair, 'topicpair')
 
+    def df_to_db(self, df, table_name='test', if_exists='replace', index=False, index_label=None):
+        df.to_sql(table_name, self.conn, if_exists=if_exists, index=index, index_label=index_label)
+
+    def db_to_df(self, table_name=''):
+        sql = 'select * from {}'.format(table_name)
+        df = pd.read_sql_query(sql, self.conn)
+        return df
 
 if __name__ == '__main__':
     print('Run polo instead')
