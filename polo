@@ -41,6 +41,6 @@ if __name__ == '__main__':
     m.create_table_topicpair()
 
     print("Cleaning up")
-    #m.del_mallet_files()
+    m.del_mallet_files()
 
     print("Done with", m.config.trial_name)

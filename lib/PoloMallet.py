@@ -4,7 +4,7 @@ from lxml import etree
 import PoloMath as pm
 
 class PoloConfig:
-    """Paramaters to be passed to mallet as well as other things."""
+    """Parameters to be passed to mallet as well as other things."""
     """Define more sensible defaults."""
     slug                = 'test'
     trial               = 'my_trial'
@@ -61,7 +61,7 @@ class PoloMallet:
         self.config.num_topics = int(self.config.num_topics)
         self.mallet = {'import-file': {}, 'train-topics': {}}
         self.mallet_init()
-        self.dbfile = "{}/{}-{}.db".format(self.config.base_path, self.config.slug, self.config.trial)
+        self.dbfile = "{}/{}-trial-{}.db".format(self.config.base_path, self.config.slug, self.config.trial)
         try:
             self.conn = sqlite3.connect(self.dbfile)
         except sqlite3.Error as e:
@@ -107,10 +107,10 @@ class PoloMallet:
         self.mallet['train-topics']['xml-topic-report']         = '{}-topic-report.xml'.format(self.file_prefix)
         self.mallet['train-topics']['xml-topic-phrase-report']  = '{}-topic-phrase-report.xml'.format(self.file_prefix)
         self.mallet['train-topics']['diagnostics-file']         = '{}-diagnostics.xml'.format(self.file_prefix)
-        #self.mallet['train-topics']['output-topic-docs']        = '{}-topic-docs.txt'.format(self.file_prefix)
+        # self.mallet['train-topics']['output-topic-docs']        = '{}-topic-docs.txt'.format(self.file_prefix)
 
         self.mallet['train-topics']['num-top-docs']             = 100 # ADD TO CONFIG
-        #self.mallet['train-topics']['doc-topics-threshold']     = self.config.thresh
+        # self.mallet['train-topics']['doc-topics-threshold']    = self.config.thresh
         self.mallet['train-topics']['doc-topics-max']           = 10 # ADD TO CONFIG
         self.mallet['train-topics']['show-topics-interval']     = 100 # ADD TO CONFIG
 
@@ -207,7 +207,6 @@ class PoloMallet:
             tree = etree.parse(f)
             for topic in tree.xpath('/topics/topic'):
                 topic_id = int(topic.xpath('@id')[0])
-                #total_tokens = topic.xpath('@totalTokens')[0]
                 for phrase in topic.xpath('phrase'):
                     phrase_weight = float(phrase.xpath('@weight')[0])
                     phrase_count = int(phrase.xpath('@count')[0])
@@ -267,14 +266,17 @@ class PoloMallet:
                     TOPICWORD.append(wvals)
         tkeys = ['topic_{}'.format(re.sub('-', '_', k)) for k in tkeys]
         wkeys = ['topic_id', 'word_str'] + wkeys
+        wkeys = [re.sub('-', '_', k) for k in wkeys]
         topic = pd.DataFrame(TOPIC, columns=tkeys)
         topicword = pd.DataFrame(TOPICWORD, columns=wkeys)
         self.df_to_db(topic, 'topic_diags')
         self.df_to_db(topicword, 'topicword_diags')
 
     def del_mallet_files(self):
+        """Consider just deleting all the contents of the directory"""
         file_keys = ['output-topic-keys', 'output-doc-topics',
-                     'word-topic-counts-file', 'xml-topic-report', 'xml-topic-phrase-report']
+                     'word-topic-counts-file', 'xml-topic-report', 'xml-topic-phrase-report',
+                     'diagnostics', 'topic-word-weights']
         for fk in file_keys:
             os.remove(str(self.mallet['train-topics'][fk]))
 
@@ -296,14 +298,21 @@ class PoloMallet:
 
     def create_table_topicpair(self):
         thresh = self.config.thresh
+        doc = self.db_to_df('doc')
+        doc_num = len(doc.doc_id)
+        del doc
+
         doctopic = self.db_to_df('doctopic')
-        doc_num = len(doctopic.doc_id)
+        dts = doctopic[doctopic.topic_weight >= thresh]
+        dtsw = dts.pivot(index='doc_id', columns='topic_id', values='topic_weight')
+        del doctopic
+        del dts
+
         topic = self.db_to_df('topic')
-        topic['topic_freq'] = [len(doctopic[doctopic.topic_id == t][doctopic.topic_weight >= thresh])
-                 for t in range(self.config.num_topics)]
-        topic['topic_rel_freq'] = [len(doctopic[doctopic.topic_id == t][doctopic.topic_weight >= thresh]) / doc_num
-                 for t in range(self.config.num_topics)]
-        doctopic_wide = doctopic.pivot(index='doc_id', columns='topic_id', values='topic_weight')
+        topic['topic_freq'] = [len(dtsw[dtsw[t] > 0]) for t in range(self.config.num_topics)]
+        topic['topic_rel_freq'] = [len(dtsw[dtsw[t] > 0]) / doc_num for t in range(self.config.num_topics)]
+        self.df_to_db(topic, 'topic')
+
         TOPICPAIR = []
         from itertools import combinations
         for pair in list(combinations(topic.topic_id, 2)):
@@ -311,7 +320,7 @@ class PoloMallet:
             b = pair[1]
             p_a = topic.loc[a, 'topic_rel_freq']
             p_b = topic.loc[b, 'topic_rel_freq']
-            p_ab = len(doctopic_wide[doctopic_wide[a] >= thresh][doctopic_wide[b] >= thresh]) / doc_num
+            p_ab = len(dtsw[(dtsw[a] > 0) & (dtsw[b] > 0)]) / doc_num
             if p_ab == 0: p_ab = .000001 # To prevent craziness in prob calcs
             p_aGb = p_ab / p_b
             p_bGa = p_ab / p_a
@@ -320,7 +329,6 @@ class PoloMallet:
             TOPICPAIR.append([a, b, p_a, p_b, p_ab, p_aGb, p_bGa, i_ab, c_ab])
         topicpair = pd.DataFrame(TOPICPAIR, columns=['topic_a', 'topic_b', 'p_a', 'p_b', 'p_ab',
                                                      'p_aGb', 'p_bGa', 'i_ab', 'c_ab'])
-        self.df_to_db(topic, 'topic')
         self.df_to_db(topicpair, 'topicpair')
 
     def df_to_db(self, df, table_name='test', if_exists='replace', index=False, index_label=None):
@@ -330,6 +338,7 @@ class PoloMallet:
         sql = 'select * from {}'.format(table_name)
         df = pd.read_sql_query(sql, self.conn)
         return df
+
 
 if __name__ == '__main__':
     print('Run polo instead')
