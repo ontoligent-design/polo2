@@ -67,7 +67,7 @@ class PoloCorpus(PoloDb):
         self.put_table(doctoken, 'doctoken')
         self.put_table(token, 'token', index=True, index_label='token_str')
 
-    def get_ngrams(self, n = 2):
+    def add_tables_ngram_and_docngram(self, n = 2):
         if n not in range(2, 5):
             print("n not in range")
             return(None)
