@@ -32,7 +32,7 @@ class PoloCorpus(PoloDb):
         if self.corpus_sep == '': self.corpus_sep = ','
         doc = pd.read_csv(self.corpus_file, header=None, sep=self.corpus_sep)
         doc.columns = ['doc_id', 'doc_label', 'doc_content']
-        self.df_to_db(doc, 'doc')
+        self.put_table(doc, 'doc')
 
     def add_tables_doctoken_and_token(self):
         doc = self.db_to_df('doc')
@@ -45,14 +45,14 @@ class PoloCorpus(PoloDb):
         token = pd.DataFrame(doctoken.token_str.value_counts())
         token.columns = ['token_count']
 
-        self.df_to_db(doctoken, 'doctoken')
-        self.df_to_db(token, 'token', index=True, index_label='token_str')
+        self.put_table(doctoken, 'doctoken')
+        self.put_table(token, 'token', index=True, index_label='token_str')
 
     def get_ngrams(self, n = 2):
         if n not in range(2, 5):
             print("n not in range")
             return(None)
-        doctoken = self.db_to_df('doctoken')
+        doctoken = self.get_table('doctoken')
         cols = {}
         for i in range(n):
             pad = [None] * i
@@ -69,8 +69,8 @@ class PoloCorpus(PoloDb):
         ngram.columns = ['ngram_count']
 
         prefixes = ['no', 'uni', 'bi', 'tri', 'quadri']
-        self.df_to_db(docngram, 'doc{}gram'.format(prefixes[n]))
-        self.df_to_db(ngram, '{}gram'.format(prefixes[n]), index=True, index_label='ngram')
+        self.put_table(docngram, 'doc{}gram'.format(prefixes[n]))
+        self.put_table(ngram, '{}gram'.format(prefixes[n]), index=True, index_label='ngram')
 
 
 if __name__ == '__main__':

@@ -98,7 +98,7 @@ class PoloMallet(PoloDb):
         if not src_file: src_file = self.mallet['train-topics']['output-topic-keys']
         topic = pd.read_csv(src_file, sep='\t', header=None)
         topic.rename(columns={0:'topic_id', 1:'topic_alpha', 2:'topic_words'}, inplace=True)
-        self.df_to_db(topic, 'topic')
+        self.put_table(topic, 'topic')
 
     def import_tables_topicword_and_word(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['word-topic-counts-file']
@@ -114,8 +114,8 @@ class PoloMallet(PoloDb):
                     TOPICWORD.append((int(word_id), int(topic_id), int(word_count)))
         word = pd.DataFrame(WORD, columns=['word_id', 'word_str'])
         topicword = pd.DataFrame(TOPICWORD, columns=['word_id', 'topic_id', 'word_count'])
-        self.df_to_db(word, 'word')
-        self.df_to_db(topicword, 'topicword')
+        self.put_table(word, 'word')
+        self.put_table(topicword, 'topicword')
 
     def import_table_doctopic(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['output-doc-topics']
@@ -132,7 +132,7 @@ class PoloMallet(PoloDb):
                         topic_weight = row[i+1]
                         DOCTOPIC.append([doc_id, topic_id, topic_weight])
             doctopic = pd.DataFrame(DOCTOPIC, columns=['doc_id', 'topic_id', 'topic_weight'])
-            self.df_to_db(doctopic, 'doctopic')
+            self.put_table(doctopic, 'doctopic')
         else:
             doctopic = pd.read_csv(src_file, sep='\t', header=None)
             doctopic.drop(1, axis = 1, inplace=True)
@@ -141,7 +141,7 @@ class PoloMallet(PoloDb):
             doctopic_narrow = pd.lreshape(doctopic, {'topic_weight': y})
             doctopic_narrow['topic_id'] = [i for i in range(self.config.num_topics) for doc_id in doctopic['doc_id']]
             doctopic_narrow = doctopic_narrow[['doc_id', 'topic_id', 'topic_weight']]
-            self.df_to_db(doctopic_narrow, 'doctopic')
+            self.put_table(doctopic_narrow, 'doctopic')
 
 
     def import_table_topicphrase(self, src_file=None):
@@ -158,7 +158,7 @@ class PoloMallet(PoloDb):
                     TOPICPHRASE.append((topic_id, topic_phrase, phrase_weight, phrase_count))
         topicphrase = pd.DataFrame(TOPICPHRASE, columns=['topic_id', 'topic_phrase',
                                                          'phrase_weight', 'phrase_count'])
-        self.df_to_db(topicphrase, 'topicphrase')
+        self.put_table(topicphrase, 'topicphrase')
 
     def import_table_config(self):
         cfg = {}
@@ -213,8 +213,8 @@ class PoloMallet(PoloDb):
         wkeys = [re.sub('-', '_', k) for k in wkeys]
         topic = pd.DataFrame(TOPIC, columns=tkeys)
         topicword = pd.DataFrame(TOPICWORD, columns=wkeys)
-        self.df_to_db(topic, 'topic_diags')
-        self.df_to_db(topicword, 'topicword_diags')
+        self.put_table(topic, 'topic_diags')
+        self.put_table(topicword, 'topicword_diags')
 
     def del_mallet_files(self):
         """Consider just deleting all the contents of the directory"""
@@ -229,7 +229,7 @@ class PoloMallet(PoloDb):
     def add_topic_entropy(self):
         """This method also creates the doc table"""
         import scipy.stats as sp
-        doctopic = self.db_to_df('doctopic')
+        doctopic = self.get_table('doctopic')
 
         topic_entropy = doctopic.groupby('doc_id')['topic_weight'].apply(lambda x: sp.entropy(x))
         doc = pd.DataFrame({'topic_entropy': topic_entropy})
@@ -237,26 +237,26 @@ class PoloMallet(PoloDb):
         # Also get topic sigs for each topic
         # ONLY DO THIS IF NOT SHORT ALREADY
         #dt1 = doctopic[doctopic.topic_weight >= self.config.thresh]
-        #self.df_to_db(dt1, 'doctopic_short')
+        #self.put_table(dt1, 'doctopic_short')
 
-        self.df_to_db(doc, 'doc', index=True)
+        self.put_table(doc, 'doc', index=True)
 
     def create_table_topicpair(self):
         thresh = self.config.thresh
-        doc = self.db_to_df('doc')
+        doc = self.get_table('doc')
         doc_num = len(doc.doc_id)
         del doc
 
-        doctopic = self.db_to_df('doctopic')
+        doctopic = self.get_table('doctopic')
         dts = doctopic[doctopic.topic_weight >= thresh]
         dtsw = dts.pivot(index='doc_id', columns='topic_id', values='topic_weight')
         del doctopic
         del dts
 
-        topic = self.db_to_df('topic')
+        topic = self.get_table('topic')
         topic['topic_freq'] = [len(dtsw[dtsw[t] > 0]) for t in range(self.config.num_topics)]
         topic['topic_rel_freq'] = [len(dtsw[dtsw[t] > 0]) / doc_num for t in range(self.config.num_topics)]
-        self.df_to_db(topic, 'topic')
+        self.put_table(topic, 'topic')
 
         TOPICPAIR = []
         from itertools import combinations
@@ -274,7 +274,7 @@ class PoloMallet(PoloDb):
             TOPICPAIR.append([a, b, p_a, p_b, p_ab, p_aGb, p_bGa, i_ab, c_ab])
         topicpair = pd.DataFrame(TOPICPAIR, columns=['topic_a', 'topic_b', 'p_a', 'p_b', 'p_ab',
                                                      'p_aGb', 'p_bGa', 'i_ab', 'c_ab'])
-        self.df_to_db(topicpair, 'topicpair')
+        self.put_table(topicpair, 'topicpair')
 
 
 if __name__ == '__main__':
