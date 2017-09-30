@@ -45,7 +45,7 @@ class PoloCorpus(PoloDb):
     def import_table_doc(self):
         if self.corpus_sep == '': self.corpus_sep = ','
         doc = pd.read_csv(self.corpus_file, header=None, sep=self.corpus_sep)
-        doc.columns = ['doc_id', 'doc_label', 'doc_content']
+        doc.columns = ['doc_key', 'doc_label', 'doc_content']
         self.put_table(doc, 'doc')
 
     def add_tables_doctoken_and_token(self):
@@ -53,8 +53,8 @@ class PoloCorpus(PoloDb):
         doc = doc[doc.doc_content.notnull()]
 
         doctoken = pd.concat([pd.Series(row[0], row[2].split()) for _, row in doc.iterrows()]).reset_index()
-        doctoken.columns = ['token_str', 'doc_id']
-        doctoken = doctoken[['doc_id', 'token_str']]
+        doctoken.columns = ['token_str', 'doc_key']
+        doctoken = doctoken[['doc_key', 'token_str']]
 
         token = pd.DataFrame(doctoken.token_str.value_counts())
         token.columns = ['token_count']
@@ -76,14 +76,14 @@ class PoloCorpus(PoloDb):
         for i in range(n):
             pad = [None] * i
             cols[str(i)] = doctoken.token_str[i:].tolist() + pad
-            cols[str(n+i)] = doctoken.doc_id[i:].tolist() + pad
+            cols[str(n+i)] = doctoken.doc_key[i:].tolist() + pad
         docngram = pd.DataFrame(cols)
         c1 = str(n)
         c2 = str((2 * n) - 1)
         docngram = docngram[docngram[c1] == docngram[c2]]
         docngram['ngram'] = docngram.apply(lambda row: '_'.join(row[:n]), axis=1)
         docngram = docngram[[c1, 'ngram']]
-        docngram.columns = ['doc_id', 'ngram']
+        docngram.columns = ['doc_key', 'ngram']
         ngram = pd.DataFrame(docngram.ngram.value_counts())
         ngram.columns = ['ngram_count']
 

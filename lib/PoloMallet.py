@@ -121,20 +121,34 @@ class PoloMallet(PoloDb):
         if not src_file: src_file = self.mallet['train-topics']['output-doc-topics']
         if 'doc-topics-threshold' in self.mallet['train-topics']:
             DOCTOPIC = []
+            DOC = []
             with open(src_file, 'r') as src:
                 next(src) # Skip header -- BUT THIS IS A CLUE
                 for line in src:
                     row = line.split('\t')
                     row.pop() # Pretty sure this is right
                     doc_id = row[0]
+                    doc_key = row[1].split(',')[0]
+                    doc_label = row[1].split(',')[1]
+                    DOC.append([doc_id, doc_key, doc_label])
                     for i in range(2, len(row), 2):
                         topic_id = row[i]
                         topic_weight = row[i+1]
                         DOCTOPIC.append([doc_id, topic_id, topic_weight])
             doctopic = pd.DataFrame(DOCTOPIC, columns=['doc_id', 'topic_id', 'topic_weight'])
+            doc = pd.DataFrame(DOC, columns=['doc_id', 'doc_key', 'doc_label'])
             self.put_table(doctopic, 'doctopic')
+            self.put_table(doc, 'doc')
         else:
             doctopic = pd.read_csv(src_file, sep='\t', header=None)
+
+            doc = pd.DataFrame(doctopic.iloc[:,1])
+            doc.columns = ['doc_tmp']
+            doc['doc_key'] = doc.doc_tmp.apply(lambda x: x.split(',')[0])
+            doc['doc_label'] = doc.doc_tmp.apply(lambda x: x.split(',')[1])
+            doc = doc[['doc_key', 'doc_label']]
+            self.put_table(doc, 'doc', index_label='doc_id')
+
             doctopic.drop(1, axis = 1, inplace=True)
             doctopic.rename(columns={0:'doc_id'}, inplace=True)
             y = [col for col in doctopic.columns[1:]]
@@ -142,7 +156,6 @@ class PoloMallet(PoloDb):
             doctopic_narrow['topic_id'] = [i for i in range(self.config.num_topics) for doc_id in doctopic['doc_id']]
             doctopic_narrow = doctopic_narrow[['doc_id', 'topic_id', 'topic_weight']]
             self.put_table(doctopic_narrow, 'doctopic')
-
 
     def import_table_topicphrase(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['xml-topic-phrase-report']
@@ -220,7 +233,7 @@ class PoloMallet(PoloDb):
         """Consider just deleting all the contents of the directory"""
         file_keys = ['output-topic-keys', 'output-doc-topics',
                      'word-topic-counts-file', 'xml-topic-report', 'xml-topic-phrase-report',
-                     'diagnostics-file']
+                     'diagnostics-file', 'topic-word-weights-file']
         for fk in file_keys:
             if os.path.isfile(self.mallet['train-topics'][fk]):
                 os.remove(str(self.mallet['train-topics'][fk]))
@@ -230,21 +243,21 @@ class PoloMallet(PoloDb):
         """This method also creates the doc table"""
         import scipy.stats as sp
         doctopic = self.get_table('doctopic')
-
+        doc = self.get_table('doc')
         topic_entropy = doctopic.groupby('doc_id')['topic_weight'].apply(lambda x: sp.entropy(x))
-        doc = pd.DataFrame({'topic_entropy': topic_entropy})
+        doc['topic_entropy'] = topic_entropy
 
         # Also get topic sigs for each topic
         # ONLY DO THIS IF NOT SHORT ALREADY
         #dt1 = doctopic[doctopic.topic_weight >= self.config.thresh]
         #self.put_table(dt1, 'doctopic_short')
 
-        self.put_table(doc, 'doc', index=True)
+        self.put_table(doc, 'doc', index=True, index_label='doc_id')
 
     def create_table_topicpair(self):
         thresh = self.config.thresh
         doc = self.get_table('doc')
-        doc_num = len(doc.doc_id)
+        doc_num = len(doc.index)
         del doc
 
         doctopic = self.get_table('doctopic')
