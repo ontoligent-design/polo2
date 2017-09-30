@@ -1,25 +1,42 @@
 #! /usr/bin/env python3
 
-from PoloConfig import PoloConfig as config
-from PoloMallet import PoloMallet as mallet
-from PoloCorpus import PoloCorpus as corpus
+from PoloConfig import PoloConfig
+from PoloMallet import PoloMallet
+from PoloCorpus import PoloCorpus
 
 if __name__ == '__main__':
     
     print("Welcome to Polo")
 
     print("Import config")
-    mc = config()
+    mc = PoloConfig()
     mc.read_ini('config.ini')
     trials = mc.get_trial_names()
 
     print("Pick a trial")
     print(trials)
 
+
+    print("Initialize corpus")
+    corpus = PoloCorpus(mc)
+    corpus.cache_mode = True
+
+    print("Importing stopwords")
+    corpus.import_table_stopword(use_nltk=True)
+
+    print("Importing doc")
+    corpus.import_table_doc()
+
+    print("Importing doctoken and token")
+    corpus.add_tables_doctoken_and_token()
+
+    print("Importing bigrams")
+    corpus.get_ngrams(n=2)
+
     mc.import_ini(trials[0])
 
     print("Initializing")
-    m = mallet(mc)
+    m = PoloMallet(mc)
 
     print('Importing corpus')
     m.mallet_import()

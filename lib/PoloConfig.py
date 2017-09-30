@@ -9,8 +9,8 @@ class PoloConfig():
     mallet_path         = '/opt/mallet/bin/mallet'
     output_dir          = 'my_dir'
     base_path           = '.' # Not a good default
-    input_corpus        = 'corpus.csv'
-    extra_stops         = 'extra-stopwords.csv'
+    input_corpus        = 'corpus/corpus.csv'
+    extra_stops         = 'corpus/extra-stopwords.csv'
     replacements        = ''
     num_topics          = 20
     num_iterations      = 100

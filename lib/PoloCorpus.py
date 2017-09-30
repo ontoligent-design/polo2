@@ -5,13 +5,14 @@ import re, nltk
 #from gensim.corpora import Dictionary
 #from gensim.models.phrases import Phrases
 from PoloDb import PoloDb
-#from PoloConfig import PoloConfig
 import pandas as pd
 
 class PoloCorpus(PoloDb):
 
     NOALPHA = re.compile(r'\W+')
     MSPACES = re.compile(r'\s+')
+    use_stopwords = True
+    use_nltk = True
 
     def __init__(self, config):
 
@@ -19,14 +20,27 @@ class PoloCorpus(PoloDb):
         self.corpus_sep = config.ini['DEFAULT']['corpus_sep']
         self.nltk_data_path = config.ini['DEFAULT']['nltk_data_path']
         self.slug = config.ini['DEFAULT']['slug']
+        self.extra_stops = config.ini['DEFAULT']['extra_stops']
+
+        # Local overrides of defaults
+        for key in ['use_nltk', 'use_stopwords']:
+            if key in config.ini['DEFAULT']:
+                setattr(self, 'use_nltk', config.ini['DEFAULT'][key])
 
         dbfile = '{}-corpus.db'.format(self.slug)
         PoloDb.__init__(self, dbfile)
         if self.nltk_data_path: nltk.data.path.append(self.nltk_data_path)
 
-
     def import_table_stopword(self, use_nltk=False):
-        pass
+        swset = set()
+        if use_nltk:
+            from nltk.corpus import stopwords
+            nltk_stopwords = set(stopwords.words('english')) # Lang needs param
+            swset.update(nltk_stopwords)
+        with open(self.extra_stops, 'r') as src:
+            swset.update([word for word in src.read().split()])
+        swdf = pd.DataFrame({'token_str': list(swset)})
+        self.put_table(swdf, 'stopword')
 
     def import_table_doc(self):
         if self.corpus_sep == '': self.corpus_sep = ','
@@ -35,7 +49,7 @@ class PoloCorpus(PoloDb):
         self.put_table(doc, 'doc')
 
     def add_tables_doctoken_and_token(self):
-        doc = self.db_to_df('doc')
+        doc = self.get_table('doc')
         doc = doc[doc.doc_content.notnull()]
 
         doctoken = pd.concat([pd.Series(row[0], row[2].split()) for _, row in doc.iterrows()]).reset_index()
@@ -44,6 +58,11 @@ class PoloCorpus(PoloDb):
 
         token = pd.DataFrame(doctoken.token_str.value_counts())
         token.columns = ['token_count']
+
+        if self.use_stopwords:
+            stopwords = self.get_table('stopword')
+            doctoken = doctoken[~doctoken.token_str.isin(stopwords.token_str)]
+            token = token[~token.index.isin(stopwords.token_str)]
 
         self.put_table(doctoken, 'doctoken')
         self.put_table(token, 'token', index=True, index_label='token_str')
