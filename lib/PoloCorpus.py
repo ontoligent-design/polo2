@@ -24,6 +24,10 @@ class PoloCorpus(PoloDb):
         PoloDb.__init__(self, dbfile)
         if self.nltk_data_path: nltk.data.path.append(self.nltk_data_path)
 
+
+    def import_table_stopword(self, use_nltk=False):
+        pass
+
     def import_table_doc(self):
         if self.corpus_sep == '': self.corpus_sep = ','
         doc = pd.read_csv(self.corpus_file, header=None, sep=self.corpus_sep)
