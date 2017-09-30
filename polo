@@ -1,16 +1,15 @@
 #! /usr/bin/env python3
 
-
-from PoloMallet import PoloConfig as pconfig
+from PoloConfig import PoloConfig as config
 from PoloMallet import PoloMallet as mallet
-import sys
+from PoloCorpus import PoloCorpus as corpus
 
 if __name__ == '__main__':
     
     print("Welcome to Polo")
 
     print("Import config")
-    mc = pconfig()
+    mc = config()
     mc.read_ini('config.ini')
     trials = mc.get_trial_names()
 
