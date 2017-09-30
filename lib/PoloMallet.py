@@ -2,8 +2,9 @@ import os, sys, sqlite3, time, re
 import pandas as pd
 from lxml import etree
 import PoloMath as pm
+from PoloDb import PoloDb
 
-class PoloConfig:
+class PoloConfig():
     """Parameters to be passed to mallet as well as other things."""
     """Define more sensible defaults."""
     slug                = 'test'
@@ -51,7 +52,7 @@ class PoloConfig:
         self.verbose = False
 
 
-class PoloMallet:
+class PoloMallet(PoloDb):
     
     def __init__(self, config):
 
@@ -61,18 +62,8 @@ class PoloMallet:
         self.config.num_topics = int(self.config.num_topics)
         self.mallet = {'import-file': {}, 'train-topics': {}}
         self.mallet_init()
-        self.dbfile = "{}/{}-trial-{}.db".format(self.config.base_path, self.config.slug, self.config.trial)
-        try:
-            self.conn = sqlite3.connect(self.dbfile)
-        except sqlite3.Error as e:
-            print("Can't connect to database:", e.args[0])
-            sys.exit(0)
-
-    def __del__(self):
-        try:
-            self.conn.close()
-        except sqlite3.Error as e:
-            print("Can't close database:", e.args[0])
+        dbfile = "{}/{}-trial-{}.db".format(self.config.base_path, self.config.slug, self.config.trial)
+        PoloDb.__init__(self, dbfile)
 
     def generate_trial_name(self):
         ts = time.time()
@@ -276,9 +267,10 @@ class PoloMallet:
         """Consider just deleting all the contents of the directory"""
         file_keys = ['output-topic-keys', 'output-doc-topics',
                      'word-topic-counts-file', 'xml-topic-report', 'xml-topic-phrase-report',
-                     'diagnostics', 'topic-word-weights']
+                     'diagnostics-file']
         for fk in file_keys:
-            os.remove(str(self.mallet['train-topics'][fk]))
+            if os.path.isfile(self.mallet['train-topics'][fk]):
+                os.remove(str(self.mallet['train-topics'][fk]))
 
     # UPDATE OR ADD TABLES WITH STATS
     def add_topic_entropy(self):
@@ -330,14 +322,6 @@ class PoloMallet:
         topicpair = pd.DataFrame(TOPICPAIR, columns=['topic_a', 'topic_b', 'p_a', 'p_b', 'p_ab',
                                                      'p_aGb', 'p_bGa', 'i_ab', 'c_ab'])
         self.df_to_db(topicpair, 'topicpair')
-
-    def df_to_db(self, df, table_name='test', if_exists='replace', index=False, index_label=None):
-        df.to_sql(table_name, self.conn, if_exists=if_exists, index=index, index_label=index_label)
-
-    def db_to_df(self, table_name=''):
-        sql = 'select * from {}'.format(table_name)
-        df = pd.read_sql_query(sql, self.conn)
-        return df
 
 
 if __name__ == '__main__':
