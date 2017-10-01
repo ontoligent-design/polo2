@@ -7,6 +7,7 @@ import re, nltk
 from PoloDb import PoloDb
 import pandas as pd
 
+
 class PoloCorpus(PoloDb):
 
     NOALPHA = re.compile(r'\W+')
@@ -71,6 +72,7 @@ class PoloCorpus(PoloDb):
         doctoken = pd.concat([pd.Series(row[0], row[2].split()) for _, row in doc.iterrows()]).reset_index()
         doctoken.columns = ['token_str', 'doc_key']
         doctoken = doctoken[['doc_key', 'token_str']]
+        # We could set an index here, but there are no other columns, wo what's the point?
 
         token = pd.DataFrame(doctoken.token_str.value_counts())
         token.index.name = 'token_str'

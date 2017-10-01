@@ -3,7 +3,6 @@ import pandas as pd
 from lxml import etree
 import PoloMath as pm
 from PoloDb import PoloDb
-#from PoloConfig import PoloConfig
 
 class PoloMallet(PoloDb):
     
@@ -53,10 +52,10 @@ class PoloMallet(PoloDb):
         self.mallet['train-topics']['diagnostics-file']         = '{}-diagnostics.xml'.format(self.file_prefix)
         # self.mallet['train-topics']['output-topic-docs']        = '{}-topic-docs.txt'.format(self.file_prefix)
 
-        self.mallet['train-topics']['num-top-docs']             = 100 # ADD TO CONFIG
+        self.mallet['train-topics']['num-top-docs']             = 100 # todo: ADD TO CONFIG
         # self.mallet['train-topics']['doc-topics-threshold']    = self.config.thresh
-        self.mallet['train-topics']['doc-topics-max']           = 10 # ADD TO CONFIG
-        self.mallet['train-topics']['show-topics-interval']     = 100 # ADD TO CONFIG
+        self.mallet['train-topics']['doc-topics-max']           = 10 # todo: ADD TO CONFIG
+        self.mallet['train-topics']['show-topics-interval']     = 100 # todo: ADD TO CONFIG
 
         self.mallet['trial_name'] = self.config.trial_name
 
@@ -96,8 +95,7 @@ class PoloMallet(PoloDb):
 
     def import_table_topic(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['output-topic-keys']
-        topic = pd.read_csv(src_file, sep='\t', header=None)
-        topic.rename(columns={0:'topic_id', 1:'topic_alpha', 2:'topic_words'}, inplace=True)
+        topic = pd.read_csv(src_file, sep='\t', header=None, index_col=False, names=['topic_id', 'topic_alpha', 'topic_words'])
         self.put_table(topic, 'topic')
 
     def import_tables_topicword_and_word(self, src_file=None):
@@ -136,12 +134,13 @@ class PoloMallet(PoloDb):
                         topic_weight = row[i+1]
                         DOCTOPIC.append([doc_id, topic_id, topic_weight])
             doctopic = pd.DataFrame(DOCTOPIC, columns=['doc_id', 'topic_id', 'topic_weight'])
+            #doctopic.set_index(['doc_id', 'topic_id'], inplace=True)
             doc = pd.DataFrame(DOC, columns=['doc_id', 'doc_key', 'doc_label'])
+            #doc.set_index(['doc_id'], inplace=True)
             self.put_table(doctopic, 'doctopic')
             self.put_table(doc, 'doc')
         else:
             doctopic = pd.read_csv(src_file, sep='\t', header=None)
-
             doc = pd.DataFrame(doctopic.iloc[:,1])
             doc.columns = ['doc_tmp']
             doc['doc_key'] = doc.doc_tmp.apply(lambda x: x.split(',')[0])
@@ -174,6 +173,7 @@ class PoloMallet(PoloDb):
         self.put_table(topicphrase, 'topicphrase')
 
     def import_table_config(self):
+        # fixme: Make this automatic; find a way to dump all values
         cfg = {}
         cfg['trial'] = self.config.trial
         cfg['dbfile'] = self.dbfile
@@ -226,11 +226,12 @@ class PoloMallet(PoloDb):
         wkeys = [re.sub('-', '_', k) for k in wkeys]
         topic = pd.DataFrame(TOPIC, columns=tkeys)
         topicword = pd.DataFrame(TOPICWORD, columns=wkeys)
+        # todo: replace word_str with word_id in topicword by joining word
         self.put_table(topic, 'topic_diags')
         self.put_table(topicword, 'topicword_diags')
 
     def del_mallet_files(self):
-        """Consider just deleting all the contents of the directory"""
+        # todo: Consider just deleting all the contents of the directory
         file_keys = ['output-topic-keys', 'output-doc-topics',
                      'word-topic-counts-file', 'xml-topic-report', 'xml-topic-phrase-report',
                      'diagnostics-file', 'topic-word-weights-file']
@@ -246,16 +247,13 @@ class PoloMallet(PoloDb):
         doc = self.get_table('doc')
         topic_entropy = doctopic.groupby('doc_id')['topic_weight'].apply(lambda x: sp.entropy(x))
         doc['topic_entropy'] = topic_entropy
-
-        # Also get topic sigs for each topic
-        # ONLY DO THIS IF NOT SHORT ALREADY
-        #dt1 = doctopic[doctopic.topic_weight >= self.config.thresh]
-        #self.put_table(dt1, 'doctopic_short')
-
-        self.put_table(doc, 'doc', index=True, index_label='doc_id')
+        doc.index.name = 'doc_id'
+        self.put_table(doc, 'doc', index=True)
 
     def create_table_topicpair(self):
         thresh = self.config.thresh
+
+        # todo: Consider putting this kind of metadata in a table?
         doc = self.get_table('doc')
         doc_num = len(doc.index)
         del doc
@@ -273,7 +271,7 @@ class PoloMallet(PoloDb):
 
         TOPICPAIR = []
         from itertools import combinations
-        for pair in list(combinations(topic.topic_id, 2)):
+        for pair in list(combinations(topic.index, 2)):
             a = pair[0]
             b = pair[1]
             p_a = topic.loc[a, 'topic_rel_freq']
@@ -287,6 +285,8 @@ class PoloMallet(PoloDb):
             TOPICPAIR.append([a, b, p_a, p_b, p_ab, p_aGb, p_bGa, i_ab, c_ab])
         topicpair = pd.DataFrame(TOPICPAIR, columns=['topic_a', 'topic_b', 'p_a', 'p_b', 'p_ab',
                                                      'p_aGb', 'p_bGa', 'i_ab', 'c_ab'])
+        #topicpair.set_index(['topic_a', 'topic_b'], inplace=True)
+        #self.put_table(topicpair, 'topicpair', index=True)
         self.put_table(topicpair, 'topicpair')
 
 
