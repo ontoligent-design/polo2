@@ -7,7 +7,6 @@ from PoloDb import PoloDb
 class PoloMallet(PoloDb):
     
     def __init__(self, config):
-
         self.config = config
         self.generate_trial_name()
         self.file_prefix = '{}/{}'.format(self.config.output_dir, self.config.trial_name)
@@ -118,8 +117,8 @@ class PoloMallet(PoloDb):
     def import_table_doctopic(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['output-doc-topics']
         if 'doc-topics-threshold' in self.mallet['train-topics']:
-            DOCTOPIC = []
             DOC = []
+            DOCTOPIC = []
             with open(src_file, 'r') as src:
                 next(src) # Skip header -- BUT THIS IS A CLUE
                 for line in src:
@@ -134,9 +133,7 @@ class PoloMallet(PoloDb):
                         topic_weight = row[i+1]
                         DOCTOPIC.append([doc_id, topic_id, topic_weight])
             doctopic = pd.DataFrame(DOCTOPIC, columns=['doc_id', 'topic_id', 'topic_weight'])
-            #doctopic.set_index(['doc_id', 'topic_id'], inplace=True)
             doc = pd.DataFrame(DOC, columns=['doc_id', 'doc_key', 'doc_label'])
-            #doc.set_index(['doc_id'], inplace=True)
             self.put_table(doctopic, 'doctopic')
             self.put_table(doc, 'doc')
         else:
@@ -146,8 +143,8 @@ class PoloMallet(PoloDb):
             doc['doc_key'] = doc.doc_tmp.apply(lambda x: x.split(',')[0])
             doc['doc_label'] = doc.doc_tmp.apply(lambda x: x.split(',')[1])
             doc = doc[['doc_key', 'doc_label']]
-            self.put_table(doc, 'doc', index_label='doc_id')
-
+            doc.index.name = 'doc_id'
+            self.put_table(doc, 'doc', index=True)
             doctopic.drop(1, axis = 1, inplace=True)
             doctopic.rename(columns={0:'doc_id'}, inplace=True)
             y = [col for col in doctopic.columns[1:]]
@@ -247,8 +244,7 @@ class PoloMallet(PoloDb):
         doc = self.get_table('doc')
         topic_entropy = doctopic.groupby('doc_id')['topic_weight'].apply(lambda x: sp.entropy(x))
         doc['topic_entropy'] = topic_entropy
-        doc.index.name = 'doc_id'
-        self.put_table(doc, 'doc', index=True)
+        self.put_table(doc, 'doc')
 
     def create_table_topicpair(self):
         thresh = self.config.thresh

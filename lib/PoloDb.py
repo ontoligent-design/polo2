@@ -28,17 +28,23 @@ class PoloDb:
             self.tables[table_name] = df
 
     def get_table(self, table_name=''):
-        """Needs to be SQL safe and check if table exists!"""
         if self.cache_mode and table_name in self.tables[table_name]:
             return self.tables[tablename]
         else:
-            sql = 'select * from {}'.format(table_name)
-            df = pd.read_sql_query(sql, self.conn)
-            if self.cache_mode:
-                self.tables[table_name] = df
-                return self.tables[table_name]
+            # todo: Make SQL safe and check if table exists
+            cur = self.conn.cursor()
+            cur.execute("select count(*) from sqlite_master where type='table' and name='{}'".format(table_name))
+            sql_check = cur.fetchone()[0]
+            if sql_check:
+                sql = 'select * from {}'.format(table_name)
+                df = pd.read_sql_query(sql, self.conn)
+                if self.cache_mode:
+                    self.tables[table_name] = df
+                    return self.tables[table_name]
+                else:
+                    return df
             else:
-                return df
+                sys.exit("Table `{}` needs to be created first.".format(table_name))
 
     def clear_table_cache(self):
         for table_name in self.tables:
