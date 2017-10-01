@@ -29,11 +29,10 @@ class PoloDb:
 
     def get_table(self, table_name=''):
         if self.cache_mode and table_name in self.tables[table_name]:
-            return self.tables[tablename]
+            return self.tables[table_name]
         else:
-            # todo: Make SQL safe and check if table exists
             cur = self.conn.cursor()
-            cur.execute("select count(*) from sqlite_master where type='table' and name='{}'".format(table_name))
+            cur.execute("select count(*) from sqlite_master where type='table' and name=?", (table_name,))
             sql_check = cur.fetchone()[0]
             if sql_check:
                 sql = 'select * from {}'.format(table_name)
