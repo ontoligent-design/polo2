@@ -23,6 +23,7 @@ class PoloCorpus(PoloDb):
         self.extra_stops = config.ini['DEFAULT']['extra_stops']
 
         # Local overrides of defaults
+        # fixme: Is this the best way to handle config overrides? If so, add to other classes
         for key in ['use_nltk', 'use_stopwords']:
             if key in config.ini['DEFAULT']:
                 setattr(self, 'use_nltk', config.ini['DEFAULT'][key])
@@ -43,20 +44,36 @@ class PoloCorpus(PoloDb):
         self.put_table(swdf, 'stopword')
 
     def import_table_doc(self):
+        # todo: Craete file rw function to wrap error trapping, etc.
         if self.corpus_sep == '': self.corpus_sep = ','
         doc = pd.read_csv(self.corpus_file, header=None, sep=self.corpus_sep)
         doc.columns = ['doc_key', 'doc_label', 'doc_content']
-        self.put_table(doc, 'doc')
+        doc = doc.set_index(['doc_key'])
+        # fixme: Reconcile this with what mallet is doing!
+        # fixme: Put this in a separate function for general text manipulation
+        # fixme: Create mallet corpus from doc table and turn off its stopwards
+        # todo: Consider providing orderdicts of replacements that users can choose or create
+        doc = doc[doc.doc_content.notnull()]
+        #doc['doc_original'] = doc.doc_content
+        doc['doc_content'] = doc.doc_content.str.lower()
+        doc['doc_content'] = doc.doc_content.str.replace(r'_', 'MYUNDERSCORE')
+        doc['doc_content'] = doc.doc_content.str.replace(r'\n+', ' ')
+        doc['doc_content'] = doc.doc_content.str.replace(r'<[^>]+>', ' ')
+        doc['doc_content'] = doc.doc_content.str.replace(r'\W+', ' ')
+        doc['doc_content'] = doc.doc_content.str.replace(r'[0-9]+', ' ')
+        doc['doc_content'] = doc.doc_content.str.replace(r'\s+', ' ')
+        doc['doc_content'] = doc.doc_content.str.replace('MYUNDERSCORE', '_')
+        self.put_table(doc, 'doc', index=True)
 
     def add_tables_doctoken_and_token(self):
         doc = self.get_table('doc')
-        doc = doc[doc.doc_content.notnull()]
 
         doctoken = pd.concat([pd.Series(row[0], row[2].split()) for _, row in doc.iterrows()]).reset_index()
         doctoken.columns = ['token_str', 'doc_key']
         doctoken = doctoken[['doc_key', 'token_str']]
 
         token = pd.DataFrame(doctoken.token_str.value_counts())
+        token.index.name = 'token_str'
         token.columns = ['token_count']
 
         if self.use_stopwords:
@@ -65,7 +82,7 @@ class PoloCorpus(PoloDb):
             token = token[~token.index.isin(stopwords.token_str)]
 
         self.put_table(doctoken, 'doctoken')
-        self.put_table(token, 'token', index=True, index_label='token_str')
+        self.put_table(token, 'token', index=True)
 
     def add_tables_ngram_and_docngram(self, n = 2):
         if n not in range(2, 5):
@@ -85,11 +102,12 @@ class PoloCorpus(PoloDb):
         docngram = docngram[[c1, 'ngram']]
         docngram.columns = ['doc_key', 'ngram']
         ngram = pd.DataFrame(docngram.ngram.value_counts())
+        ngram.index.name = 'ngram'
         ngram.columns = ['ngram_count']
 
         prefixes = ['no', 'uni', 'bi', 'tri', 'quadri']
-        self.put_table(docngram, 'doc{}gram'.format(prefixes[n]))
-        self.put_table(ngram, '{}gram'.format(prefixes[n]), index=True, index_label='ngram')
+        self.put_table(docngram, 'ngram{}doc'.format(prefixes[n]))
+        self.put_table(ngram, 'ngram{}'.format(prefixes[n]), index=True)
 
 
 if __name__ == '__main__':
