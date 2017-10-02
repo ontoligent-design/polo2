@@ -2,6 +2,11 @@ import sqlite3
 import sys
 import pandas as pd
 
+"""
+* Add schema information so that sqlite3 tables can have indexes made
+* Consider writing classes for Schema and Table, the latter being subclassable with table building methods
+"""
+
 class PoloDb:
 
     # Use to store tables in memory
@@ -29,7 +34,7 @@ class PoloDb:
 
     def get_table(self, table_name=''):
         # todo: Make this take columns and index
-        if self.cache_mode and table_name in self.tables[table_name]:
+        if self.cache_mode and table_name in self.tables:
             return self.tables[table_name]
         else:
             cur = self.conn.cursor()
@@ -45,6 +50,17 @@ class PoloDb:
                     return df
             else:
                 sys.exit("Table `{}` needs to be created first.".format(table_name))
+
+    def get_table_names(self):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+        tdfs = []
+        for table in tables:
+            tdfs.append(pd.read_sql_query("select '{0}' as table_name, count(*) as nrows from {0}".format(table[1]), self.conn))
+        tables_df = pd.concat(tdfs, axis=0)
+        tables_df.set_index('table_name', inplace=True)
+        return(tables_df)
 
     def clear_table_cache(self):
         for table_name in self.tables:

@@ -10,10 +10,9 @@ import pandas as pd
 
 class PoloCorpus(PoloDb):
 
-    NOALPHA = re.compile(r'\W+')
-    MSPACES = re.compile(r'\s+')
     use_stopwords = True
     use_nltk = True
+    ngram_prefixes = ['no', 'uni', 'bi', 'tri', 'quadri']
 
     def __init__(self, config):
         self.corpus_file = config.ini['DEFAULT']['mallet_corpus_input']
@@ -88,7 +87,6 @@ class PoloCorpus(PoloDb):
         doctokenbow.columns = ['token_count']
         self.put_table(doctokenbow, 'doctokenbow', index=True)
 
-    ngram_prefixes = ['no', 'uni', 'bi', 'tri', 'quadri']
     def add_tables_ngram_and_docngram(self, n = 2):
         if n not in range(2, 5):
             print("n not in range")
