@@ -28,6 +28,7 @@ class PoloDb:
             self.tables[table_name] = df
 
     def get_table(self, table_name=''):
+        # todo: Make this take columns and index
         if self.cache_mode and table_name in self.tables[table_name]:
             return self.tables[table_name]
         else:
