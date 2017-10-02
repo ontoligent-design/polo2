@@ -65,26 +65,30 @@ class PoloCorpus(PoloDb):
         doc['doc_content'] = doc.doc_content.str.replace('MYUNDERSCORE', '_') # Put underscores back
         self.put_table(doc, 'doc', index=True)
 
-    def add_tables_doctoken_and_token(self):
+    def add_table_doctoken(self):
         doc = self.get_table('doc')
-
         doctoken = pd.concat([pd.Series(row[0], row[2].split()) for _, row in doc.iterrows()]).reset_index()
         doctoken.columns = ['token_str', 'doc_key']
         doctoken = doctoken[['doc_key', 'token_str']]
-        # We could set an index here, but there are no other columns, wo what's the point?
-
-        token = pd.DataFrame(doctoken.token_str.value_counts())
-        token.index.name = 'token_str'
-        token.columns = ['token_count']
-
         if self.use_stopwords:
             stopwords = self.get_table('stopword')
             doctoken = doctoken[~doctoken.token_str.isin(stopwords.token_str)]
-            token = token[~token.index.isin(stopwords.token_str)]
-
         self.put_table(doctoken, 'doctoken')
+
+    def add_table_token(self):
+        doctoken = self.get_table('doctoken')
+        token = pd.DataFrame(doctoken.token_str.value_counts())
+        token.index.name = 'token_str'
+        token.columns = ['token_count']
         self.put_table(token, 'token', index=True)
 
+    def add_table_doctokenbow(self):
+        doctoken = self.get_table('doctoken')
+        doctokenbow = pd.DataFrame(doctoken.groupby('doc_key').token_str.value_counts())
+        doctokenbow.columns = ['token_count']
+        self.put_table(doctokenbow, 'doctokenbow', index=True)
+
+    ngram_prefixes = ['no', 'uni', 'bi', 'tri', 'quadri']
     def add_tables_ngram_and_docngram(self, n = 2):
         if n not in range(2, 5):
             print("n not in range")
@@ -102,13 +106,13 @@ class PoloCorpus(PoloDb):
         docngram['ngram'] = docngram.apply(lambda row: '_'.join(row[:n]), axis=1)
         docngram = docngram[[c1, 'ngram']]
         docngram.columns = ['doc_key', 'ngram']
+
         ngram = pd.DataFrame(docngram.ngram.value_counts())
         ngram.index.name = 'ngram'
         ngram.columns = ['ngram_count']
 
-        prefixes = ['no', 'uni', 'bi', 'tri', 'quadri']
-        self.put_table(docngram, 'ngram{}doc'.format(prefixes[n]))
-        self.put_table(ngram, 'ngram{}'.format(prefixes[n]), index=True)
+        self.put_table(docngram, 'ngram{}doc'.format(self.ngram_prefixes[n]))
+        self.put_table(ngram, 'ngram{}'.format(self.ngram_prefixes[n]), index=True)
 
 
 if __name__ == '__main__':
