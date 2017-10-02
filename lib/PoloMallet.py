@@ -221,11 +221,25 @@ class PoloMallet(PoloDb):
         tkeys = ['topic_{}'.format(re.sub('-', '_', k)) for k in tkeys]
         wkeys = ['topic_id', 'word_str'] + wkeys
         wkeys = [re.sub('-', '_', k) for k in wkeys]
-        topic = pd.DataFrame(TOPIC, columns=tkeys)
-        topicword = pd.DataFrame(TOPICWORD, columns=wkeys)
-        # todo: replace word_str with word_id in topicword by joining word
-        self.put_table(topic, 'topic_diags')
-        self.put_table(topicword, 'topicword_diags')
+
+        topic_diags = pd.DataFrame(TOPIC, columns=tkeys)
+        topic_diags.set_index('topic_id', inplace=True)
+        topics = self.get_table('topic')
+        topics.set_index('topic_id', inplace=True)
+        topics = pd.concat([topics, topic_diags], axis=1)
+        self.put_table(topics, 'topic', index=True)
+
+        topicword_diags = pd.DataFrame(TOPICWORD, columns=wkeys)
+        topicword_diags.set_index(['topic_id', 'word_str'], inplace=True)
+        word = self.get_table('word')
+        word.set_index('word_str', inplace=True)
+        topicword_diags = topicword_diags.join(word, how='inner')
+        topicword_diags.reset_index(inplace=True)
+        topicword_diags.set_index(['topic_id', 'word_id'], inplace=True)
+        topicwords = self.get_table('topicword')
+        topicwords.set_index(['topic_id', 'word_id'], inplace=True)
+        topicwords = topicwords.join(topicword_diags, how='outer')
+        self.put_table(topicwords, 'topicword', index=True)
 
     def del_mallet_files(self):
         # todo: Consider just deleting all the contents of the directory

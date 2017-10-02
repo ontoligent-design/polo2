@@ -16,7 +16,6 @@ class PoloCorpus(PoloDb):
     use_nltk = True
 
     def __init__(self, config):
-
         self.corpus_file = config.ini['DEFAULT']['mallet_corpus_input']
         self.corpus_sep = config.ini['DEFAULT']['corpus_sep']
         self.nltk_data_path = config.ini['DEFAULT']['nltk_data_path']
@@ -57,13 +56,13 @@ class PoloCorpus(PoloDb):
         doc = doc[doc.doc_content.notnull()]
         #doc['doc_original'] = doc.doc_content
         doc['doc_content'] = doc.doc_content.str.lower()
-        doc['doc_content'] = doc.doc_content.str.replace(r'_', 'MYUNDERSCORE')
-        doc['doc_content'] = doc.doc_content.str.replace(r'\n+', ' ')
-        doc['doc_content'] = doc.doc_content.str.replace(r'<[^>]+>', ' ')
-        doc['doc_content'] = doc.doc_content.str.replace(r'\W+', ' ')
-        doc['doc_content'] = doc.doc_content.str.replace(r'[0-9]+', ' ')
-        doc['doc_content'] = doc.doc_content.str.replace(r'\s+', ' ')
-        doc['doc_content'] = doc.doc_content.str.replace('MYUNDERSCORE', '_')
+        doc['doc_content'] = doc.doc_content.str.replace(r'_', 'MYUNDERSCORE') # Keep underscores
+        doc['doc_content'] = doc.doc_content.str.replace(r'\n+', ' ') # Remove newlines
+        doc['doc_content'] = doc.doc_content.str.replace(r'<[^>]+>', ' ') # Remove tags
+        doc['doc_content'] = doc.doc_content.str.replace(r'\W+', ' ') # Remove non-alphanumerics
+        doc['doc_content'] = doc.doc_content.str.replace(r'[0-9]+', ' ') # Remove numbers
+        doc['doc_content'] = doc.doc_content.str.replace(r'\s+', ' ') # Collapse spaces
+        doc['doc_content'] = doc.doc_content.str.replace('MYUNDERSCORE', '_') # Put underscores back
         self.put_table(doc, 'doc', index=True)
 
     def add_tables_doctoken_and_token(self):
