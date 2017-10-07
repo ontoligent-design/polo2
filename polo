@@ -3,63 +3,79 @@
 from PoloConfig import PoloConfig
 from PoloMallet import PoloMallet
 from PoloCorpus import PoloCorpus
+import argparse
 
 if __name__ == '__main__':
-    
-    print("Welcome to Polo")
 
-    print("Import config")
-    config = PoloConfig()
-    config.read_ini('config.ini')
-    trials = config.get_trial_names()
+    parser = argparse.ArgumentParser(description='Welcome to Polo')
+    parser.add_argument("--ini", help="Path to ini file (default: ./config.ini)", action="store", default='./config.ini')
+    subparsers = parser.add_subparsers(title="Actions", help='Enter choice of corpus or mallet', dest='cmd')
+    parser_corpus = subparsers.add_parser('corpus', help='Generates a corpus db')
+    parser_mallet = subparsers.add_parser('mallet', help='Runs mallet based on ini and saves to db')
+    parser_mallet.add_argument('trial', help="Trial name (see ini)", action="store", type=str)
+    parser_mallet.add_argument('-t', "--topics", help="Number of topics (override ini)", action="store", type=int)
+    parser_mallet.add_argument('-i', "--iters", help="Number of iterations (override ini)", action="store", type=int)
 
-    print("Pick a trial")
-    print(trials)
+    args = parser.parse_args()
 
-    print("Initialize corpus")
-    corpus = PoloCorpus(config)
-    corpus.cache_mode = True
+    if args.cmd == 'corpus':
 
-    print("Importing stopwords")
-    corpus.import_table_stopword(use_nltk=True)
+        print("Import config")
+        config = PoloConfig()
+        config.read_ini(args.ini)
+        trials = config.get_trial_names()
 
-    print("Importing doc")
-    corpus.import_table_doc()
+        print("Initialize corpus")
+        corpus = PoloCorpus(config)
+        corpus.cache_mode = True
 
-    print("Importing doctoken")
-    corpus.add_table_doctoken() # FAILS ON cache_mode=True !
+        print("Importing stopwords")
+        corpus.import_table_stopword(use_nltk=True)
 
-    print("Importing token")
-    corpus.add_table_token()
+        print("Importing doc")
+        corpus.import_table_doc()
 
-    print("Importing bigrams")
-    corpus.add_tables_ngram_and_docngram(n=2)
+        print("Importing doctoken")
+        corpus.add_table_doctoken()
 
-    config.import_ini(trials[0])
+        print("Importing token")
+        corpus.add_table_token()
 
-    print("Initializing")
-    mallet = PoloMallet(config)
-    mallet.cache_mode = True
+        print("Importing bigrams")
+        corpus.add_tables_ngram_and_docngram(n=2)
 
-    print('Importing corpus')
-    mallet.mallet_import()
+    elif args.cmd == 'mallet':
 
-    print('Training model')
-    mallet.mallet_train()
+        print("Import config")
+        config = PoloConfig()
+        config.read_ini(args.ini)
+        trials = config.get_trial_names()
 
-    print("Putting data into database")
-    mallet.tables_to_db()
+        config.import_ini(trials[0])
 
-    print("Adding diagnostics tables")
-    mallet.add_diagnostics()
+        print("Initializing")
+        mallet = PoloMallet(config)
+        mallet.cache_mode = True
 
-    print("Adding doc table with topic entropy")
-    mallet.add_topic_entropy()
+        print('Importing corpus')
+        mallet.mallet_import()
 
-    print("Adding topicpair table")
-    mallet.create_table_topicpair()
+        print('Training model')
+        mallet.mallet_train()
 
-    print("Cleaning up")
-    #mallet.del_mallet_files()
+        print("Putting data into database")
+        mallet.tables_to_db()
 
-    print("Done with", mallet.config.trial_name)
+        print("Adding diagnostics tables")
+        mallet.add_diagnostics()
+
+        print("Adding doc table with topic entropy")
+        mallet.add_topic_entropy()
+
+        print("Adding topicpair table")
+        mallet.create_table_topicpair()
+
+        print("Cleaning up")
+        mallet.del_mallet_files()
+
+        print("Done with", mallet.config.trial_name)

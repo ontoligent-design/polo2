@@ -45,9 +45,6 @@ class PoloDb:
                 if self.cache_mode:
                     self.tables[table_name] = df
                 return df
-                #    return self.tables[table_name]
-                #else:
-                #    return df
             else:
                 sys.exit("Table `{}` needs to be created first.".format(table_name))
 

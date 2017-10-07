@@ -1,5 +1,6 @@
 # TODO
 
+* Fix problem with cached tables DONE
 * Schema or template for config.ini
 * Command to set up project
 * Command-line interaction
