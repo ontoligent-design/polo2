@@ -1,3 +1,12 @@
+# TODO
+
+* Schema or template for config.ini
+* Command to set up project
+* Command-line interaction
+* Import dates and other ordinals
+* File i/o handling
+* Visualization (perhaps using Bokeh)
+
 # Design Notes
 
 Polo2 is meant to simplify Polo, which now how too many things stuck together. Polo2 should be focused on running mallet and putting the results in a sqlite file. The main value adds are:

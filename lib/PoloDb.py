@@ -30,7 +30,7 @@ class PoloDb:
     def put_table(self, df, table_name='test', if_exists='replace', index=False, index_label=None):
         df.to_sql(table_name, self.conn, if_exists=if_exists, index=index, index_label=index_label)
         if self.cache_mode:
-            self.tables[table_name] = df
+            self.tables[table_name] = df.reset_index()
 
     def get_table(self, table_name=''):
         # todo: Make this take columns and index

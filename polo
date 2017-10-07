@@ -26,8 +26,11 @@ if __name__ == '__main__':
     print("Importing doc")
     corpus.import_table_doc()
 
-    print("Importing doctoken and token")
-    corpus.add_tables_doctoken_and_token()
+    print("Importing doctoken")
+    corpus.add_table_doctoken() # FAILS ON cache_mode=True !
+
+    print("Importing token")
+    corpus.add_table_token()
 
     print("Importing bigrams")
     corpus.add_tables_ngram_and_docngram(n=2)
@@ -57,6 +60,6 @@ if __name__ == '__main__':
     mallet.create_table_topicpair()
 
     print("Cleaning up")
-    mallet.del_mallet_files()
+    #mallet.del_mallet_files()
 
     print("Done with", mallet.config.trial_name)

@@ -22,7 +22,6 @@ class PoloCorpus(PoloDb):
         self.extra_stops = config.ini['DEFAULT']['extra_stops']
 
         # Local overrides of defaults
-        # fixme: Is this the best way to handle config overrides? If so, add to other classes
         for key in ['use_nltk', 'use_stopwords']:
             if key in config.ini['DEFAULT']:
                 setattr(self, 'use_nltk', config.ini['DEFAULT'][key])

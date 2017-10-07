@@ -13,7 +13,7 @@ class PoloMallet(PoloDb):
         self.config.num_topics = int(self.config.num_topics)
         self.mallet = {'import-file': {}, 'train-topics': {}}
         self.mallet_init()
-        dbfile = "{}/{}-trial-{}.db".format(self.config.base_path, self.config.slug, self.config.trial)
+        dbfile = "{}/{}-mallet-{}.db".format(self.config.base_path, self.config.slug, self.config.trial)
         PoloDb.__init__(self, dbfile)
 
     def generate_trial_name(self):
