@@ -227,7 +227,7 @@ class PoloMallet(PoloDb):
         topics = self.get_table('topic')
         topics.set_index('topic_id', inplace=True)
         topics = pd.concat([topics, topic_diags], axis=1)
-        self.put_table(topics, 'topic', index=True)
+        self.put_table(topics, 'topic', index=True) # fixme: This adds an extra index column
 
         topicword_diags = pd.DataFrame(TOPICWORD, columns=wkeys)
         topicword_diags.set_index(['topic_id', 'word_str'], inplace=True)
@@ -236,9 +236,11 @@ class PoloMallet(PoloDb):
         topicword_diags = topicword_diags.join(word, how='inner')
         topicword_diags.reset_index(inplace=True)
         topicword_diags.set_index(['topic_id', 'word_id'], inplace=True)
+
+        # Is this a good idea? Why not diags in a separate table?
         topicwords = self.get_table('topicword')
         topicwords.set_index(['topic_id', 'word_id'], inplace=True)
-        topicwords = topicwords.join(topicword_diags, how='outer')
+        topicwords = topicwords.join(topicword_diags, how='outer', lsuffix='a', rsuffix='b') # fixme: TESTING SUFFIXES
         self.put_table(topicwords, 'topicword', index=True)
 
     def del_mallet_files(self):
