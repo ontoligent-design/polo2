@@ -33,7 +33,6 @@ class PoloDb:
             self.tables[table_name] = df.reset_index()
 
     def get_table(self, table_name=''):
-        # todo: Make this take columns and index
         if self.cache_mode and table_name in self.tables:
             return self.tables[table_name]
         else:
@@ -45,9 +44,10 @@ class PoloDb:
                 df = pd.read_sql_query(sql, self.conn)
                 if self.cache_mode:
                     self.tables[table_name] = df
-                    return self.tables[table_name]
-                else:
-                    return df
+                return df
+                #    return self.tables[table_name]
+                #else:
+                #    return df
             else:
                 sys.exit("Table `{}` needs to be created first.".format(table_name))
 
