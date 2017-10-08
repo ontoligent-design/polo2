@@ -7,15 +7,26 @@ import argparse
 
 if __name__ == '__main__':
 
+    # Main parser app
     parser = argparse.ArgumentParser(description='Welcome to Polo')
     parser.add_argument("--ini", help="Path to ini file (default: ./config.ini)", action="store", default='./config.ini')
+
+    # Subparsers for specific activities
     subparsers = parser.add_subparsers(title="Actions", help='Enter choice of corpus or mallet', dest='cmd')
+
+    # SETUP
+    parser_corpus = subparsers.add_parser('setup', help='Setups a directory')
+
+    # CORPUS
     parser_corpus = subparsers.add_parser('corpus', help='Generates a corpus db')
+
+    # MALLET
     parser_mallet = subparsers.add_parser('mallet', help='Runs mallet based on ini and saves to db')
     parser_mallet.add_argument('trial', help="Trial name (see ini)", action="store", type=str)
     parser_mallet.add_argument('-t', "--topics", help="Number of topics (override ini)", action="store", type=int)
     parser_mallet.add_argument('-i', "--iters", help="Number of iterations (override ini)", action="store", type=int)
 
+    # Run the app
     args = parser.parse_args()
 
     if args.cmd == 'corpus':
