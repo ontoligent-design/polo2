@@ -3,6 +3,7 @@ import pandas as pd
 from lxml import etree
 import PoloMath as pm
 from PoloDb import PoloDb
+from PoloFile import PoloFile
 
 class PoloMallet(PoloDb):
     
@@ -101,6 +102,15 @@ class PoloMallet(PoloDb):
         if not src_file: src_file = self.mallet['train-topics']['word-topic-counts-file']
         WORD = []
         TOPICWORD = []
+        src = PoloFile(src_file)
+        for line in src.read_lines():
+            row = line.strip().split(' ')
+            (word_id, word_str) = row[0:2]
+            WORD.append((int(word_id), word_str))
+            for item in row[2:]:
+                (topic_id, word_count) = item.split(':')
+                TOPICWORD.append((int(word_id), int(topic_id), int(word_count)))
+        """
         with open(src_file, 'r') as src:
             for line in src:
                 row = line.strip().split(' ')
@@ -109,6 +119,7 @@ class PoloMallet(PoloDb):
                 for item in row[2:]:
                     (topic_id, word_count) = item.split(':')
                     TOPICWORD.append((int(word_id), int(topic_id), int(word_count)))
+        """
         word = pd.DataFrame(WORD, columns=['word_id', 'word_str'])
         topicword = pd.DataFrame(TOPICWORD, columns=['word_id', 'topic_id', 'word_count'])
         self.put_table(word, 'word')
@@ -119,6 +130,19 @@ class PoloMallet(PoloDb):
         if 'doc-topics-threshold' in self.mallet['train-topics']:
             DOC = []
             DOCTOPIC = []
+            src = PoloFile(src_file)
+            for line in src[1:]:
+                row = line.split('\t')
+                row.pop()  # Pretty sure this is right
+                doc_id = row[0]
+                doc_key = row[1].split(',')[0]
+                doc_label = row[1].split(',')[1]
+                DOC.append([doc_id, doc_key, doc_label])
+                for i in range(2, len(row), 2):
+                    topic_id = row[i]
+                    topic_weight = row[i + 1]
+                    DOCTOPIC.append([doc_id, topic_id, topic_weight])
+            """
             with open(src_file, 'r') as src:
                 next(src) # Skip header -- BUT THIS IS A CLUE
                 for line in src:
@@ -132,6 +156,7 @@ class PoloMallet(PoloDb):
                         topic_id = row[i]
                         topic_weight = row[i+1]
                         DOCTOPIC.append([doc_id, topic_id, topic_weight])
+            """
             doctopic = pd.DataFrame(DOCTOPIC, columns=['doc_id', 'topic_id', 'topic_weight'])
             doc = pd.DataFrame(DOC, columns=['doc_id', 'doc_key', 'doc_label'])
             self.put_table(doctopic, 'doctopic')
@@ -156,6 +181,16 @@ class PoloMallet(PoloDb):
     def import_table_topicphrase(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['xml-topic-phrase-report']
         TOPICPHRASE = []
+        src = PoloFile(src_file)
+        tree = etree.parse(src.file)
+        for topic in tree.xpath('/topics/topic'):
+            topic_id = int(topic.xpath('@id')[0])
+            for phrase in topic.xpath('phrase'):
+                phrase_weight = float(phrase.xpath('@weight')[0])
+                phrase_count = int(phrase.xpath('@count')[0])
+                topic_phrase = phrase.xpath('text()')[0]
+                TOPICPHRASE.append((topic_id, topic_phrase, phrase_weight, phrase_count))
+        """
         with open(src_file, 'r') as f:
             tree = etree.parse(f)
             for topic in tree.xpath('/topics/topic'):
@@ -165,6 +200,7 @@ class PoloMallet(PoloDb):
                     phrase_count = int(phrase.xpath('@count')[0])
                     topic_phrase = phrase.xpath('text()')[0]
                     TOPICPHRASE.append((topic_id, topic_phrase, phrase_weight, phrase_count))
+        """
         topicphrase = pd.DataFrame(TOPICPHRASE, columns=['topic_id', 'topic_phrase',
                                                          'phrase_weight', 'phrase_count'])
         self.put_table(topicphrase, 'topicphrase')
@@ -194,6 +230,32 @@ class PoloMallet(PoloDb):
         wkeys = ['rank', 'count', 'prob', 'cumulative', 'docs', 'word-length', 'coherence',
                  'uniform_dist', 'corpus_dist', 'token-doc-diff', 'exclusivity']
         wints = ['rank', 'count', 'docs', 'word-length']
+
+        src = PoloFile(src_file)
+        tree = etree.parse(src.file)
+        for topic in tree.xpath('/model/topic'):
+            tvals = []
+            for key in tkeys:
+                xpath = '@{}'.format(key)
+                if key in tints:
+                    tvals.append(int(float(topic.xpath(xpath)[0])))
+                else:
+                    tvals.append(float(topic.xpath(xpath)[0]))
+            TOPIC.append(tvals)
+            for word in topic.xpath('word'):
+                wvals = []
+                topic_id = tvals[0]  # Hopefully
+                wvals.append(topic_id)
+                word_str = word.xpath('text()')[0]
+                wvals.append(word_str)
+                for key in wkeys:
+                    xpath = '@{}'.format(key)
+                    if key in wints:
+                        wvals.append(int(float(word.xpath(xpath)[0])))
+                    else:
+                        wvals.append(float(word.xpath(xpath)[0]))
+                TOPICWORD.append(wvals)
+        """
         with open(src_file, 'r') as f:
             tree = etree.parse(f)
             for topic in tree.xpath('/model/topic'):
@@ -218,6 +280,7 @@ class PoloMallet(PoloDb):
                         else:
                             wvals.append(float(word.xpath(xpath)[0]))
                     TOPICWORD.append(wvals)
+        """
         tkeys = ['topic_{}'.format(re.sub('-', '_', k)) for k in tkeys]
         wkeys = ['topic_id', 'word_str'] + wkeys
         wkeys = [re.sub('-', '_', k) for k in wkeys]
