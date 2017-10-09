@@ -9,6 +9,10 @@ class PoloMallet(PoloDb):
     
     def __init__(self, config, trial):
 
+        if trial not in config.trials:
+            print("Invalid trail name `{}`.format(trial)")
+            sys.exit(1)
+
         self.config = config
         self.cfg_slug = self.config.ini['DEFAULT']['slug']
         self.cfg_mallet_path = self.config.ini['DEFAULT']['mallet_path']

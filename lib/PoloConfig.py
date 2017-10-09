@@ -58,39 +58,27 @@ class PoloConfig():
     def get_trial_names(self):
         return self.trials
 
-    def import_ini(self, trial):
-        # todo: Move this into respective objects; pass trial to mallet
-        self.trial = trial
-        self.slug = self.ini['DEFAULT']['slug']
-        self.mallet_path = self.ini['DEFAULT']['mallet_path']
-        self.output_dir = self.ini['DEFAULT']['mallet_out_dir']
-        self.base_path = self.ini['DEFAULT']['base_path']
-        self.input_corpus = self.ini[trial]['mallet_corpus_input']
-        self.num_topics = self.ini[trial]['num_topics']
-        self.num_iterations = self.ini[trial]['num_iterations']
-        self.extra_stops = self.ini[trial]['extra_stops']
-        self.replacements = self.ini[trial]['replacements']
-        self.verbose = False
-
     def validate_ini(self):
-        keys1 = set(self.ini_schema['DEFAULT'].keys())
-        keys2 = set(self.ini['DEFAULT'].keys())
+        keys1 = self.ini_schema['DEFAULT'].keys()
+        keys2 = self.ini['DEFAULT'].keys()
         test1 = self.compare_keys(keys1, keys2)
         if test1:
             print("Missing config DEFAULT keys:", ', '.join(test1))
             sys.exit(1)
-        keys3 = set(self.ini_schema['trial1'].keys())
+        keys3 = self.ini_schema['trial1'].keys()
         for trial in self.ini.sections():
-            keys4 = set(self.ini[trial].keys())
+            keys4 = self.ini[trial].keys()
             test2 = self.compare_keys(keys3, keys4)
             if test2:
                 print("Missing config keys for trial `{}`.".format(trial), ', '.join(test2))
                 sys.exit(1)
-        print("INI `{}` seems OK".format(self.ini_file))
+        print("INI file `{}` seems OK".format(self.ini_file))
         return True
 
     def compare_keys(self, keys1, keys2):
-        if keys1.issubset(keys2): # The default keys should be a subset of what's in the file
+        keys1 = set(keys1)
+        keys2 = set(keys2)
+        if keys1.issubset(keys2):
             return None
         else:
             diff = keys1.difference(keys2)

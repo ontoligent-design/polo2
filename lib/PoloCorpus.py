@@ -10,6 +10,7 @@ class PoloCorpus(PoloDb):
     ngram_prefixes = ['no', 'uni', 'bi', 'tri', 'quadri']
 
     def __init__(self, config):
+
         self.corpus_file = config.ini['DEFAULT']['mallet_corpus_input']
         self.corpus_sep = config.ini['DEFAULT']['corpus_sep']
         self.nltk_data_path = config.ini['DEFAULT']['nltk_data_path']
