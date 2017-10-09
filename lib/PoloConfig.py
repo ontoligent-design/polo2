@@ -62,7 +62,6 @@ class PoloConfig():
             test2 = self.compare_keys(keys3, keys4)
             if test2:
                 raise ValueError("Missing config keys for trial `{}`.".format(trial), ', '.join(test2))
-        print("INI file `{}` seems OK".format(self.ini_file))
         return True
 
     def compare_keys(self, keys1, keys2):
