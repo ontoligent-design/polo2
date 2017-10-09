@@ -56,6 +56,8 @@ class PoloConfig():
         self.trials = self.ini.sections()
 
     def get_trial_names(self):
+        if len(self.trials) == 0:
+            raise ValueError("No trials defined in INI file.")
         return self.trials
 
     def validate_ini(self):
@@ -63,15 +65,13 @@ class PoloConfig():
         keys2 = self.ini['DEFAULT'].keys()
         test1 = self.compare_keys(keys1, keys2)
         if test1:
-            print("Missing config DEFAULT keys:", ', '.join(test1))
-            sys.exit(1)
+            raise ValueError("Missing config DEFAULT keys:", ', '.join(test1))
         keys3 = self.ini_schema['trial1'].keys()
         for trial in self.ini.sections():
             keys4 = self.ini[trial].keys()
             test2 = self.compare_keys(keys3, keys4)
             if test2:
-                print("Missing config keys for trial `{}`.".format(trial), ', '.join(test2))
-                sys.exit(1)
+                raise ValueError("Missing config keys for trial `{}`.".format(trial), ', '.join(test2))
         print("INI file `{}` seems OK".format(self.ini_file))
         return True
 

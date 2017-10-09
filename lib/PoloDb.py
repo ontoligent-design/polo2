@@ -3,8 +3,7 @@ import pandas as pd
 
 class PoloDb:
 
-    # Use to store tables in memory
-    tables = {}
+    tables = {} # Used to cache tables
     cache_mode = False
 
     def __init__(self, dbfile):
@@ -12,14 +11,14 @@ class PoloDb:
         try:
             self.conn = sqlite3.connect(self.dbfile)
         except sqlite3.Error as e:
-            print("Can't connect to database:", e.args[0])
-            sys.exit(0)
+            raise ValueError("Can't connect to database:", e.args[0])
 
     def __del__(self):
-        try:
-            self.conn.close()
-        except sqlite3.Error as e:
-            print("Can't close database:", e.args[0])
+        if hasattr(self, 'conn'):
+            try:
+                self.conn.close()
+            except sqlite3.Error as e:
+                raise ValueError("Can't close database:", e.args[0])
 
     def put_table(self, df, table_name='test', if_exists='replace', index=False, index_label=None):
         df.to_sql(table_name, self.conn, if_exists=if_exists, index=index, index_label=index_label)
@@ -40,8 +39,7 @@ class PoloDb:
                     self.tables[table_name] = df
                 return df
             else:
-                print("Table `{}` needs to be created first.".format(table_name))
-                sys.exit(1)
+                raise ValueError("Table `{}` needs to be created first.".format(table_name))
 
     def get_table_names(self):
         cursor = self.conn.cursor()

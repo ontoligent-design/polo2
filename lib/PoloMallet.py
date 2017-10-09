@@ -6,14 +6,15 @@ from PoloDb import PoloDb
 from PoloFile import PoloFile
 
 class PoloMallet(PoloDb):
-    
+
     def __init__(self, config, trial):
 
         if trial not in config.trials:
-            print("Invalid trail name `{}`.format(trial)")
-            sys.exit(1)
+            raise ValueError("Invalid trail name `{}`.format(trial)")
 
         self.config = config
+        self.trial = trial
+
         self.cfg_slug = self.config.ini['DEFAULT']['slug']
         self.cfg_mallet_path = self.config.ini['DEFAULT']['mallet_path']
         self.cfg_output_dir = self.config.ini['DEFAULT']['mallet_out_dir']
@@ -25,12 +26,12 @@ class PoloMallet(PoloDb):
         self.cfg_extra_stops = self.config.ini[trial]['extra_stops']
         self.cfg_replacements = self.config.ini[trial]['replacements']
 
-        self.trial = trial
         self.generate_trial_name()
         self.file_prefix = '{}/{}'.format(self.cfg_output_dir, self.trial_name)
         self.cfg_num_topics = int(self.cfg_num_topics)
         self.mallet = {'import-file': {}, 'train-topics': {}}
         self.mallet_init()
+
         dbfile = "{}/{}-mallet-{}.db".format(self.cfg_base_path, self.cfg_slug, self.trial)
         PoloDb.__init__(self, dbfile)
 
@@ -258,14 +259,7 @@ class PoloMallet(PoloDb):
         topicword_diags.set_index(['topic_id', 'word_id'], inplace=True)
         self.put_table(topicword_diags, 'topicword_diag', index=True)
 
-        # Is this a good idea? Why not diags in a separate table?
-        #topicwords = self.get_table('topicword')
-        #topicwords.set_index(['topic_id', 'word_id'], inplace=True)
-        #topicwords = topicwords.join(topicword_diags, how='outer', lsuffix='a', rsuffix='b')
-        #self.put_table(topicwords, 'topicword', index=True)
-
     def del_mallet_files(self):
-        # todo: Consider just deleting all the contents of the directory
         file_keys = ['output-topic-keys', 'output-doc-topics',
                      'word-topic-counts-file', 'xml-topic-report', 'xml-topic-phrase-report',
                      'diagnostics-file', 'topic-word-weights-file']

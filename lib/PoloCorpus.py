@@ -2,6 +2,7 @@ from PoloDb import PoloDb
 from PoloFile import PoloFile
 import pandas as pd
 import nltk
+import os, sys
 
 class PoloCorpus(PoloDb):
 
@@ -12,6 +13,8 @@ class PoloCorpus(PoloDb):
     def __init__(self, config):
 
         self.corpus_file = config.ini['DEFAULT']['mallet_corpus_input']
+        if not os.path.isfile(self.corpus_file):
+            raise ValueError("Missing corpus file. Check value of `mallet_corpus_input` in INI file.")
         self.corpus_sep = config.ini['DEFAULT']['corpus_sep']
         self.nltk_data_path = config.ini['DEFAULT']['nltk_data_path']
         self.slug = config.ini['DEFAULT']['slug']

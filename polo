@@ -3,7 +3,7 @@
 from PoloConfig import PoloConfig
 from PoloMallet import PoloMallet
 from PoloCorpus import PoloCorpus
-import argparse
+import argparse, sys
 
 if __name__ == '__main__':
 
@@ -36,10 +36,18 @@ if __name__ == '__main__':
     if args.cmd == 'corpus':
 
         print("Import config")
-        config = PoloConfig(args.ini)
+        try:
+            config = PoloConfig(args.ini)
+        except ValueError as e:
+            print("Can't create config.", e)
+            sys.exit(1)
 
         print("Initialize corpus")
-        corpus = PoloCorpus(config)
+        try:
+            corpus = PoloCorpus(config)
+        except ValueError as e:
+            print("Can't create corpus object.", e)
+            sys.exit(1)
         corpus.cache_mode = True
 
         print("Importing stopwords")
@@ -60,19 +68,30 @@ if __name__ == '__main__':
     elif args.cmd == 'mallet':
 
         print("Import config")
-        config = PoloConfig(args.ini)
+        try:
+            config = PoloConfig(args.ini)
+        except ValueError as e:
+            print("Can't create config.", e)
+            sys.exit(1)
+        try:
+            trials = config.get_trial_names()
+        except ValueError as e:
+            print("Can't get trials.", e)
+            sys.exit(1)
 
         this_trial = ''
         if args.trial:
             this_trial = args.trial
         else:
-            trials = config.get_trial_names()
             this_trial = trials[0]
 
-        #config.import_ini(this_trial)
-
         print("Initializing mallet for {}".format(this_trial))
-        mallet = PoloMallet(config, this_trial)
+        try:
+            mallet = PoloMallet(config, this_trial)
+        except ValueError:
+            print("Can't create mallet object. Most likely due to bad trial name.")
+            sys.exit(1)
+
         mallet.cache_mode = True
 
         print('Importing corpus')
