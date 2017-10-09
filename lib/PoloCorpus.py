@@ -87,8 +87,7 @@ class PoloCorpus(PoloDb):
 
     def add_tables_ngram_and_docngram(self, n = 2):
         if n not in range(2, 5):
-            print("n not in range")
-            return(None)
+            raise ValueError("n not in range. Must be between 2 and 4 inclusive.")
         doctoken = self.get_table('doctoken')
         cols = {}
         for i in range(n):
@@ -109,7 +108,3 @@ class PoloCorpus(PoloDb):
 
         self.put_table(docngram, 'ngram{}doc'.format(self.ngram_prefixes[n]))
         self.put_table(ngram, 'ngram{}'.format(self.ngram_prefixes[n]), index=True)
-
-
-if __name__ == '__main__':
-    print(1)
