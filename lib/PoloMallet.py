@@ -50,7 +50,7 @@ class PoloMallet(PoloDb):
     def mallet_init(self):
 
         if not os.path.exists(self.cfg_mallet_path):
-            raise ValueError('OOPS Mallet cannot be found')
+            raise ValueError('Mallet cannot be found.')
 
         if os.path.exists(self.cfg_extra_stops):
             self.mallet['import-file']['extra-stopwords'] = self.cfg_extra_stops
