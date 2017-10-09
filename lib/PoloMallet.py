@@ -22,6 +22,9 @@ class PoloMallet(PoloDb):
         self.cfg_verbose = self.config.ini['DEFAULT']['replacements']
         self.cfg_thresh = float(self.config.ini['DEFAULT']['thresh'])
 
+        # todo: Provide default values for missing config items
+        # todo: Provide type validation
+        # todo: Consider using a real config schema system
         self.cfg_input_corpus = self.config.ini[trial]['mallet_corpus_input']
         self.cfg_num_topics = int(self.config.ini[trial]['num_topics'])
         self.cfg_num_top_words = int(self.config.ini[trial]['num_top_words'])

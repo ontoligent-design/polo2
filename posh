@@ -1,0 +1,158 @@
+#! /usr/bin/env python3
+
+import cmd, sys, readline, os
+from PoloConfig import PoloConfig
+from PoloMallet import PoloMallet
+from PoloCorpus import PoloCorpus
+
+class PoloShell(cmd.Cmd):
+
+    intro = "Welcome to Polo Shell. Run set_ini to get started."
+    prompt = 'posh: '
+
+    default_ini = 'config.ini'
+
+    def preloop(self):
+        if not os.path.isfile(self.default_ini):
+            print('No config file! Run `polo setup` to get started.')
+            sys.exit(1)
+        else:
+            try:
+                self.config = PoloConfig(self.default_ini)
+            except ValueError as e:
+                print("Can't create config object.", e)
+                sys.exit(1)
+            print("Using config.ini")
+            trials = self.config.get_trial_names()
+            print("Available trials:", ', '.join(trials))
+
+    def onerror(self):
+        """Called if an exception is raised in any of precmd(), onecmd(),
+        or postcmd(). If true is returned, the exception is deemed to have
+        been dealt with.
+        """
+        pass
+
+    def logerror(self, msg):
+        sys.stderr.write(msg + '\n')
+
+    def emptyline(self):
+        pass
+
+    def do_EOF(self, arg):
+        return True
+
+    def do_shell(self, arg):
+        pass
+
+    def do_set_ini(self, arg):
+        if arg:
+            try:
+                self.config = PoloConfig(arg)
+            except ValueError as e:
+                print("Can't create new config object with {}".format(arg), e)
+                return False
+            self.default_ini = arg
+
+    def do_show_ini(self, arg):
+        print('INI file:', self.default_ini)
+
+    def do_test(self, arg):
+        print(arg)
+
+    def do_create_corpus(self, arg):
+        """Create the corpus database from the source data"""
+        print("Initializing corpus")
+        try:
+            corpus = PoloCorpus(self.config)
+        except ValueError as e:
+            print("Can't create corpus.", e)
+            return False
+        corpus.cache_mode = True
+
+        print("Importing stopwords")
+        corpus.import_table_stopword(use_nltk=True)
+
+        print("Importing doc")
+        corpus.import_table_doc()
+
+        print("Importing doctoken")
+        corpus.add_table_doctoken()
+
+        print("Importing token")
+        corpus.add_table_token()
+
+        print("Importing bigrams")
+        corpus.add_tables_ngram_and_docngram(n=2)
+
+        self.corpus = corpus
+
+    def do_show_trials(self, arg):
+        trials = self.config.get_trial_names()
+        print('Trials: ', ', '.join(trials))
+
+    def do_run_mallet(self, arg):
+        """Create topic model from from the source data using Mallet. Pass a trial name as an argument.
+        Otherwise defaults to 'trial1'. Use `show_trials` to see available trial names.
+        """
+        self.trial = ''
+        if arg:
+            self.trial = arg
+        else:
+            trials = self.config.get_trial_names()
+            self.trial = trials[0]
+
+        print("Initializing mallet for {}".format(self.trial))
+        try:
+            mallet = PoloMallet(self.config, self.trial)
+        except ValueError as e:
+            print("Can't create mallet object.", e)
+            return False
+        mallet.cache_mode = True
+
+        print('Importing corpus')
+        mallet.mallet_import()
+
+        print('Training model')
+        mallet.mallet_train()
+
+        print("Putting data into database")
+        mallet.tables_to_db()
+
+        print("Adding diagnostics tables")
+        mallet.add_diagnostics()
+
+        print("Adding doc table with topic entropy")
+        mallet.add_topic_entropy()
+
+        print("Adding topicpair table")
+        mallet.create_table_topicpair()
+
+        print("Cleaning up")
+        mallet.del_mallet_files()
+
+        print("Done with", mallet.trial_name)
+
+    def do_create_ini(self, arg):
+        if arg:
+            self.config.create_ini(arg)
+        else:
+            self.config.create_ini()
+
+    def do_validate_ini(self, arg):
+        self.config.validate_ini()
+
+    def do_print_ini(self, arg):
+        print(self.config)
+
+    def do_bye(self, arg):
+        print('Thank you for using the Polo Shell.')
+        return True
+
+    def do_quit(self, arg):
+        print('Thank you for using the Polo Shell.')
+        return True
+
+if __name__ == '__main__':
+    PoloShell().cmdloop()
+
