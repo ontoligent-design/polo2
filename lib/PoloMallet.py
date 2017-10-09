@@ -36,7 +36,6 @@ class PoloMallet(PoloDb):
 
         self.generate_trial_name()
         self.file_prefix = '{}/{}'.format(self.cfg_output_dir, self.trial_name)
-        self.cfg_num_topics = int(self.cfg_num_topics)
         self.mallet = {'import-file': {}, 'train-topics': {}}
         self.mallet_init()
 
