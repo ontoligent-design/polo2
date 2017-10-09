@@ -1,10 +1,9 @@
 import os, sys, sqlite3, time, re
 import pandas as pd
 from lxml import etree
-
-from polo2 import PoloDb
-from polo2 import PoloFile
-from polo2 import PoloMath as pm
+import PoloMath as pm
+from PoloDb import PoloDb
+from PoloFile import PoloFile
 
 class PoloMallet(PoloDb):
 

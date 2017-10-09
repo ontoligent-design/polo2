@@ -1,9 +1,8 @@
-import os, sys
-import nltk
+from PoloDb import PoloDb
+from PoloFile import PoloFile
 import pandas as pd
-
-from polo2 import PoloDb
-from polo2 import PoloFile
+import nltk
+import os, sys
 
 class PoloCorpus(PoloDb):
 

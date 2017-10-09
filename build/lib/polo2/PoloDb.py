@@ -1,7 +1,7 @@
 import sqlite3, sys
 import pandas as pd
 
-class PoloDb():
+class PoloDb:
 
     tables = {} # Used to cache tables
     cache_mode = False

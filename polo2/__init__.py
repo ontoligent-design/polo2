@@ -1,6 +1,6 @@
-from PoloConfig import PoloConfig
-from PoloFile import PoloFile
-from PoloCorpus import PoloCorpus
-from PoloDb import PoloDb
-from PoloMallet import PoloMallet
-import PoloMath
+from polo2.PoloDb import PoloDb
+from polo2.PoloFile import PoloFile
+from polo2.PoloConfig import PoloConfig
+from polo2.PoloCorpus import PoloCorpus
+from polo2.PoloMallet import PoloMallet
+import polo2.PoloMath

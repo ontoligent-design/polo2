@@ -1,9 +1,10 @@
 #! /usr/bin/env python3
 
-from PoloConfig import PoloConfig
-from PoloMallet import PoloMallet
-from PoloCorpus import PoloCorpus
 import argparse, sys, os
+
+from polo2 import PoloConfig
+from polo2 import PoloMallet
+from polo2 import PoloCorpus
 
 if __name__ == '__main__':
 
