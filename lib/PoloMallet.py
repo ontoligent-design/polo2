@@ -20,11 +20,16 @@ class PoloMallet(PoloDb):
         self.cfg_output_dir = self.config.ini['DEFAULT']['mallet_out_dir']
         self.cfg_base_path = self.config.ini['DEFAULT']['base_path']
         self.cfg_verbose = self.config.ini['DEFAULT']['replacements']
+        self.cfg_thresh = float(self.config.ini['DEFAULT']['thresh'])
+
         self.cfg_input_corpus = self.config.ini[trial]['mallet_corpus_input']
-        self.cfg_num_topics = self.config.ini[trial]['num_topics']
-        self.cfg_num_iterations = self.config.ini[trial]['num_iterations']
+        self.cfg_num_topics = int(self.config.ini[trial]['num_topics'])
+        self.cfg_num_top_words = int(self.config.ini[trial]['num_top_words'])
+        self.cfg_num_iterations = int(self.config.ini[trial]['num_iterations'])
         self.cfg_extra_stops = self.config.ini[trial]['extra_stops']
         self.cfg_replacements = self.config.ini[trial]['replacements']
+        self.cfg_optimize_interval = int(self.config.ini[trial]['optimize_interval'])
+        self.cfg_num_threads = int(self.config.ini[trial]['num_threads'])
 
         self.generate_trial_name()
         self.file_prefix = '{}/{}'.format(self.cfg_output_dir, self.trial_name)
@@ -43,8 +48,7 @@ class PoloMallet(PoloDb):
     def mallet_init(self):
 
         if not os.path.exists(self.cfg_mallet_path):
-            print('OOPS Mallet cannot be found')
-            sys.exit(1)
+            raise ValueError('OOPS Mallet cannot be found')
 
         if os.path.exists(self.cfg_extra_stops):
             self.mallet['import-file']['extra-stopwords'] = self.cfg_extra_stops
@@ -56,10 +60,10 @@ class PoloMallet(PoloDb):
         self.mallet['import-file']['remove-stopwords'] = 'TRUE'
 
         self.mallet['train-topics']['num-topics'] = self.cfg_num_topics
-        self.mallet['train-topics']['num-top-words'] = self.config.num_top_words
+        self.mallet['train-topics']['num-top-words'] = self.cfg_num_top_words
         self.mallet['train-topics']['num-iterations'] = self.cfg_num_iterations
-        self.mallet['train-topics']['optimize-interval'] = self.config.optimize_interval
-        self.mallet['train-topics']['num-threads'] = self.config.num_threads
+        self.mallet['train-topics']['optimize-interval'] = self.cfg_optimize_interval
+        self.mallet['train-topics']['num-threads'] = self.cfg_num_threads
         self.mallet['train-topics']['input'] = self.mallet['import-file']['output']
 
         self.mallet['train-topics']['output-topic-keys']        = '{}-topic-keys.txt'.format(self.file_prefix)
@@ -81,12 +85,10 @@ class PoloMallet(PoloDb):
     def mallet_run_command(self,op):
         my_args = ['--{} {}'.format(arg,self.mallet[op][arg]) for arg in self.mallet[op]]
         my_cmd = self.cfg_mallet_path + ' ' + op + ' ' + ' '.join(my_args)
-        print(my_cmd)
         try:
             os.system(my_cmd)
         except:
-            print('Command would not execute:', my_cmd)
-            sys.exit(1)
+            raise ValueError('Command would not execute:', my_cmd)
 
     def mallet_import(self):
         self.mallet_run_command('import-file')
@@ -100,8 +102,7 @@ class PoloMallet(PoloDb):
         try:
             os.system(my_cmd)
         except:
-            print('Unable to delete files: {}'.format(file_mask))
-            #sys.exit(1)
+            raise ValueError('Unable to delete files: {}'.format(file_mask))
 
     # TABLE IMPORT METHODS
 
@@ -194,7 +195,7 @@ class PoloMallet(PoloDb):
         cfg = {}
         cfg['trial'] = self.trial
         cfg['dbfile'] = self.dbfile
-        cfg['thresh'] = self.config.thresh
+        cfg['thresh'] = self.cfg_thresh
         cfg['slug'] = self.cfg_slug
         cfg['num_topics'] = self.cfg_num_topics
         cfg['base_path'] = self.cfg_base_path
@@ -284,7 +285,7 @@ class PoloMallet(PoloDb):
         del doc
 
         doctopic = self.get_table('doctopic')
-        dts = doctopic[doctopic.topic_weight >= self.config.thresh]
+        dts = doctopic[doctopic.topic_weight >= self.cfg_thresh]
         dtsw = dts.pivot(index='doc_id', columns='topic_id', values='topic_weight')
         del doctopic
         del dts
@@ -317,7 +318,3 @@ class PoloMallet(PoloDb):
         doctopic.set_index(['doc_id', 'topic_id'], inplace=True)
         doctopic_wide = doctopic.unstack()
         return doctopic_wide
-
-
-if __name__ == '__main__':
-    print('Run polo instead')
