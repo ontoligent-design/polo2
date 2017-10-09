@@ -96,7 +96,7 @@ if __name__ == '__main__':
         print("Cleaning up")
         mallet.del_mallet_files()
 
-        print("Done with", mallet.config.trial_name)
+        print("Done with", mallet.trial_name)
 
     elif args.cmd == 'info':
 

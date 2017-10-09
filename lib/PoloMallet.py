@@ -8,40 +8,51 @@ from PoloFile import PoloFile
 class PoloMallet(PoloDb):
     
     def __init__(self, config, trial):
+
         self.config = config
-        self.config.trial = trial
-        self.config.import_ini(trial) # todo: Move this function into the mallet and corpus classes
+        self.cfg_slug = self.config.ini['DEFAULT']['slug']
+        self.cfg_mallet_path = self.config.ini['DEFAULT']['mallet_path']
+        self.cfg_output_dir = self.config.ini['DEFAULT']['mallet_out_dir']
+        self.cfg_base_path = self.config.ini['DEFAULT']['base_path']
+        self.cfg_verbose = self.config.ini['DEFAULT']['replacements']
+        self.cfg_input_corpus = self.config.ini[trial]['mallet_corpus_input']
+        self.cfg_num_topics = self.config.ini[trial]['num_topics']
+        self.cfg_num_iterations = self.config.ini[trial]['num_iterations']
+        self.cfg_extra_stops = self.config.ini[trial]['extra_stops']
+        self.cfg_replacements = self.config.ini[trial]['replacements']
+
+        self.trial = trial
         self.generate_trial_name()
-        self.file_prefix = '{}/{}'.format(self.config.output_dir, self.config.trial_name)
-        self.config.num_topics = int(self.config.num_topics)
+        self.file_prefix = '{}/{}'.format(self.cfg_output_dir, self.trial_name)
+        self.cfg_num_topics = int(self.cfg_num_topics)
         self.mallet = {'import-file': {}, 'train-topics': {}}
         self.mallet_init()
-        dbfile = "{}/{}-mallet-{}.db".format(self.config.base_path, self.config.slug, self.config.trial)
+        dbfile = "{}/{}-mallet-{}.db".format(self.cfg_base_path, self.cfg_slug, self.trial)
         PoloDb.__init__(self, dbfile)
 
     def generate_trial_name(self):
         ts = time.time()
-        self.config.trial_name = '{}-model-t{}-i{}-{}'.format(self.config.trial, self.config.num_topics,
-                                                              self.config.num_iterations, int(ts))
+        self.trial_name = '{}-model-t{}-i{}-{}'.format(self.trial, self.cfg_num_topics,
+                                                              self.cfg_num_iterations, int(ts))
     
     def mallet_init(self):
 
-        if not os.path.exists(self.config.mallet_path):
+        if not os.path.exists(self.cfg_mallet_path):
             print('OOPS Mallet cannot be found')
             sys.exit(1)
 
-        if os.path.exists(self.config.extra_stops):
-            self.mallet['import-file']['extra-stopwords'] = self.config.extra_stops
-        if os.path.exists(self.config.replacements):
-            self.mallet['import-file']['replacement-files'] = self.config.replacements
-        self.mallet['import-file']['input'] = self.config.input_corpus
-        self.mallet['import-file']['output'] = '{}/{}-corpus.mallet'.format(self.config.output_dir, self.config.trial)
+        if os.path.exists(self.cfg_extra_stops):
+            self.mallet['import-file']['extra-stopwords'] = self.cfg_extra_stops
+        if os.path.exists(self.cfg_replacements):
+            self.mallet['import-file']['replacement-files'] = self.cfg_replacements
+        self.mallet['import-file']['input'] = self.cfg_input_corpus
+        self.mallet['import-file']['output'] = '{}/{}-corpus.mallet'.format(self.cfg_output_dir, self.trial)
         self.mallet['import-file']['keep-sequence'] = 'TRUE'
         self.mallet['import-file']['remove-stopwords'] = 'TRUE'
 
-        self.mallet['train-topics']['num-topics'] = self.config.num_topics
+        self.mallet['train-topics']['num-topics'] = self.cfg_num_topics
         self.mallet['train-topics']['num-top-words'] = self.config.num_top_words
-        self.mallet['train-topics']['num-iterations'] = self.config.num_iterations
+        self.mallet['train-topics']['num-iterations'] = self.cfg_num_iterations
         self.mallet['train-topics']['optimize-interval'] = self.config.optimize_interval
         self.mallet['train-topics']['num-threads'] = self.config.num_threads
         self.mallet['train-topics']['input'] = self.mallet['import-file']['output']
@@ -60,11 +71,11 @@ class PoloMallet(PoloDb):
         self.mallet['train-topics']['doc-topics-max']           = 10 # todo: ADD TO CONFIG
         self.mallet['train-topics']['show-topics-interval']     = 100 # todo: ADD TO CONFIG
 
-        self.mallet['trial_name'] = self.config.trial_name
+        self.mallet['trial_name'] = self.trial_name
 
     def mallet_run_command(self,op):
         my_args = ['--{} {}'.format(arg,self.mallet[op][arg]) for arg in self.mallet[op]]
-        my_cmd = self.config.mallet_path + ' ' + op + ' ' + ' '.join(my_args)
+        my_cmd = self.cfg_mallet_path + ' ' + op + ' ' + ' '.join(my_args)
         print(my_cmd)
         try:
             os.system(my_cmd)
@@ -79,7 +90,7 @@ class PoloMallet(PoloDb):
         self.mallet_run_command('train-topics')
 
     def clean_up(self):
-        file_mask = '{}/{}-*.*'.format(self.config.output_dir,self.config.trial_name)
+        file_mask = '{}/{}-*.*'.format(self.cfg_output_dir,self.trial_name)
         my_cmd = 'rm {}'.format(file_mask)
         try:
             os.system(my_cmd)
@@ -153,7 +164,7 @@ class PoloMallet(PoloDb):
             doctopic.rename(columns={0:'doc_id'}, inplace=True)
             y = [col for col in doctopic.columns[1:]]
             doctopic_narrow = pd.lreshape(doctopic, {'topic_weight': y})
-            doctopic_narrow['topic_id'] = [i for i in range(self.config.num_topics) for doc_id in doctopic['doc_id']]
+            doctopic_narrow['topic_id'] = [i for i in range(self.cfg_num_topics) for doc_id in doctopic['doc_id']]
             doctopic_narrow = doctopic_narrow[['doc_id', 'topic_id', 'topic_weight']]
             self.put_table(doctopic_narrow, 'doctopic')
 
@@ -176,12 +187,12 @@ class PoloMallet(PoloDb):
     def import_table_config(self):
         # fixme: Make this automatic; find a way to dump all values
         cfg = {}
-        cfg['trial'] = self.config.trial
+        cfg['trial'] = self.trial
         cfg['dbfile'] = self.dbfile
         cfg['thresh'] = self.config.thresh
-        cfg['slug'] = self.config.slug
-        cfg['num_topics'] = self.config.num_topics
-        cfg['base_path'] = self.config.base_path
+        cfg['slug'] = self.cfg_slug
+        cfg['num_topics'] = self.cfg_num_topics
+        cfg['base_path'] = self.cfg_base_path
         cfg['file_prefix'] = self.file_prefix
         config = pd.DataFrame({'key': list(cfg.keys()), 'value': list(cfg.values())})
         with sqlite3.connect(self.dbfile) as db:
@@ -281,8 +292,8 @@ class PoloMallet(PoloDb):
         del dts
 
         topic = self.get_table('topic')
-        topic['topic_freq'] = [len(dtsw[dtsw[t] > 0]) for t in range(self.config.num_topics)]
-        topic['topic_rel_freq'] = [len(dtsw[dtsw[t] > 0]) / doc_num for t in range(self.config.num_topics)]
+        topic['topic_freq'] = [len(dtsw[dtsw[t] > 0]) for t in range(self.cfg_num_topics)]
+        topic['topic_rel_freq'] = [len(dtsw[dtsw[t] > 0]) / doc_num for t in range(self.cfg_num_topics)]
         self.put_table(topic, 'topic')
 
         TOPICPAIR = []

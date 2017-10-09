@@ -3,8 +3,6 @@ import os
 import sys
 
 class PoloConfig():
-    # todo: Define more sensible defaults!
-    # todo: Define keys for DEFAULT and TRIAL to use for validating configs when created
     slug                = 'test'
     trial               = 'my_trial'
     num_top_words       = 10
@@ -80,14 +78,14 @@ class PoloConfig():
         test1 = self.compare_keys(keys1, keys2)
         if test1:
             print("Missing config DEFAULT keys:", ', '.join(test1))
-            return False
+            sys.exit(1)
         keys3 = set(self.ini_schema['trial1'].keys())
         for trial in self.ini.sections():
             keys4 = set(self.ini[trial].keys())
             test2 = self.compare_keys(keys3, keys4)
             if test2:
                 print("Missing config keys for trial `{}`.".format(trial), ', '.join(test2))
-                return False
+                sys.exit(1)
         print("INI `{}` seems OK".format(self.ini_file))
         return True
 
