@@ -4,24 +4,6 @@ import sys
 
 class PoloConfig():
 
-    """
-    slug                = 'test'
-    trial               = 'my_trial'
-    num_top_words       = 10
-    mallet_path         = '/opt/mallet/bin/mallet'
-    output_dir          = 'my_dir'
-    base_path           = '.' # Not a good default
-    input_corpus        = 'corpus/corpus.csv'
-    extra_stops         = 'corpus/extra-stopwords.csv'
-    replacements        = ''
-    num_topics          = 20
-    num_iterations      = 100
-    optimize_interval   = 10
-    num_threads         = 1
-    verbose             = False
-    thresh              = 0.05 # Used for calculating PWMI
-    """
-
     ini_schema = {
         'DEFAULT': {
             "title": '<PROJECT TITLE>',
