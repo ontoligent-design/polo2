@@ -1,12 +1,14 @@
 # TODO
 
 * Fix problem with cached tables DONE
+* Command-line interaction DONE
+* File i/o handling DONE
+
 * Schema or template for config.ini
 * Command to set up project
-* Command-line interaction
 * Import dates and other ordinals
-* File i/o handling
 * Visualization (perhaps using Bokeh)
+* Write PoloGensim -- no mallet needed
 
 # Design Notes
 

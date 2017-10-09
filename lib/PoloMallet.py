@@ -7,8 +7,10 @@ from PoloFile import PoloFile
 
 class PoloMallet(PoloDb):
     
-    def __init__(self, config):
+    def __init__(self, config, trial):
         self.config = config
+        self.config.trial = trial
+        self.config.import_ini(trial) # todo: Move this function into the mallet and corpus classes
         self.generate_trial_name()
         self.file_prefix = '{}/{}'.format(self.config.output_dir, self.config.trial_name)
         self.config.num_topics = int(self.config.num_topics)
@@ -23,9 +25,10 @@ class PoloMallet(PoloDb):
                                                               self.config.num_iterations, int(ts))
     
     def mallet_init(self):
+
         if not os.path.exists(self.config.mallet_path):
             print('OOPS Mallet cannot be found')
-            sys.exit(0)
+            sys.exit(1)
 
         if os.path.exists(self.config.extra_stops):
             self.mallet['import-file']['extra-stopwords'] = self.config.extra_stops
@@ -67,10 +70,9 @@ class PoloMallet(PoloDb):
             os.system(my_cmd)
         except:
             print('Command would not execute:', my_cmd)
-            sys.exit(0)
+            sys.exit(1)
 
     def mallet_import(self):
-        """Consider option of using previously generated file."""
         self.mallet_run_command('import-file')
 
     def mallet_train(self):
@@ -83,6 +85,7 @@ class PoloMallet(PoloDb):
             os.system(my_cmd)
         except:
             print('Unable to delete files: {}'.format(file_mask))
+            #sys.exit(1)
 
     # TABLE IMPORT METHODS
 
@@ -95,7 +98,8 @@ class PoloMallet(PoloDb):
 
     def import_table_topic(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['output-topic-keys']
-        topic = pd.read_csv(src_file, sep='\t', header=None, index_col=False, names=['topic_id', 'topic_alpha', 'topic_words'])
+        topic = pd.read_csv(src_file, sep='\t', header=None, index_col=False,
+                            names=['topic_id', 'topic_alpha', 'topic_words'])
         self.put_table(topic, 'topic')
 
     def import_tables_topicword_and_word(self, src_file=None):
@@ -110,16 +114,6 @@ class PoloMallet(PoloDb):
             for item in row[2:]:
                 (topic_id, word_count) = item.split(':')
                 TOPICWORD.append((int(word_id), int(topic_id), int(word_count)))
-        """
-        with open(src_file, 'r') as src:
-            for line in src:
-                row = line.strip().split(' ')
-                (word_id, word_str) = row[0:2]
-                WORD.append((int(word_id), word_str))
-                for item in row[2:]:
-                    (topic_id, word_count) = item.split(':')
-                    TOPICWORD.append((int(word_id), int(topic_id), int(word_count)))
-        """
         word = pd.DataFrame(WORD, columns=['word_id', 'word_str'])
         topicword = pd.DataFrame(TOPICWORD, columns=['word_id', 'topic_id', 'word_count'])
         self.put_table(word, 'word')
@@ -142,21 +136,6 @@ class PoloMallet(PoloDb):
                     topic_id = row[i]
                     topic_weight = row[i + 1]
                     DOCTOPIC.append([doc_id, topic_id, topic_weight])
-            """
-            with open(src_file, 'r') as src:
-                next(src) # Skip header -- BUT THIS IS A CLUE
-                for line in src:
-                    row = line.split('\t')
-                    row.pop() # Pretty sure this is right
-                    doc_id = row[0]
-                    doc_key = row[1].split(',')[0]
-                    doc_label = row[1].split(',')[1]
-                    DOC.append([doc_id, doc_key, doc_label])
-                    for i in range(2, len(row), 2):
-                        topic_id = row[i]
-                        topic_weight = row[i+1]
-                        DOCTOPIC.append([doc_id, topic_id, topic_weight])
-            """
             doctopic = pd.DataFrame(DOCTOPIC, columns=['doc_id', 'topic_id', 'topic_weight'])
             doc = pd.DataFrame(DOC, columns=['doc_id', 'doc_key', 'doc_label'])
             self.put_table(doctopic, 'doctopic')
@@ -190,17 +169,6 @@ class PoloMallet(PoloDb):
                 phrase_count = int(phrase.xpath('@count')[0])
                 topic_phrase = phrase.xpath('text()')[0]
                 TOPICPHRASE.append((topic_id, topic_phrase, phrase_weight, phrase_count))
-        """
-        with open(src_file, 'r') as f:
-            tree = etree.parse(f)
-            for topic in tree.xpath('/topics/topic'):
-                topic_id = int(topic.xpath('@id')[0])
-                for phrase in topic.xpath('phrase'):
-                    phrase_weight = float(phrase.xpath('@weight')[0])
-                    phrase_count = int(phrase.xpath('@count')[0])
-                    topic_phrase = phrase.xpath('text()')[0]
-                    TOPICPHRASE.append((topic_id, topic_phrase, phrase_weight, phrase_count))
-        """
         topicphrase = pd.DataFrame(TOPICPHRASE, columns=['topic_id', 'topic_phrase',
                                                          'phrase_weight', 'phrase_count'])
         self.put_table(topicphrase, 'topicphrase')
@@ -255,32 +223,6 @@ class PoloMallet(PoloDb):
                     else:
                         wvals.append(float(word.xpath(xpath)[0]))
                 TOPICWORD.append(wvals)
-        """
-        with open(src_file, 'r') as f:
-            tree = etree.parse(f)
-            for topic in tree.xpath('/model/topic'):
-                tvals = []
-                for key in tkeys:
-                    xpath = '@{}'.format(key)
-                    if key in tints:
-                        tvals.append(int(float(topic.xpath(xpath)[0])))
-                    else:
-                        tvals.append(float(topic.xpath(xpath)[0]))
-                TOPIC.append(tvals)
-                for word in topic.xpath('word'):
-                    wvals = []
-                    topic_id = tvals[0] # Hopefully
-                    wvals.append(topic_id)
-                    word_str = word.xpath('text()')[0]
-                    wvals.append(word_str)
-                    for key in wkeys:
-                        xpath = '@{}'.format(key)
-                        if key in wints:
-                            wvals.append(int(float(word.xpath(xpath)[0])))
-                        else:
-                            wvals.append(float(word.xpath(xpath)[0]))
-                    TOPICWORD.append(wvals)
-        """
         tkeys = ['topic_{}'.format(re.sub('-', '_', k)) for k in tkeys]
         wkeys = ['topic_id', 'word_str'] + wkeys
         wkeys = [re.sub('-', '_', k) for k in wkeys]
@@ -299,12 +241,13 @@ class PoloMallet(PoloDb):
         topicword_diags = topicword_diags.join(word, how='inner')
         topicword_diags.reset_index(inplace=True)
         topicword_diags.set_index(['topic_id', 'word_id'], inplace=True)
+        self.put_table(topicword_diags, 'topicword_diag', index=True)
 
         # Is this a good idea? Why not diags in a separate table?
-        topicwords = self.get_table('topicword')
-        topicwords.set_index(['topic_id', 'word_id'], inplace=True)
-        topicwords = topicwords.join(topicword_diags, how='outer', lsuffix='a', rsuffix='b') # fixme: TESTING SUFFIXES
-        self.put_table(topicwords, 'topicword', index=True)
+        #topicwords = self.get_table('topicword')
+        #topicwords.set_index(['topic_id', 'word_id'], inplace=True)
+        #topicwords = topicwords.join(topicword_diags, how='outer', lsuffix='a', rsuffix='b')
+        #self.put_table(topicwords, 'topicword', index=True)
 
     def del_mallet_files(self):
         # todo: Consider just deleting all the contents of the directory
@@ -316,8 +259,8 @@ class PoloMallet(PoloDb):
                 os.remove(str(self.mallet['train-topics'][fk]))
 
     # UPDATE OR ADD TABLES WITH STATS
+
     def add_topic_entropy(self):
-        """This method also creates the doc table"""
         import scipy.stats as sp
         doctopic = self.get_table('doctopic')
         doc = self.get_table('doc')
@@ -326,15 +269,13 @@ class PoloMallet(PoloDb):
         self.put_table(doc, 'doc')
 
     def create_table_topicpair(self):
-        thresh = self.config.thresh
 
-        # todo: Consider putting this kind of metadata in a table?
         doc = self.get_table('doc')
         doc_num = len(doc.index)
         del doc
 
         doctopic = self.get_table('doctopic')
-        dts = doctopic[doctopic.topic_weight >= thresh]
+        dts = doctopic[doctopic.topic_weight >= self.config.thresh]
         dtsw = dts.pivot(index='doc_id', columns='topic_id', values='topic_weight')
         del doctopic
         del dts
@@ -360,9 +301,13 @@ class PoloMallet(PoloDb):
             TOPICPAIR.append([a, b, p_a, p_b, p_ab, p_aGb, p_bGa, i_ab, c_ab])
         topicpair = pd.DataFrame(TOPICPAIR, columns=['topic_a', 'topic_b', 'p_a', 'p_b', 'p_ab',
                                                      'p_aGb', 'p_bGa', 'i_ab', 'c_ab'])
-        #topicpair.set_index(['topic_a', 'topic_b'], inplace=True)
-        #self.put_table(topicpair, 'topicpair', index=True)
         self.put_table(topicpair, 'topicpair')
+
+    def get_doctopic_wide(self):
+        doctopic = self.get_table('doctopic')
+        doctopic.set_index(['doc_id', 'topic_id'], inplace=True)
+        doctopic_wide = doctopic.unstack()
+        return doctopic_wide
 
 
 if __name__ == '__main__':

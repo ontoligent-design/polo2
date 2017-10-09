@@ -12,17 +12,21 @@ if __name__ == '__main__':
     parser.add_argument("--ini", help="Path to ini file (default: ./config.ini)", action="store", default='./config.ini')
 
     # Subparsers for specific activities
-    subparsers = parser.add_subparsers(title="Actions", help='Enter choice of corpus or mallet', dest='cmd')
+    subparsers = parser.add_subparsers(title="Actions", help='Select an action', dest='cmd')
 
     # SETUP
-    parser_corpus = subparsers.add_parser('setup', help='Setups a directory')
+    parser_setup = subparsers.add_parser('setup', help='Set up a project directory')
+
+    # INFO
+    parser_info = subparsers.add_parser('info', help='Get project info')
+    parser_info.add_argument('item', choices=['trials', 'mallet', 'nltk'])
 
     # CORPUS
     parser_corpus = subparsers.add_parser('corpus', help='Generates a corpus db')
 
     # MALLET
     parser_mallet = subparsers.add_parser('mallet', help='Runs mallet based on ini and saves to db')
-    parser_mallet.add_argument('trial', help="Trial name (see ini)", action="store", type=str)
+    parser_mallet.add_argument('trial', help="Trial name (see ini)", action="store", type=str, nargs='?', default=None)
     parser_mallet.add_argument('-t', "--topics", help="Number of topics (override ini)", action="store", type=int)
     parser_mallet.add_argument('-i', "--iters", help="Number of iterations (override ini)", action="store", type=int)
 
@@ -32,9 +36,7 @@ if __name__ == '__main__':
     if args.cmd == 'corpus':
 
         print("Import config")
-        config = PoloConfig()
-        config.read_ini(args.ini)
-        trials = config.get_trial_names()
+        config = PoloConfig(args.ini)
 
         print("Initialize corpus")
         corpus = PoloCorpus(config)
@@ -58,14 +60,19 @@ if __name__ == '__main__':
     elif args.cmd == 'mallet':
 
         print("Import config")
-        config = PoloConfig()
-        config.read_ini(args.ini)
-        trials = config.get_trial_names()
+        config = PoloConfig(args.ini)
 
-        config.import_ini(trials[0])
+        this_trial = ''
+        if args.trial:
+            this_trial = args.trial
+        else:
+            trials = config.get_trial_names()
+            this_trial = trials[0]
 
-        print("Initializing")
-        mallet = PoloMallet(config)
+        #config.import_ini(this_trial)
+
+        print("Initializing mallet for {}".format(this_trial))
+        mallet = PoloMallet(config, this_trial)
         mallet.cache_mode = True
 
         print('Importing corpus')
@@ -90,3 +97,13 @@ if __name__ == '__main__':
         mallet.del_mallet_files()
 
         print("Done with", mallet.config.trial_name)
+
+    elif args.cmd == 'info':
+
+        if args.item == 'trials':
+            config = PoloConfig(args.ini)
+            trials = config.get_trial_names()
+            # GET MORE INFO TO SHOW, e.g. num topics, etc.
+            print('TRIALS:\n', '\n'.join(trials))
+
+

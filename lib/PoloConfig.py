@@ -1,8 +1,10 @@
 import configparser
-# from PoloDb import PoloDb # May add this
+import os
+import sys
 
 class PoloConfig():
-    """Define more sensible defaults!"""
+    # todo: Define more sensible defaults!
+    # todo: Define keys for DEFAULT and TRIAL to use for validating configs when created
     slug                = 'test'
     trial               = 'my_trial'
     num_top_words       = 10
@@ -19,21 +21,47 @@ class PoloConfig():
     verbose             = False
     thresh              = 0.05 # Used for calculating PWMI
 
-    def __init__(self):
-        self.ini = {}
-        self.trials = []
-
-    def read_ini(self, ini_file):
+    ini_schema = {
+        'DEFAULT': {
+            "title": '<PROJECT TITLE>',
+            "slug": '<SHORT TITLE (NO SPACES)>',
+            "owner": '<PROJECT OWNER NAME>',
+            "base_path": '<BASE_PATH>',
+            "mallet_path": '/usr/local/bin/mallet',
+            "mallet_out_dir": 'trials',
+            "mallet_corpus_input": 'corpus/corpus.csv',
+            "extra_stops": 'corpus/extra-stopwords.txt',
+            "replacements": 'corpus/replacements.txt',
+            "num_threads": 1,
+            "verbose": 0,
+            "nltk_data_path": '<NLTK_DATA_PATH>',
+            "corpus_sep": ',',
+            "use_nltk": 1,
+            "use_stopwords": 1,
+            "thresh": 0.05
+    }, 
+        'trial1': {
+            "num_topics": 20,
+            "num_top_words": 10,
+            "num_iterations": 500,
+            "optimize_interval": 10,
+            "num_threads": 1
+        }
+    }
+    
+    def __init__(self, ini_file):
+        self.ini_file = ini_file
         self.ini = configparser.ConfigParser()
         self.ini._interpolation = configparser.ExtendedInterpolation()
         self.ini.read(ini_file)
+        self.validate_ini()
+        self.trials = self.ini.sections()
 
     def get_trial_names(self):
-        return self.ini.sections()
+        return self.trials
 
     def import_ini(self, trial):
-        """Import config from local ini file. Handle default
-        case when no trial given."""
+        # todo: Move this into respective objects; pass trial to mallet
         self.trial = trial
         self.slug = self.ini['DEFAULT']['slug']
         self.mallet_path = self.ini['DEFAULT']['mallet_path']
@@ -45,3 +73,43 @@ class PoloConfig():
         self.extra_stops = self.ini[trial]['extra_stops']
         self.replacements = self.ini[trial]['replacements']
         self.verbose = False
+
+    def validate_ini(self):
+        keys1 = set(self.ini_schema['DEFAULT'].keys())
+        keys2 = set(self.ini['DEFAULT'].keys())
+        test1 = self.compare_keys(keys1, keys2)
+        if test1:
+            print("Missing config DEFAULT keys:", ', '.join(test1))
+            return False
+        keys3 = set(self.ini_schema['trial1'].keys())
+        for trial in self.ini.sections():
+            keys4 = set(self.ini[trial].keys())
+            test2 = self.compare_keys(keys3, keys4)
+            if test2:
+                print("Missing config keys for trial `{}`.".format(trial), ', '.join(test2))
+                return False
+        print("INI `{}` seems OK".format(self.ini_file))
+        return True
+
+    def compare_keys(self, keys1, keys2):
+        if keys1.issubset(keys2): # The default keys should be a subset of what's in the file
+            return None
+        else:
+            diff = keys1.difference(keys2)
+            return diff
+
+    def create_ini(self, ini_file = 'config.template.ini'):
+        new_ini = configparser.ConfigParser()
+        new_ini.read_dict(self.ini_schema)
+        if not os.path.isfile(ini_file):
+            print('Creating', ini_file)
+            with open(ini_file, 'w+') as configfile:
+                new_ini.write(configfile)
+            if os.path.isfile(ini_file):
+                print("`{}` created successfully.".format(ini_file))
+                print("Edit it and rename it to `config.ini`.")
+            else:
+                print("Oops: `{}` not created successfully.".format(ini_file))
+        else:
+            print("`{}` already exists.".format(ini_file))
+            sys.exit(1)

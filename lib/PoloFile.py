@@ -4,12 +4,12 @@ class PoloFile():
 
     def __init__(self, file_name = None):
         if os.path.isfile(file_name):
-            self.file_name = file_name
             self.file = open(file_name, 'r')
+            self.file_name = file_name
             self.lines = []
             self.bigline = ''
         else:
-            print("{} is not a file.".format(self.file_name))
+            print("'{}' is not a file.".format(self.file_name))
             sys.exit(1)
 
     def __del__(self):

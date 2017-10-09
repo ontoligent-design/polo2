@@ -1,13 +1,7 @@
-import re, nltk
-#from nltk.corpus import stopwords
-#from gensim.models import TfidfModel
-#from gensim.models import LdaModel
-#from gensim.corpora import Dictionary
-#from gensim.models.phrases import Phrases
 from PoloDb import PoloDb
 from PoloFile import PoloFile
 import pandas as pd
-
+import nltk
 
 class PoloCorpus(PoloDb):
 
@@ -39,8 +33,6 @@ class PoloCorpus(PoloDb):
             swset.update(nltk_stopwords)
         src = PoloFile(self.extra_stops)
         swset.update([word for word in src.read_bigline().split()])
-        #with open(self.extra_stops, 'r') as src:
-        #    swset.update([word for word in src.read().split()])
         swdf = pd.DataFrame({'token_str': list(swset)})
         self.put_table(swdf, 'stopword')
 
