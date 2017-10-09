@@ -9,8 +9,7 @@ class PoloFile():
             self.lines = []
             self.bigline = ''
         else:
-            print("'{}' is not a file.".format(self.file_name))
-            sys.exit(1)
+            raise ValueError("'{}' is not a file.".format(self.file_name))
 
     def __del__(self):
         self.file.close()
