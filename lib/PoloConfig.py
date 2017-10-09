@@ -3,6 +3,8 @@ import os
 import sys
 
 class PoloConfig():
+
+    """
     slug                = 'test'
     trial               = 'my_trial'
     num_top_words       = 10
@@ -18,6 +20,7 @@ class PoloConfig():
     num_threads         = 1
     verbose             = False
     thresh              = 0.05 # Used for calculating PWMI
+    """
 
     ini_schema = {
         'DEFAULT': {
@@ -47,7 +50,12 @@ class PoloConfig():
         }
     }
     
-    def __init__(self, ini_file):
+    def __init__(self, ini_file, create=True):
+        if not os.path.isfile(ini_file):
+            if create:
+                self.create_ini(ini_file)
+            else:
+                raise ValueError("INI file does not exist.")
         self.ini_file = ini_file
         self.ini = configparser.ConfigParser()
         self.ini._interpolation = configparser.ExtendedInterpolation()
@@ -88,14 +96,11 @@ class PoloConfig():
         new_ini = configparser.ConfigParser()
         new_ini.read_dict(self.ini_schema)
         if not os.path.isfile(ini_file):
-            print('Creating', ini_file)
             with open(ini_file, 'w+') as configfile:
                 new_ini.write(configfile)
             if os.path.isfile(ini_file):
-                print("`{}` created successfully.".format(ini_file))
-                print("Edit it and rename it to `config.ini`.")
+                return True
             else:
-                print("Oops: `{}` not created successfully.".format(ini_file))
+                raise ValueError("`{}` not created successfully.".format(ini_file))
         else:
-            print("`{}` already exists.".format(ini_file))
-            sys.exit(1)
+            raise ValueError("`{}` already exists.".format(ini_file))

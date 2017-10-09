@@ -3,7 +3,7 @@
 from PoloConfig import PoloConfig
 from PoloMallet import PoloMallet
 from PoloCorpus import PoloCorpus
-import argparse, sys
+import argparse, sys, os
 
 if __name__ == '__main__':
 
@@ -16,6 +16,7 @@ if __name__ == '__main__':
 
     # SETUP
     parser_setup = subparsers.add_parser('setup', help='Set up a project directory')
+    parser_setup.add_argument('project', help="Short name of project (no spaces, etc.)", action='store')
 
     # INFO
     parser_info = subparsers.add_parser('info', help='Get project info')
@@ -125,4 +126,35 @@ if __name__ == '__main__':
             # GET MORE INFO TO SHOW, e.g. num topics, etc.
             print('TRIALS:\n', '\n'.join(trials))
 
+    elif args.cmd == 'setup':
+        slug = args.project
+        print("Setting up things for project `{}`".format(slug))
+
+        # CREATE DIRECTORY
+        if os.path.isdir(slug):
+            r = input("Path already exists. Proceed? [y/n] ")
+            if r != 'y':
+                print("OK, ciao.")
+                sys.exit(1)
+        else:
+            print("Creating subdir `{}`".format(slug))
+            os.mkdir(slug)
+
+        # CREATE CONFIG.INI
+        cfg_file = '{}/config.ini'.format(slug)
+        if not os.path.isfile(cfg_file):
+            print("Creating INI file template `{}`. When this process is done, edit this file with sensible values.".format(cfg_file))
+            config = PoloConfig(cfg_file, create=True)
+        else:
+            print("INI file `{}` already exists.".format(cfg_file))
+
+        # CREATE SUBDIRECTORIES
+        subdirs = ['corpus', 'trials']
+        for subdir in subdirs:
+            path = '{}/{}'.format(slug, subdir)
+            if not os.path.isdir(path):
+                print("Creating subdirector `{}`.".format(subdir))
+                os.mkdir(path)
+            else:
+                print("Subdirectory `{}` exists.".format(subdir))
 
