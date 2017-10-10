@@ -19,6 +19,10 @@ if __name__ == '__main__':
     parser_setup = subparsers.add_parser('setup', help='Set up a project directory')
     parser_setup.add_argument('project', help="Short name of project (no spaces, etc.)", action='store')
 
+    # INI
+    parser_ini = subparsers.add_parser('ini', help='Create a config file')
+    parser_ini.add_argument('-n', '--name', help="Name of config file if not `config.ini`.", action='store')
+
     # INFO
     parser_info = subparsers.add_parser('info', help='Get project info')
     parser_info.add_argument('item', choices=['trials', 'mallet', 'nltk'])
@@ -158,4 +162,15 @@ if __name__ == '__main__':
                 os.mkdir(path)
             else:
                 print("Subdirectory `{}` exists.".format(subdir))
+
+    elif args.cmd == 'ini':
+        ini_file = 'config.ini'
+        if args.name:
+            ini_file = args.name
+        if not os.path.isfile(ini_file):
+            print("Creating INI file template `{}`. When this process is done, edit this file with sensible values.".format(ini_file))
+            config = PoloConfig(ini_file, create=True)
+        else:
+            print("INI file `{}` already exists.".format(ini_file))
+
 
