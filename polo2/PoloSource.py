@@ -1,14 +1,11 @@
 import requests, re, os
 import pandas as pd
-import logging
 
 class PoloSource:
 
     #PUNC_PAT = r'\s*[.;:?!-]+\s*'
     #PUNC = re.compile(PUNC_PAT)
 
-    logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
-    
     def __init__(self, filename, file_url='', refresh_file=False, delim = r'\n'):
         self.filename = filename
         self.file_url = file_url
@@ -71,7 +68,8 @@ class PoloSource:
         for i, sec_pat in enumerate(sec_pats):
             secs = self.text.line.str.contains(sec_pat)
             self.text[cols[i]] = self.text[secs].line
-            self.text = self.text.fillna(method='ffill') # This is an amazing method
+            #self.text = self.text.fillna(method='ffill') # This is an amazing method
+            self.text[cols[i]].fillna(method='ffill', inplace=True)
             self.text = self.text[-secs]
         self.text.set_index(cols, inplace=True)
         self.group_cols = cols
