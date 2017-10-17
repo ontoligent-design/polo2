@@ -1,4 +1,4 @@
-# Polo2g
+# Polo2
 
 ## To do
 
@@ -10,6 +10,11 @@
 * Import dates and other ordinals
 * Visualization (perhaps using Bokeh)
 * Write PoloGensim -- no mallet needed
+* Put text functions in PoloText
+    * Ngrams
+    * Cleaning
+    * Stopwords
+* Create HDP topic models
 
 ## Introduction
 

@@ -12,11 +12,11 @@ class PoloCorpus(PoloDb):
     ngram_prefixes = ['no', 'uni', 'bi', 'tri', 'quadri']
 
     def __init__(self, config):
-
         self.corpus_file = config.ini['DEFAULT']['mallet_corpus_input']
         if not os.path.isfile(self.corpus_file):
             raise ValueError("Missing corpus file. Check value of `mallet_corpus_input` in INI file.")
         self.corpus_sep = config.ini['DEFAULT']['corpus_sep']
+        self.corpus_header = config.ini['DEFAULT']['corpus_header']
         self.nltk_data_path = config.ini['DEFAULT']['nltk_data_path']
         self.slug = config.ini['DEFAULT']['slug']
         self.extra_stops = config.ini['DEFAULT']['extra_stops']
@@ -30,6 +30,15 @@ class PoloCorpus(PoloDb):
         PoloDb.__init__(self, dbfile)
         if self.nltk_data_path: nltk.data.path.append(self.nltk_data_path)
 
+    def import_table_docsrc(self):
+        # todo: Handle docsrc colnames
+        if self.corpus_sep == '': self.corpus_sep = ','
+        if self.corpus_header == '': self.corpus_header = None
+        docsrc = pd.read_csv(self.corpus_file, header=self.corpus_header, sep=self.corpus_sep)
+        docsrc.columns = ['doc_key', 'doc_label', 'doc_content']
+        docsrc.set_index(['doc_key'], inplace=True)
+        self.put_table(docsrc, 'docsrc', index=True)
+
     def import_table_stopword(self, use_nltk=False):
         swset = set()
         if use_nltk:
@@ -42,17 +51,16 @@ class PoloCorpus(PoloDb):
         self.put_table(swdf, 'stopword')
 
     def import_table_doc(self):
-        # todo: Craete file rw function to wrap error trapping, etc.
-        if self.corpus_sep == '': self.corpus_sep = ','
-        doc = pd.read_csv(self.corpus_file, header=None, sep=self.corpus_sep)
-        doc.columns = ['doc_key', 'doc_label', 'doc_content']
+
+        doc = self.get_table('docsrc')
         doc = doc.set_index(['doc_key'])
+
         # fixme: Reconcile this with what mallet is doing!
         # fixme: Put this in a separate function for general text manipulation
         # fixme: Create mallet corpus from doc table and turn off its stopwards
         # todo: Consider providing orderdicts of replacements that users can choose or create
+
         doc = doc[doc.doc_content.notnull()]
-        #doc['doc_original'] = doc.doc_content
         doc['doc_content'] = doc.doc_content.str.lower()
         doc['doc_content'] = doc.doc_content.str.replace(r'_', 'MYUNDERSCORE') # Keep underscores
         doc['doc_content'] = doc.doc_content.str.replace(r'\n+', ' ') # Remove newlines

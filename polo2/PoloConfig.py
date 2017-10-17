@@ -19,6 +19,7 @@ class PoloConfig():
             "verbose": 0,
             "nltk_data_path": '<NLTK_DATA_PATH>',
             "corpus_sep": ',',
+            "corpus_header": '',
             "use_nltk": 1,
             "use_stopwords": 1,
             "thresh": 0.05

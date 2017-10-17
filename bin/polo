@@ -59,6 +59,9 @@ if __name__ == '__main__':
         print("Importing stopwords")
         corpus.import_table_stopword(use_nltk=True)
 
+        print("Importing docsrc")
+        corpus.import_table_docsrc()
+
         print("Importing doc")
         corpus.import_table_doc()
 

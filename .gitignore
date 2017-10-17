@@ -1,8 +1,9 @@
-polo2/__pycache__
+# PyCharm files
 .idea/*
 
 # Compiled python modules.
 *.pyc
+polo2/__pycache__
 
 # Setuptools distribution folder.
 /dist/
