@@ -68,11 +68,10 @@ class PoloSource:
         for i, sec_pat in enumerate(sec_pats):
             secs = self.text.line.str.contains(sec_pat)
             self.text[cols[i]] = self.text[secs].line
-            #self.text = self.text.fillna(method='ffill') # This is an amazing method
             self.text[cols[i]].fillna(method='ffill', inplace=True)
             self.text = self.text[-secs]
         self.text.set_index(cols, inplace=True)
-        self.group_cols = cols
+        self.group_cols = cols # Why not sec_cols?
 
     def text_as_corpus(self):
         """Create a corpus from the text, using the sections created in unstack_text()
