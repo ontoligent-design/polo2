@@ -1,9 +1,9 @@
-from polo2.PoloDb import PoloDb
-from polo2.PoloFile import PoloFile
-from polo2.PoloConfig import PoloConfig
-from polo2.PoloCorpus import PoloCorpus
-from polo2.PoloMallet import PoloMallet
-from polo2.PoloSource import PoloSource
-import polo2.PoloMath as PoloMath
+from polo2.polo_db import PoloDb
+from polo2.polo_file import PoloFile
+from polo2.polo_config import PoloConfig
+from polo2.polo_corpus import PoloCorpus
+from polo2.polo_mallet import PoloMallet
+from polo2.polo_text import PoloText
+import polo2.polo_math as PoloMath
 
 __all__ = ['PoloDb', 'PoloFile', 'PoloConfig', 'PoloCorpus', 'PoloMallet', 'PoloMath']
