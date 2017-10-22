@@ -1,12 +1,12 @@
+import re
 from abc import ABCMeta, abstractmethod
 from polo2 import PoloDb
-from polo2 import PoloFile
 
 class PoloSource(PoloDb):
 
     __metaclass__ = ABCMeta
 
-    def __init__(self, confifg):
+    def __init__(self, config):
         self.slug = config.ini['DEFAULT']['slug']
         dbfile = '{}-corpus.db'.format(self.slug)
         PoloDb.__init__(self, dbfile)

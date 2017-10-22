@@ -161,10 +161,16 @@ if __name__ == '__main__':
         for subdir in subdirs:
             path = '{}/{}'.format(slug, subdir)
             if not os.path.isdir(path):
-                print("Creating subdirector `{}`.".format(subdir))
+                print("Creating subdirectory `{}`.".format(subdir))
                 os.mkdir(path)
             else:
                 print("Subdirectory `{}` exists.".format(subdir))
+
+        # CREATE STUB IMPORTER
+        if not os.path.isfile('importer.py'):
+            print("Creating stub `{}`.".format(stub))
+            with open(stub, 'w') as stub:
+                out.write("# ADD IMPORTER CODE")
 
     elif args.cmd == 'ini':
         ini_file = 'config.ini'

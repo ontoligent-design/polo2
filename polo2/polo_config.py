@@ -24,8 +24,8 @@ class PoloConfig():
             "use_nltk": 1,
             "use_stopwords": 1,
             "thresh": 0.05,
-            "src_script": "corpus/source.py",
-            "src_base_url": 'https://itsgoingdown',
+            "src_script": "importer.py",
+            "src_base_url": '',
             "src_ord_col": 'doc_label',
     }, 
         'trial1': {
