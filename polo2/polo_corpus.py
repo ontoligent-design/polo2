@@ -32,6 +32,7 @@ class PoloCorpus(PoloDb):
 
     def import_table_docsrc(self):
         # todo: Handle docsrc colnames
+        # todo: replace by method in PoloSource
         if self.corpus_sep == '': self.corpus_sep = ','
         if self.corpus_header == '': self.corpus_header = None
         docsrc = pd.read_csv(self.corpus_file, header=self.corpus_header, sep=self.corpus_sep)

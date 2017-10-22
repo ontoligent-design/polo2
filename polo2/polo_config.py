@@ -4,6 +4,7 @@ import sys
 
 class PoloConfig():
 
+    # todo: Consider just saving this as a template file
     ini_schema = {
         'DEFAULT': {
             "title": '<PROJECT TITLE>',
@@ -22,7 +23,10 @@ class PoloConfig():
             "corpus_header": '',
             "use_nltk": 1,
             "use_stopwords": 1,
-            "thresh": 0.05
+            "thresh": 0.05,
+            "src_script": "corpus/source.py",
+            "src_base_url": 'https://itsgoingdown',
+            "src_ord_col": 'doc_label',
     }, 
         'trial1': {
             "num_topics": 20,
@@ -75,6 +79,7 @@ class PoloConfig():
             return diff
 
     def create_ini(self, ini_file = 'config.template.ini'):
+        # todo: If using a template, pass slug name as argument
         new_ini = configparser.ConfigParser()
         new_ini.read_dict(self.ini_schema)
         if not os.path.isfile(ini_file):
