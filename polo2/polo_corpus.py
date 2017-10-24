@@ -12,14 +12,19 @@ class PoloCorpus(PoloDb):
     ngram_prefixes = ['no', 'uni', 'bi', 'tri', 'quadri']
 
     def __init__(self, config):
+
         self.corpus_file = config.ini['DEFAULT']['mallet_corpus_input']
-        if not os.path.isfile(self.corpus_file):
-            raise ValueError("Missing corpus file. Check value of `mallet_corpus_input` in INI file.")
-        self.corpus_sep = config.ini['DEFAULT']['corpus_sep']
-        self.corpus_header = config.ini['DEFAULT']['corpus_header']
         self.nltk_data_path = config.ini['DEFAULT']['nltk_data_path']
         self.slug = config.ini['DEFAULT']['slug']
         self.extra_stops = config.ini['DEFAULT']['extra_stops']
+
+        # Source file stuff
+        self.src_file_name = config.ini['DEFAULT']['src_file_name']
+        if not os.path.isfile(self.src_file_name):
+            raise ValueError("Missing source file. Check value of `src_file_name` in INI file.")
+        self.src_file_sep = config.ini['DEFAULT']['src_file_sep']
+        self.src_base_url = config.ini['DEFAULT']['src_base_url']
+        self.src_ord_col = config.ini['DEFAULT']['src_ord_col']
 
         # Local overrides of defaults
         for key in ['use_nltk', 'use_stopwords']:
@@ -30,15 +35,12 @@ class PoloCorpus(PoloDb):
         PoloDb.__init__(self, dbfile)
         if self.nltk_data_path: nltk.data.path.append(self.nltk_data_path)
 
-    def import_table_docsrc(self):
-        # todo: Handle docsrc colnames
-        # todo: replace by method in PoloSource
-        if self.corpus_sep == '': self.corpus_sep = ','
-        if self.corpus_header == '': self.corpus_header = None
-        docsrc = pd.read_csv(self.corpus_file, header=self.corpus_header, sep=self.corpus_sep)
-        docsrc.columns = ['doc_key', 'doc_label', 'doc_content']
-        docsrc.set_index(['doc_key'], inplace=True)
-        self.put_table(docsrc, 'docsrc', index=True)
+    def import_table_src_doc(self, src_file_name=None):
+        if not src_file_name: src_file_name = self.src_file_name
+        if self.src_file_sep == '': self.src_file_sep = '|'
+        src_doc = pd.read_csv(src_file_name, header=0, sep=self.src_file_sep)
+        src_doc.index.name = 'doc_id'
+        self.put_table(src_doc, 'src_doc', index=True)
 
     def import_table_stopword(self, use_nltk=False):
         swset = set()
@@ -46,21 +48,21 @@ class PoloCorpus(PoloDb):
             from nltk.corpus import stopwords
             nltk_stopwords = set(stopwords.words('english')) # Lang needs param
             swset.update(nltk_stopwords)
-        src = PoloFile(self.extra_stops)
-        swset.update([word for word in src.read_bigline().split()])
+        if self.extra_stops and os.path.isfile(self.extra_stops):
+            src = PoloFile(self.extra_stops)
+            swset.update([word for word in src.read_bigline().split()])
         swdf = pd.DataFrame({'token_str': list(swset)})
         self.put_table(swdf, 'stopword')
 
     def import_table_doc(self):
 
-        doc = self.get_table('docsrc')
-        doc = doc.set_index(['doc_key'])
+        doc = self.get_table('src_doc')
+        doc.set_index('doc_id', inplace=True)
 
         # fixme: Reconcile this with what mallet is doing!
         # fixme: Put this in a separate function for general text manipulation
         # fixme: Create mallet corpus from doc table and turn off its stopwards
         # todo: Consider providing orderdicts of replacements that users can choose or create
-
         doc = doc[doc.doc_content.notnull()]
         doc['doc_content'] = doc.doc_content.str.lower()
         doc['doc_content'] = doc.doc_content.str.replace(r'_', 'MYUNDERSCORE') # Keep underscores
@@ -70,7 +72,7 @@ class PoloCorpus(PoloDb):
         doc['doc_content'] = doc.doc_content.str.replace(r'[0-9]+', ' ') # Remove numbers
         doc['doc_content'] = doc.doc_content.str.replace(r'\s+', ' ') # Collapse spaces
         doc['doc_content'] = doc.doc_content.str.replace('MYUNDERSCORE', '_') # Put underscores back
-        self.put_table(doc, 'doc', index=True)
+        self.put_table(doc, 'doc', index=True, index_label='doc_id')
 
     def add_table_doctoken(self):
         doc = self.get_table('doc')
@@ -118,3 +120,9 @@ class PoloCorpus(PoloDb):
 
         self.put_table(docngram, 'ngram{}doc'.format(self.ngram_prefixes[n]))
         self.put_table(ngram, 'ngram{}'.format(self.ngram_prefixes[n]), index=True)
+
+    def export_mallet_corpus(self):
+        polo_corpus = self.get_table('doc')
+        #polo_corpus = polo_corpus[['doc_id', 'doc_label', 'doc_content']]
+        polo_corpus = polo_corpus[['doc_label', 'doc_content']] # Why does get_table() pull doc_id as index?
+        polo_corpus.to_csv(self.corpus_file, index=True)

@@ -1,6 +1,7 @@
 import re
 from abc import ABCMeta, abstractmethod
 from polo2 import PoloDb
+import sqlalchemy as sa
 
 class PoloSource(PoloDb):
 
@@ -17,6 +18,7 @@ class PoloSource(PoloDb):
         of the corpus database. Actually may not need this. """
         raise NotImplementedError("Please Implement this method")
 
+    # fixme: Move this to PoloText and replace with pandas version
     def clean_text(self,text):
         text = re.sub(r'_', 'MYUNDERSCORE', text) 	# Save underscores
         text = re.sub(r'\n+',' ',text)          	# Remove newlines

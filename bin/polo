@@ -59,8 +59,8 @@ if __name__ == '__main__':
         print("Importing stopwords")
         corpus.import_table_stopword(use_nltk=True)
 
-        print("Importing docsrc")
-        corpus.import_table_docsrc()
+        print("Importing src_doc")
+        corpus.import_table_src_doc()
 
         print("Importing doc")
         corpus.import_table_doc()
@@ -73,6 +73,9 @@ if __name__ == '__main__':
 
         print("Importing bigrams")
         corpus.add_tables_ngram_and_docngram(n=2)
+
+        print("Export mallet corpus")
+        corpus.export_mallet_corpus()
 
     elif args.cmd == 'mallet':
 

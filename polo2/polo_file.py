@@ -12,7 +12,10 @@ class PoloFile():
             raise ValueError("'{}' is not a file.".format(self.file_name))
 
     def __del__(self):
-        self.file.close()
+        try:
+            self.file.close()
+        except AttributeError as e:
+            print('No file open to close.')
 
     def read_lines(self):
         self.file.seek(0)

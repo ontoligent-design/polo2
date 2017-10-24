@@ -13,20 +13,19 @@ class PoloConfig():
             "base_path": '<BASE_PATH>',
             "mallet_path": '/usr/local/bin/mallet',
             "mallet_out_dir": 'trials',
-            "mallet_corpus_input": 'corpus/corpus.csv',
+            "mallet_corpus_input": 'trials/mallet-corpus.csv',
             "extra_stops": 'corpus/extra-stopwords.txt',
             "replacements": 'corpus/replacements.txt',
             "num_threads": 1,
             "verbose": 0,
             "nltk_data_path": '<NLTK_DATA_PATH>',
-            "corpus_sep": ',',
-            "corpus_header": '',
             "use_nltk": 1,
             "use_stopwords": 1,
             "thresh": 0.05,
-            "src_script": "importer.py",
+            "src_file_name": "corpus/corpus.csv",
+            "src_file_sep": '|',
             "src_base_url": '',
-            "src_ord_col": 'doc_label',
+            "src_ord_col": 'doc_label'
     }, 
         'trial1': {
             "num_topics": 20,
@@ -80,6 +79,8 @@ class PoloConfig():
 
     def create_ini(self, ini_file = 'config.template.ini'):
         # todo: If using a template, pass slug name as argument
+        # todo: Use this -- os.path.dirname(os.path.abspath(__file__))
+
         new_ini = configparser.ConfigParser()
         new_ini.read_dict(self.ini_schema)
         if not os.path.isfile(ini_file):
