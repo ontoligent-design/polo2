@@ -7,26 +7,31 @@ class PoloConfig():
     # todo: Consider just saving this as a template file
     ini_schema = {
         'DEFAULT': {
+
             "title": '<PROJECT TITLE>',
             "slug": '<SHORT TITLE (NO SPACES)>',
             "owner": '<PROJECT OWNER NAME>',
             "base_path": '<BASE_PATH>',
+
+            "src_file_name": "corpus/corpus.csv",
+            "src_file_sep": '|',
+            "src_base_url": '<URL_WITH_NO_TRAILING_SLASH>',
+            "src_ord_col": 'doc_label',
+
+            "use_stopwords": 1,
+            "extra_stops": 'corpus/extra-stopwords.txt',
+            "use_nltk": 1,
+            "nltk_data_path": '<NLTK_DATA_PATH>',
+
             "mallet_path": '/usr/local/bin/mallet',
             "mallet_out_dir": 'trials',
             "mallet_corpus_input": 'trials/mallet-corpus.csv',
-            "extra_stops": 'corpus/extra-stopwords.txt',
-            "replacements": 'corpus/replacements.txt',
             "num_threads": 1,
             "verbose": 0,
-            "nltk_data_path": '<NLTK_DATA_PATH>',
-            "use_nltk": 1,
-            "use_stopwords": 1,
             "thresh": 0.05,
-            "src_file_name": "corpus/corpus.csv",
-            "src_file_sep": '|',
-            "src_base_url": '',
-            "src_ord_col": 'doc_label'
-    }, 
+            "replacements": 'corpus/replacements.txt'
+
+    },
         'trial1': {
             "num_topics": 20,
             "num_top_words": 10,
