@@ -23,6 +23,7 @@ class PoloMallet(PoloDb):
         self.cfg_verbose = self.config.ini['DEFAULT']['replacements']
         self.cfg_thresh = float(self.config.ini['DEFAULT']['thresh'])
         self.cfg_input_corpus = self.config.ini['DEFAULT']['mallet_corpus_input']
+
         self.cfg_num_topics = int(self.config.ini[trial]['num_topics'])
         self.cfg_num_top_words = int(self.config.ini[trial]['num_top_words'])
         self.cfg_num_iterations = int(self.config.ini[trial]['num_iterations'])
@@ -65,19 +66,19 @@ class PoloMallet(PoloDb):
         self.mallet['train-topics']['num-threads'] = self.cfg_num_threads
         self.mallet['train-topics']['input'] = self.mallet['import-file']['output']
 
-        self.mallet['train-topics']['output-topic-keys']        = '{}-topic-keys.txt'.format(self.file_prefix)
-        self.mallet['train-topics']['output-doc-topics']        = '{}-doc-topics.txt'.format(self.file_prefix)
-        self.mallet['train-topics']['word-topic-counts-file']   = '{}-word-topic-counts.txt'.format(self.file_prefix)
-        self.mallet['train-topics']['topic-word-weights-file']  = '{}-topic-word-weights.txt'.format(self.file_prefix)
-        self.mallet['train-topics']['xml-topic-report']         = '{}-topic-report.xml'.format(self.file_prefix)
-        self.mallet['train-topics']['xml-topic-phrase-report']  = '{}-topic-phrase-report.xml'.format(self.file_prefix)
-        self.mallet['train-topics']['diagnostics-file']         = '{}-diagnostics.xml'.format(self.file_prefix)
+        self.mallet['train-topics']['output-topic-keys'] = '{}-topic-keys.txt'.format(self.file_prefix)
+        self.mallet['train-topics']['output-doc-topics'] = '{}-doc-topics.txt'.format(self.file_prefix)
+        self.mallet['train-topics']['word-topic-counts-file'] = '{}-word-topic-counts.txt'.format(self.file_prefix)
+        self.mallet['train-topics']['topic-word-weights-file'] = '{}-topic-word-weights.txt'.format(self.file_prefix)
+        self.mallet['train-topics']['xml-topic-report'] = '{}-topic-report.xml'.format(self.file_prefix)
+        self.mallet['train-topics']['xml-topic-phrase-report'] = '{}-topic-phrase-report.xml'.format(self.file_prefix)
+        self.mallet['train-topics']['diagnostics-file'] = '{}-diagnostics.xml'.format(self.file_prefix)
         # self.mallet['train-topics']['output-topic-docs']        = '{}-topic-docs.txt'.format(self.file_prefix)
 
-        self.mallet['train-topics']['num-top-docs']             = 100 # todo: ADD TO CONFIG
+        self.mallet['train-topics']['num-top-docs'] = 100 # todo: ADD TO CONFIG
         # self.mallet['train-topics']['doc-topics-threshold']    = self.config.thresh
-        self.mallet['train-topics']['doc-topics-max']           = 10 # todo: ADD TO CONFIG
-        self.mallet['train-topics']['show-topics-interval']     = 100 # todo: ADD TO CONFIG
+        self.mallet['train-topics']['doc-topics-max'] = 10 # todo: ADD TO CONFIG
+        self.mallet['train-topics']['show-topics-interval'] = 100 # todo: ADD TO CONFIG
 
         self.mallet['trial_name'] = self.trial_name
 
@@ -116,6 +117,7 @@ class PoloMallet(PoloDb):
         if not src_file: src_file = self.mallet['train-topics']['output-topic-keys']
         topic = pd.read_csv(src_file, sep='\t', header=None, index_col=False,
                             names=['topic_id', 'topic_alpha', 'topic_words'])
+        topic.set_index('topic_id', inplace=True)
         self.put_table(topic, 'topic')
 
     def import_tables_topicword_and_word(self, src_file=None):
@@ -154,8 +156,9 @@ class PoloMallet(PoloDb):
                     DOCTOPIC.append([doc_id, topic_id, topic_weight])
             doctopic = pd.DataFrame(DOCTOPIC, columns=['doc_id', 'topic_id', 'topic_weight'])
             doc = pd.DataFrame(DOC, columns=['doc_id', 'doc_key', 'doc_label'])
+            doc.set_index('doc_id', inplace=True)
             self.put_table(doctopic, 'doctopic')
-            self.put_table(doc, 'doc')
+            self.put_table(doc, 'doc', index=True)
         else:
             doctopic = pd.read_csv(src_file, sep='\t', header=None)
             doc = pd.DataFrame(doctopic.iloc[:,1])

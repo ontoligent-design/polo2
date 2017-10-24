@@ -125,4 +125,4 @@ class PoloCorpus(PoloDb):
         polo_corpus = self.get_table('doc')
         #polo_corpus = polo_corpus[['doc_id', 'doc_label', 'doc_content']]
         polo_corpus = polo_corpus[['doc_label', 'doc_content']] # Why does get_table() pull doc_id as index?
-        polo_corpus.to_csv(self.corpus_file, index=True)
+        polo_corpus.to_csv(self.corpus_file, index=True, index_label='doc_id', header=False)
