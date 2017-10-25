@@ -23,6 +23,9 @@ class PoloMallet(PoloDb):
         self.cfg_verbose = self.config.ini['DEFAULT']['replacements']
         self.cfg_thresh = float(self.config.ini['DEFAULT']['thresh'])
         self.cfg_input_corpus = self.config.ini['DEFAULT']['mallet_corpus_input']
+        self.cfg_num_top_docs = self.config.ini['DEFAULT']['num_top_docs']
+        self.cfg_doc_topics_max = self.config.ini['DEFAULT']['doc_topics_max']
+        self.cfg_show_topics_interval = self.config.ini['DEFAULT']['show_topics_interval']
 
         self.cfg_num_topics = int(self.config.ini[trial]['num_topics'])
         self.cfg_num_top_words = int(self.config.ini[trial]['num_top_words'])
@@ -73,12 +76,12 @@ class PoloMallet(PoloDb):
         self.mallet['train-topics']['xml-topic-report'] = '{}-topic-report.xml'.format(self.file_prefix)
         self.mallet['train-topics']['xml-topic-phrase-report'] = '{}-topic-phrase-report.xml'.format(self.file_prefix)
         self.mallet['train-topics']['diagnostics-file'] = '{}-diagnostics.xml'.format(self.file_prefix)
-        # self.mallet['train-topics']['output-topic-docs']        = '{}-topic-docs.txt'.format(self.file_prefix)
+        # self.mallet['train-topics']['output-topic-docs'] = '{}-topic-docs.txt'.format(self.file_prefix)
 
-        self.mallet['train-topics']['num-top-docs'] = 100 # todo: ADD TO CONFIG
-        # self.mallet['train-topics']['doc-topics-threshold']    = self.config.thresh
-        self.mallet['train-topics']['doc-topics-max'] = 10 # todo: ADD TO CONFIG
-        self.mallet['train-topics']['show-topics-interval'] = 100 # todo: ADD TO CONFIG
+        self.mallet['train-topics']['num-top-docs'] = self.cfg_num_topics
+        # self.mallet['train-topics']['doc-topics-threshold'] = self.config.thresh
+        self.mallet['train-topics']['doc-topics-max'] = self.cfg_doc_topics_max
+        self.mallet['train-topics']['show-topics-interval'] = self.cfg_show_topics_interval
 
         self.mallet['trial_name'] = self.trial_name
 
@@ -138,6 +141,7 @@ class PoloMallet(PoloDb):
         self.put_table(topicword, 'topicword')
 
     def import_table_doctopic(self, src_file=None):
+        # fixme: Get rid of doc_key here -- it's confusing and serves no purpose
         if not src_file: src_file = self.mallet['train-topics']['output-doc-topics']
         if 'doc-topics-threshold' in self.mallet['train-topics']:
             DOC = []
@@ -161,7 +165,7 @@ class PoloMallet(PoloDb):
             self.put_table(doc, 'doc', index=True)
         else:
             doctopic = pd.read_csv(src_file, sep='\t', header=None)
-            doc = pd.DataFrame(doctopic.iloc[:,1])
+            doc = pd.DataFrame(doctopic.iloc[:, 1])
             doc.columns = ['doc_tmp']
             doc['doc_key'] = doc.doc_tmp.apply(lambda x: x.split(',')[0])
             doc['doc_label'] = doc.doc_tmp.apply(lambda x: x.split(',')[1])

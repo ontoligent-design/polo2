@@ -29,8 +29,10 @@ class PoloConfig():
             "num_threads": 1,
             "verbose": 0,
             "thresh": 0.05,
-            "replacements": 'corpus/replacements.txt'
-
+            "replacements": 'corpus/replacements.txt',
+            "num_top_docs": 100,
+            "doc_topics_max": 10,
+            "show_topics_interval": 100
     },
         'trial1': {
             "num_topics": 20,
