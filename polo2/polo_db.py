@@ -1,6 +1,8 @@
 import sqlite3, sys
 import pandas as pd
 
+# todo: Integrate SQLAlchemy to add indexes, etc.
+
 class PoloDb():
 
     tables = {} # Used to cache tables

@@ -2,9 +2,10 @@ import configparser
 import os
 import sys
 
+# todo: Use templates to create INI files and other boilerplate
+
 class PoloConfig():
 
-    # todo: Consider just saving this as a template file
     ini_schema = {
         'DEFAULT': {
 
