@@ -5,5 +5,6 @@ from polo2.polo_config import PoloConfig
 from polo2.polo_corpus import PoloCorpus
 from polo2.polo_mallet import PoloMallet
 from polo2.polo_text import PoloText
+from polo2.polo_report import PoloReport
 
-__all__ = ['PoloDb', 'PoloFile', 'PoloConfig', 'PoloCorpus', 'PoloMallet', 'PoloMath', 'PoloText']
+__all__ = ['PoloDb', 'PoloFile', 'PoloConfig', 'PoloCorpus', 'PoloMallet', 'PoloMath', 'PoloText', 'PoloReport']
