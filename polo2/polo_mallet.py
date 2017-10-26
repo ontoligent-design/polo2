@@ -16,6 +16,8 @@ class PoloMallet(PoloDb):
         self.config = config
         self.trial = trial
 
+        # todo: Figure out if this mapping is necessary, and, if so, how to improve it
+        # todo: Add the ability for trial configs to override defaults and put in PoloConfig
         self.cfg_slug = self.config.ini['DEFAULT']['slug']
         self.cfg_mallet_path = self.config.ini['DEFAULT']['mallet_path']
         self.cfg_output_dir = self.config.ini['DEFAULT']['mallet_out_dir']
@@ -26,14 +28,14 @@ class PoloMallet(PoloDb):
         self.cfg_num_top_docs = self.config.ini['DEFAULT']['num_top_docs']
         self.cfg_doc_topics_max = self.config.ini['DEFAULT']['doc_topics_max']
         self.cfg_show_topics_interval = self.config.ini['DEFAULT']['show_topics_interval']
+        self.cfg_num_top_words = int(self.config.ini['DEFAULT']['num_top_words'])
+        self.cfg_num_threads = int(self.config.ini['DEFAULT']['num_threads'])
+        self.cfg_extra_stops = self.config.ini['DEFAULT']['extra_stops']
+        self.cfg_replacements = self.config.ini['DEFAULT']['replacements']
 
         self.cfg_num_topics = int(self.config.ini[trial]['num_topics'])
-        self.cfg_num_top_words = int(self.config.ini[trial]['num_top_words'])
         self.cfg_num_iterations = int(self.config.ini[trial]['num_iterations'])
-        self.cfg_extra_stops = self.config.ini[trial]['extra_stops']
-        self.cfg_replacements = self.config.ini[trial]['replacements']
         self.cfg_optimize_interval = int(self.config.ini[trial]['optimize_interval'])
-        self.cfg_num_threads = int(self.config.ini[trial]['num_threads'])
 
         self.generate_trial_name()
         self.file_prefix = '{}/{}'.format(self.cfg_output_dir, self.trial_name)
@@ -151,15 +153,17 @@ class PoloMallet(PoloDb):
                 row = line.split('\t')
                 row.pop()  # Pretty sure this is right
                 doc_id = row[0]
-                doc_key = row[1].split(',')[0]
+                #doc_key = row[1].split(',')[0]
                 doc_label = row[1].split(',')[1]
-                DOC.append([doc_id, doc_key, doc_label])
+                #DOC.append([doc_id, doc_key, doc_label])
+                DOC.append([doc_id, doc_label])
                 for i in range(2, len(row), 2):
                     topic_id = row[i]
                     topic_weight = row[i + 1]
                     DOCTOPIC.append([doc_id, topic_id, topic_weight])
             doctopic = pd.DataFrame(DOCTOPIC, columns=['doc_id', 'topic_id', 'topic_weight'])
-            doc = pd.DataFrame(DOC, columns=['doc_id', 'doc_key', 'doc_label'])
+            #doc = pd.DataFrame(DOC, columns=['doc_id', 'doc_key', 'doc_label'])
+            doc = pd.DataFrame(DOC, columns=['doc_id', 'doc_label'])
             doc.set_index('doc_id', inplace=True)
             self.put_table(doctopic, 'doctopic')
             self.put_table(doc, 'doc', index=True)
@@ -167,9 +171,10 @@ class PoloMallet(PoloDb):
             doctopic = pd.read_csv(src_file, sep='\t', header=None)
             doc = pd.DataFrame(doctopic.iloc[:, 1])
             doc.columns = ['doc_tmp']
-            doc['doc_key'] = doc.doc_tmp.apply(lambda x: x.split(',')[0])
+            #doc['doc_key'] = doc.doc_tmp.apply(lambda x: x.split(',')[0])
             doc['doc_label'] = doc.doc_tmp.apply(lambda x: x.split(',')[1])
-            doc = doc[['doc_key', 'doc_label']]
+            #doc = doc[['doc_key', 'doc_label']]
+            doc = doc[['doc_label']]
             doc.index.name = 'doc_id'
             self.put_table(doc, 'doc', index=True)
             doctopic.drop(1, axis = 1, inplace=True)

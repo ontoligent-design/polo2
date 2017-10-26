@@ -170,10 +170,13 @@ if __name__ == '__main__':
                 print("Subdirectory `{}` exists.".format(subdir))
 
         # CREATE STUB IMPORTER
-        if not os.path.isfile('importer.py'):
-            print("Creating stub `{}`.".format(stub))
+        """
+        stub = 'importer.py'
+        if not os.path.isfile(stub):
+            print("Creating stub `importer.py`.".format(stub))
             with open(stub, 'w') as stub:
                 out.write("# ADD IMPORTER CODE")
+        """
 
     elif args.cmd == 'ini':
         ini_file = 'config.ini'

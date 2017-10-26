@@ -30,16 +30,15 @@ class PoloConfig():
             "verbose": 0,
             "thresh": 0.05,
             "replacements": 'corpus/replacements.txt',
+            "num_top_words": 10,
             "num_top_docs": 100,
             "doc_topics_max": 10,
             "show_topics_interval": 100
     },
         'trial1': {
             "num_topics": 20,
-            "num_top_words": 10,
             "num_iterations": 500,
-            "optimize_interval": 10,
-            "num_threads": 1
+            "optimize_interval": 10
         }
     }
     
