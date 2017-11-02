@@ -8,8 +8,9 @@ class PoloDb():
     tables = {} # Used to cache tables
     cache_mode = False
 
-    def __init__(self, dbfile):
+    def __init__(self, dbfile, read_only=False):
         self.dbfile = dbfile
+        self.read_only = read_only
         try:
             self.conn = sqlite3.connect(self.dbfile)
         except sqlite3.Error as e:
@@ -23,9 +24,13 @@ class PoloDb():
                 raise ValueError("Can't close database:", e.args[0])
 
     def put_table(self, df, table_name='test', if_exists='replace', index=False, index_label=None):
-        df.to_sql(table_name, self.conn, if_exists=if_exists, index=index, index_label=index_label)
-        if self.cache_mode:
-            self.tables[table_name] = df.reset_index() # Index reset is crucial
+        if not self.read_only:
+            df.to_sql(table_name, self.conn, if_exists=if_exists, index=index, index_label=index_label)
+            if self.cache_mode:
+                self.tables[table_name] = df.reset_index() # Index reset is crucial
+        else:
+            # fixme: Change ValueErrors to proper errors
+            raise ValueError('Read-only mode for safety.')
 
     def get_table(self, table_name=''):
         if self.cache_mode and table_name in self.tables:

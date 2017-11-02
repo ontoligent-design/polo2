@@ -10,7 +10,8 @@ if __name__ == '__main__':
 
     # Main parser app
     parser = argparse.ArgumentParser(description='Welcome to Polo')
-    parser.add_argument("--ini", help="Path to ini file (default: ./config.ini)", action="store", default='./config.ini')
+    parser.add_argument("--ini", help="Path to ini file (default: ./config.ini)", action="store",
+                        default='./config.ini')
 
     # Subparsers for specific activities
     subparsers = parser.add_subparsers(title="Actions", help='Select an action', dest='cmd')
@@ -59,14 +60,12 @@ if __name__ == '__main__':
         print("Importing stopwords")
         corpus.import_table_stopword(use_nltk=True)
 
-        print("Importing src_doc")
-        corpus.import_table_src_doc()
-
         print("Importing doc")
         corpus.import_table_doc()
 
         print("Importing doctoken")
         corpus.add_table_doctoken()
+        #corpus.add_table_doctokenbow()
 
         print("Importing token")
         corpus.add_table_token()
@@ -154,7 +153,8 @@ if __name__ == '__main__':
         # CREATE CONFIG.INI
         cfg_file = '{}/config.ini'.format(slug)
         if not os.path.isfile(cfg_file):
-            print("Creating INI file template `{}`. When this process is done, edit this file with sensible values.".format(cfg_file))
+            print("Creating INI file template `{}`.".format(cfg_file))
+            print("When this process is done, edit this file with sensible values.")
             config = PoloConfig(cfg_file, create=True)
         else:
             print("INI file `{}` already exists.".format(cfg_file))

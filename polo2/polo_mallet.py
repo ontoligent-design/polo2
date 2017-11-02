@@ -143,7 +143,6 @@ class PoloMallet(PoloDb):
         self.put_table(topicword, 'topicword')
 
     def import_table_doctopic(self, src_file=None):
-        # fixme: Get rid of doc_key here -- it's confusing and serves no purpose
         if not src_file: src_file = self.mallet['train-topics']['output-doc-topics']
         if 'doc-topics-threshold' in self.mallet['train-topics']:
             DOC = []
@@ -153,16 +152,13 @@ class PoloMallet(PoloDb):
                 row = line.split('\t')
                 row.pop()  # Pretty sure this is right
                 doc_id = row[0]
-                #doc_key = row[1].split(',')[0]
                 doc_label = row[1].split(',')[1]
-                #DOC.append([doc_id, doc_key, doc_label])
                 DOC.append([doc_id, doc_label])
                 for i in range(2, len(row), 2):
                     topic_id = row[i]
                     topic_weight = row[i + 1]
                     DOCTOPIC.append([doc_id, topic_id, topic_weight])
             doctopic = pd.DataFrame(DOCTOPIC, columns=['doc_id', 'topic_id', 'topic_weight'])
-            #doc = pd.DataFrame(DOC, columns=['doc_id', 'doc_key', 'doc_label'])
             doc = pd.DataFrame(DOC, columns=['doc_id', 'doc_label'])
             doc.set_index('doc_id', inplace=True)
             self.put_table(doctopic, 'doctopic')
@@ -171,9 +167,7 @@ class PoloMallet(PoloDb):
             doctopic = pd.read_csv(src_file, sep='\t', header=None)
             doc = pd.DataFrame(doctopic.iloc[:, 1])
             doc.columns = ['doc_tmp']
-            #doc['doc_key'] = doc.doc_tmp.apply(lambda x: x.split(',')[0])
             doc['doc_label'] = doc.doc_tmp.apply(lambda x: x.split(',')[1])
-            #doc = doc[['doc_key', 'doc_label']]
             doc = doc[['doc_label']]
             doc.index.name = 'doc_id'
             self.put_table(doc, 'doc', index=True)
@@ -212,8 +206,9 @@ class PoloMallet(PoloDb):
         cfg['base_path'] = self.cfg_base_path
         cfg['file_prefix'] = self.file_prefix
         config = pd.DataFrame({'key': list(cfg.keys()), 'value': list(cfg.values())})
-        with sqlite3.connect(self.dbfile) as db:
-            config.to_sql('config', db, if_exists='replace')
+        self.put_table(config, 'config')
+        #with sqlite3.connect(self.dbfile) as db:
+        #    config.to_sql('config', db, if_exists='replace')
 
     def add_diagnostics(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['diagnostics-file']
