@@ -301,11 +301,25 @@ class PoloMallet(PoloDb):
         topic['topic_rel_freq'] = [len(dtsw[dtsw[t] > 0]) / doc_num for t in range(self.cfg_num_topics)]
         self.put_table(topic, 'topic')
 
+        # For cosine sim
+        topicword = self.get_table('topicword')
+        topicword['word_count'] = topicword['word_count'].astype(int)
+        topicword.set_index(['word_id', 'topic_id'], inplace=True)
+        topicword_wide = topicword.unstack().reset_index().fillna(0)
+        topicword_wide.columns = topicword_wide.columns.droplevel(0)
+
         TOPICPAIR = []
         from itertools import combinations
         for pair in list(combinations(topic.index, 2)):
             a = pair[0]
             b = pair[1]
+
+            # Cosine sim and Jensen-Shannon Divergence
+            x = topicword_wide.iloc[:, a].tolist()
+            y = topicword_wide.iloc[:, b].tolist()
+            cosim = pm.cosine_sim(x, y)
+            jsdiv = pm.JSdivergence(x, y)
+
             p_a = topic.loc[a, 'topic_rel_freq']
             p_b = topic.loc[b, 'topic_rel_freq']
             p_ab = len(dtsw[(dtsw[a] > 0) & (dtsw[b] > 0)]) / doc_num
@@ -314,9 +328,9 @@ class PoloMallet(PoloDb):
             p_bGa = p_ab / p_a
             i_ab = pm.pwmi(p_a, p_b, p_ab)
             c_ab = (1 - p_a) / (1 - p_aGb)
-            TOPICPAIR.append([a, b, p_a, p_b, p_ab, p_aGb, p_bGa, i_ab, c_ab])
+            TOPICPAIR.append([a, b, p_a, p_b, p_ab, p_aGb, p_bGa, i_ab, c_ab, cosim, jsdiv])
         topicpair = pd.DataFrame(TOPICPAIR, columns=['topic_a', 'topic_b', 'p_a', 'p_b', 'p_ab',
-                                                     'p_aGb', 'p_bGa', 'i_ab', 'c_ab'])
+                                                     'p_aGb', 'p_bGa', 'i_ab', 'c_ab', 'cosine_sim', 'js_div'])
         self.put_table(topicpair, 'topicpair')
 
     def get_doctopic_wide(self):

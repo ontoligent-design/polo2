@@ -5,6 +5,18 @@ import math
 class PoloMath():
 
     @staticmethod
+    def cosine_sim(x, y):
+        """ x and y are two comparable distribution vectors, e.g. words for a topic"""
+        c1 = math.sqrt(sum([m * m for m in x]))
+        c2 = math.sqrt(sum([m * m for m in y]))
+        c3 = math.sqrt(sum([m * n for m, n in zip(x, y)]))
+        try:
+            c4 = c3 / (c1 * c2)
+        except:
+            c4 = None
+        return c4
+
+    @staticmethod
     def JSdivergence(p1, p2):
         P1 = p1/np.sum(p1)
         P2 = p2/np.sum(p2)
