@@ -9,6 +9,7 @@ class PoloUtil:
         self.model = None
         self.retro = None
 
+    # todo: Rewrite as PoloCombiner or something and make this the init
     def retro_combine(self, corpus_dbfile, model_dbfile, retro_dbfile=None):
         self.corpus = PoloDb(corpus_dbfile)
         self.model = PoloDb(model_dbfile)
@@ -16,6 +17,23 @@ class PoloUtil:
             retro_dbfile = '{}-retro-combo.db'.format(self.config.ini['DEFAULT']['slug'])
         self.retro = PoloDb(retro_dbfile)
         self.create_retro_db()
+
+    def create_all_tables(self):
+        self.create_config_table()
+        self.create_src_doc_meta_table()
+        self.create_src_doc_table()
+        self.create_word_table()
+        self.create_doc_table()
+        self.create_docword_table()
+        self.create_topic_table()
+        self.create_doctopic_table()
+        self.create_doctopic_long_table()
+        self.create_topicword_table()
+        self.create_topicword_long_table()
+        self.create_topicphrase_table()
+        self.create_topicpair_table()
+        self.create_topicpair_by_deps_table()
+        #self.create_doctopic_sig_table()
 
     def create_doc_table(self):
         doc = self.model.get_table('doc')
@@ -51,7 +69,7 @@ class PoloUtil:
         src_doc_meta = pd.DataFrame({'src_meta_id': self.config.ini['DEFAULT']['slug'],
              'src_meta_desc': self.config.ini['DEFAULT']['title'],
              'src_meta_base_url': self.config.ini['DEFAULT']['src_base_url'],
-             'src_meta_ord_type': None}, index=['src_meta_id'])
+             'src_meta_ord_type': None}, index=['src_meta_id']) # fixme: Need to add ord type to config and pass it
         self.retro.put_table(src_doc_meta, 'src_doc_meta', if_exists='replace')
 
     def create_word_table(self):
@@ -71,7 +89,8 @@ class PoloUtil:
         self.retro.put_table(new_docword, 'docword', if_exists='replace')
 
     def create_config_table(self):
-        pass
+        config = self.model.get_table('config')
+        self.retro.put_table(config, 'config', if_exists='replace')
 
     def create_doctopic_table(self):
         doctopic = self.model.get_table('doctopic')
@@ -81,6 +100,9 @@ class PoloUtil:
         doctopic_wide = doctopic.unstack().reset_index()
         doctopic_wide.columns = doctopic_wide.columns.droplevel(0)
         doctopic_wide.rename(columns={'': 'doc_id'}, inplace=True)
+        doc = self.model.get_table('doc')
+        doc.set_index('doc_id', inplace=True)
+        doctopic_wide = doctopic_wide.join(doc[['topic_entropy', 'doc_label']], how='left')
         self.retro.put_table(doctopic_wide, 'doctopic', if_exists='replace')
 
     def create_topic_table(self):
@@ -91,7 +113,6 @@ class PoloUtil:
         new_topic['topic_words'] = topic.topic_words
         new_topic['total_tokens'] = topic.topic_tokens
         self.retro.put_table(new_topic, 'topic', if_exists='replace')
-
 
     def create_topicphrase_table(self):
         topicphrase = self.model.get_table('topicphrase')
@@ -123,7 +144,7 @@ class PoloUtil:
         topicword['word_count'] = topicword['word_count'].astype(int)
         word.set_index('word_id', inplace=True)
         topicword.set_index(['word_id','topic_id'], inplace=True)
-        topicword['word_str'] = word.word_str
+        topicword = topicword.join(word, how='left')
         self.retro.put_table(topicword, 'topicword_long', if_exists='replace', index=True)
 
     def create_topicpair_table(self):
@@ -160,16 +181,23 @@ class PoloUtil:
         CREATE TABLE IF NOT EXISTS doc (doc_id INTEGER PRIMARY KEY,doc_label TEXT,doc_str TEXT);
         CREATE TABLE IF NOT EXISTS docword (doc_id INTEGER,word_id INTEGER,word_str TEXT,word_count INTEGER,tfidf_weight REAL);
         CREATE TABLE IF NOT EXISTS config (key TEXT, value TEXT);
-        CREATE TABLE IF NOT EXISTS doctopic (doc_id INTEGER PRIMARY KEY, doc_label TEXT, topic_entropy REAL, t0 REAL, t1 REAL, t2 REAL, t3 REAL, t4 REAL, t5 REAL, t6 REAL, t7 REAL, t8 REAL, t9 REAL, t10 REAL, t11 REAL, t12 REAL, t13 REAL, t14 REAL, t15 REAL, t16 REAL, t17 REAL, t18 REAL, t19 REAL, t20 REAL, t21 REAL, t22 REAL, t23 REAL, t24 REAL, t25 REAL, t26 REAL, t27 REAL, t28 REAL, t29 REAL, t30 REAL, t31 REAL, t32 REAL, t33 REAL, t34 REAL, t35 REAL, t36 REAL, t37 REAL, t38 REAL, t39 REAL, t40 REAL, t41 REAL, t42 REAL, t43 REAL, t44 REAL, t45 REAL, t46 REAL, t47 REAL, t48 REAL, t49 REAL, t50 REAL, t51 REAL, t52 REAL, t53 REAL, t54 REAL, t55 REAL, t56 REAL, t57 REAL, t58 REAL, t59 REAL, t60 REAL, t61 REAL, t62 REAL, t63 REAL, t64 REAL, t65 REAL, t66 REAL, t67 REAL, t68 REAL, t69 REAL, t70 REAL, t71 REAL, t72 REAL, t73 REAL, t74 REAL, t75 REAL, t76 REAL, t77 REAL, t78 REAL, t79 REAL);
         CREATE TABLE IF NOT EXISTS topic (topic_id INTEGER PRIMARY KEY, topic_alpha REAL, total_tokens INTEGER, topic_words TEXT);
         CREATE TABLE IF NOT EXISTS topicphrase (topic_id INTEGER, topic_phrase TEXT, phrase_count INTEGER, phrase_weight REAL);
-        CREATE TABLE IF NOT EXISTS topicword (word_id INTEGER, word_str TEXT, t0 INTEGER, t1 INTEGER, t2 INTEGER, t3 INTEGER, t4 INTEGER, t5 INTEGER, t6 INTEGER, t7 INTEGER, t8 INTEGER, t9 INTEGER, t10 INTEGER, t11 INTEGER, t12 INTEGER, t13 INTEGER, t14 INTEGER, t15 INTEGER, t16 INTEGER, t17 INTEGER, t18 INTEGER, t19 INTEGER, t20 INTEGER, t21 INTEGER, t22 INTEGER, t23 INTEGER, t24 INTEGER, t25 INTEGER, t26 INTEGER, t27 INTEGER, t28 INTEGER, t29 INTEGER, t30 INTEGER, t31 INTEGER, t32 INTEGER, t33 INTEGER, t34 INTEGER, t35 INTEGER, t36 INTEGER, t37 INTEGER, t38 INTEGER, t39 INTEGER, t40 INTEGER, t41 INTEGER, t42 INTEGER, t43 INTEGER, t44 INTEGER, t45 INTEGER, t46 INTEGER, t47 INTEGER, t48 INTEGER, t49 INTEGER, t50 INTEGER, t51 INTEGER, t52 INTEGER, t53 INTEGER, t54 INTEGER, t55 INTEGER, t56 INTEGER, t57 INTEGER, t58 INTEGER, t59 INTEGER, t60 INTEGER, t61 INTEGER, t62 INTEGER, t63 INTEGER, t64 INTEGER, t65 INTEGER, t66 INTEGER, t67 INTEGER, t68 INTEGER, t69 INTEGER, t70 INTEGER, t71 INTEGER, t72 INTEGER, t73 INTEGER, t74 INTEGER, t75 INTEGER, t76 INTEGER, t77 INTEGER, t78 INTEGER, t79 INTEGER, word_sum INTEGER);
         CREATE TABLE IF NOT EXISTS doctopic_long (doc_id INTEGER NOT NULL, topic_id INTEGER NOT NULL, topic_weight REAL NOT NULL, UNIQUE (doc_id, topic_id));
         CREATE TABLE IF NOT EXISTS topicword_long (word_id INTEGER NOT NULL, word_str TEXT NOT NULL, topic_id INTEGER NOT NULL, word_count INTEGER NOT NULL, UNIQUE (word_id, topic_id));
         CREATE TABLE IF NOT EXISTS topicpair (topic_id1 INTEGER, topic_id2 INTEGER, cosine_sim REAL, js_div REAL);
         CREATE TABLE IF NOT EXISTS topicpair_by_deps (topic_a INTEGER, topic_b INTEGER, p_a REAL, p_b REAL, p_ab REAL, p_aGb REAL, p_bGa REAL, i_ab REAL);
         CREATE TABLE IF NOT EXISTS doctopic_sig (doc_id INTEGER PRIMARY KEY, topic_sig TEXT, topic_sig_sorted TEXT, topic_n INTEGER);
         """.split(';')
+
+        # Handle wide tables
+        topic = self.model.get_table('topic')
+        n_topics = len(topic.topic_id.tolist())
+        topic_fields_real = ','.join(['t{} REAL'.format(tn) for tn in range(n_topics)])
+        topic_fields_int = ','.join(['t{} INTEGER'.format(tn) for tn in range(n_topics)])
+        sql_creators.append("CREATE TABLE IF NOT EXISTS doctopic (doc_id INTEGER PRIMARY KEY, doc_label TEXT, topic_entropy REAL, {})".format(topic_fields_real))
+        sql_creators.append("CREATE TABLE IF NOT EXISTS topicword (word_id INTEGER, word_str TEXT, {})".format(topic_fields_int))
+
         for sql_create in sql_creators:
             self.retro.conn.execute(sql_create)
 

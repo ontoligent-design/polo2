@@ -5,6 +5,7 @@ import argparse, sys, os
 from polo2 import PoloConfig
 from polo2 import PoloMallet
 from polo2 import PoloCorpus
+from polo2 import PoloUtil
 
 if __name__ == '__main__':
 
@@ -36,6 +37,11 @@ if __name__ == '__main__':
     parser_mallet.add_argument('trial', help="Trial name (see ini)", action="store", type=str, nargs='?', default=None)
     parser_mallet.add_argument('-t', "--topics", help="Number of topics (override ini)", action="store", type=int)
     parser_mallet.add_argument('-i', "--iters", help="Number of iterations (override ini)", action="store", type=int)
+
+    # RETRO
+    parser.retro = subparsers.add_parser('retro', help='Combines the corpus and model dbs for use in older Polo')
+    parser.retro.add_argument('-c', '--corpus_dbfile', help="Corpus database name", action="store", type=str, default=None)
+    parser.retro.add_argument('-m', '--model_dbfile', help="Mallet model database name", action="store", type=str, default=None)
 
     # Run the app
     args = parser.parse_args()
@@ -168,6 +174,19 @@ if __name__ == '__main__':
                 os.mkdir(path)
             else:
                 print("Subdirectory `{}` exists.".format(subdir))
+
+    elif args.cmd == 'retro':
+
+        print("Import config")
+        try:
+            config = PoloConfig(args.ini)
+        except ValueError as e:
+            print("Can't create config.", e)
+            sys.exit(1)
+
+        util = PoloUtil(config)
+        util.retro_combine(args.corpus_dbfile, args.model_dbfile)
+        util.create_all_tables()
 
         # CREATE STUB IMPORTER
         """
