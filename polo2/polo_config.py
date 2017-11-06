@@ -44,10 +44,10 @@ class PoloConfig():
         }
     }
     
-    def __init__(self, ini_file, create=True):
+    def __init__(self, ini_file, create=True, slug=None):
         if not os.path.isfile(ini_file):
             if create:
-                self.create_ini(ini_file)
+                self.create_ini(slug, ini_file) # Passing slug here is clunky
             else:
                 raise ValueError("INI file does not exist.")
         self.ini_file = ini_file
@@ -85,10 +85,10 @@ class PoloConfig():
             diff = keys1.difference(keys2)
             return diff
 
-    def create_ini(self, ini_file = 'config.template.ini'):
+    def create_ini(self, slug, ini_file = 'config.template.ini'):
         new_ini = configparser.ConfigParser()
         new_ini.read_dict(self.ini_schema)
-        new_ini['DEFAULT']['base_path'] = os.path.dirname(os.path.abspath(__file__)
+        new_ini['DEFAULT']['base_path'] = '{}/{}'.format(os.getcwd(), slug)
         if not os.path.isfile(ini_file):
             with open(ini_file, 'w+') as configfile:
                 new_ini.write(configfile)

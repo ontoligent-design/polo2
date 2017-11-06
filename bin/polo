@@ -161,7 +161,7 @@ if __name__ == '__main__':
         if not os.path.isfile(cfg_file):
             print("Creating INI file template `{}`.".format(cfg_file))
             print("When this process is done, edit this file with sensible values.")
-            config = PoloConfig(cfg_file, create=True)
+            config = PoloConfig(cfg_file, create=True, slug=slug)
         else:
             print("INI file `{}` already exists.".format(cfg_file))
 
