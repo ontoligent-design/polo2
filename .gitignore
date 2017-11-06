@@ -14,4 +14,3 @@ dist/
 
 # Build stuff
 build/
-build/lib/polo2/__init__.py
