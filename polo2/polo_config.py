@@ -1,6 +1,7 @@
 import configparser
 import os
 import sys
+import polo2
 
 # todo: Use templates to create INI files and other boilerplate
 
@@ -9,8 +10,8 @@ class PoloConfig():
     ini_schema = {
         'DEFAULT': {
 
-            "title": '<PROJECT TITLE>',
-            "slug": '<SHORT TITLE (NO SPACES)>',
+            "title": '<TITLE>',
+            "slug": '<SLUG>',
             "owner": '<PROJECT OWNER NAME>',
             "base_path": '<BASE_PATH>',
 
@@ -85,11 +86,9 @@ class PoloConfig():
             return diff
 
     def create_ini(self, ini_file = 'config.template.ini'):
-        # todo: If using a template, pass slug name as argument
-        # todo: Use this -- os.path.dirname(os.path.abspath(__file__))
-
         new_ini = configparser.ConfigParser()
         new_ini.read_dict(self.ini_schema)
+        new_ini['DEFAULT']['base_path'] = os.path.dirname(os.path.abspath(__file__)
         if not os.path.isfile(ini_file):
             with open(ini_file, 'w+') as configfile:
                 new_ini.write(configfile)

@@ -6,8 +6,12 @@
 polo2/__pycache__
 
 # Setuptools distribution folder.
-/dist/
+dist/
 
 # Python egg metadata, regenerated from source files by setuptools.
-/*.egg-info
-/*.egg
+*.egg-info/
+*.egg
+
+# Build stuff
+build/
+build/lib/polo2/__init__.py

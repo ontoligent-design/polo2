@@ -36,7 +36,7 @@ class PoloCorpus(PoloDb):
         if self.nltk_data_path: nltk.data.path.append(self.nltk_data_path)
 
     def import_table_doc(self, src_file_name=None):
-        # todo: Clarify requirements for doc!
+        # todo: Clarify requirements for doc -- delimitter, columns, header, etc.
         if not src_file_name: src_file_name = self.src_file_name
         if self.src_file_sep == '': self.src_file_sep = '|'
         doc = pd.read_csv(src_file_name, header=0, sep=self.src_file_sep)
