@@ -5,7 +5,7 @@ import argparse, sys, os
 from polo2 import PoloConfig
 from polo2 import PoloMallet
 from polo2 import PoloCorpus
-from polo2 import PoloUtil
+from polo2 import PoloRetro
 
 if __name__ == '__main__':
 
@@ -184,18 +184,9 @@ if __name__ == '__main__':
             print("Can't create config.", e)
             sys.exit(1)
 
-        util = PoloUtil(config)
-        util.retro_combine(args.corpus_dbfile, args.model_dbfile)
-        util.create_all_tables()
-
-        # CREATE STUB IMPORTER
-        """
-        stub = 'importer.py'
-        if not os.path.isfile(stub):
-            print("Creating stub `importer.py`.".format(stub))
-            with open(stub, 'w') as stub:
-                out.write("# ADD IMPORTER CODE")
-        """
+        retro = PoloRetro(config)
+        retro.retro_combine(args.corpus_dbfile, args.model_dbfile)
+        retro.create_all_tables()
 
     elif args.cmd == 'ini':
         ini_file = 'config.ini'

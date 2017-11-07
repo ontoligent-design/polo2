@@ -1,7 +1,7 @@
 import pandas as pd
 from polo2 import PoloDb
 
-class PoloUtil:
+class PoloRetro:
 
     def __init__(self, config):
         self.config = config

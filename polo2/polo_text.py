@@ -1,6 +1,11 @@
 import requests, re, os
 import pandas as pd
 
+"""
+This is really just a helper for converting text files into vector format. 
+"""
+# todo: Consider renaming this class
+
 class PoloText:
 
     #PUNC_PAT = r'\s*[.;:?!-]+\s*'
