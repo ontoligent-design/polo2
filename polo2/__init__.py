@@ -8,4 +8,4 @@ from polo2.polo_text import PoloText
 from polo2.polo_report import PoloReport
 from polo2.polo_retro import PoloRetro
 
-__all__ = ['PoloDb', 'PoloFile', 'PoloConfig', 'PoloCorpus', 'PoloMallet', 'PoloMath', 'PoloText', 'PoloReport', 'PoloUtil']
+__all__ = ['PoloDb', 'PoloFile', 'PoloConfig', 'PoloCorpus', 'PoloMallet', 'PoloMath', 'PoloText', 'PoloReport', 'PoloRetro']
