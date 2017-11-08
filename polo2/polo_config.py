@@ -3,8 +3,6 @@ import os
 import sys
 import polo2
 
-# todo: Use templates to create INI files and other boilerplate
-
 class PoloConfig():
 
     ini_schema = {

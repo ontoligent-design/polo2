@@ -198,4 +198,6 @@ if __name__ == '__main__':
         else:
             print("INI file `{}` already exists.".format(ini_file))
 
-
+    else:
+        parser.print_help()
+        sys.exit()
