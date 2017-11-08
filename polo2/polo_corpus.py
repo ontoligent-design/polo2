@@ -13,9 +13,9 @@ class PoloCorpus(PoloDb):
 
     def __init__(self, config):
 
+        self.slug = config.ini['DEFAULT']['slug']
         self.corpus_file = config.ini['DEFAULT']['mallet_corpus_input']
         self.nltk_data_path = config.ini['DEFAULT']['nltk_data_path']
-        self.slug = config.ini['DEFAULT']['slug']
         self.extra_stops = config.ini['DEFAULT']['extra_stops']
 
         # Source file stuff
@@ -85,9 +85,18 @@ class PoloCorpus(PoloDb):
     def add_table_token(self):
         doctoken = self.get_table('doctoken')
         token = pd.DataFrame(doctoken.token_str.value_counts())
-        token.index.name = 'token_str'
-        token.columns = ['token_count']
+        token.sort_index(inplace=True)
+        token.reset_index(inplace=True)
+        token.columns = ['token_str', 'token_count']
+        token.index.name = 'token_id'
         self.put_table(token, 'token', index=True)
+
+        token.reset_index(inplace=True)
+        doctokenbow = self.get_table('doctokenbow')
+        doctokenbow = doctokenbow.merge(token[['token_id', 'token_str']], on="token_str")
+        doctokenbow = doctokenbow[['doc_id', 'token_id', 'token_count']]
+        doctokenbow.sort_values('doc_id', inplace=True)
+        self.put_table(doctokenbow, 'doctokenbow', if_exists='replace')
 
     def add_tables_ngram_and_docngram(self, n = 2):
         if n not in range(2, 5):

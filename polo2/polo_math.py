@@ -17,7 +17,7 @@ class PoloMath():
         return c4
 
     @staticmethod
-    def JSdivergence(p1, p2):
+    def js_divergence(p1, p2):
         P1 = p1/np.sum(p1)
         P2 = p2/np.sum(p2)
         M = .5 * (P1 + P2)
