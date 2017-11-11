@@ -31,8 +31,8 @@ class PoloCorpus(PoloDb):
             if key in config.ini['DEFAULT']:
                 setattr(self, 'use_nltk', config.ini['DEFAULT'][key])
 
-        dbfile = '{}-corpus.db'.format(self.slug)
-        PoloDb.__init__(self, dbfile)
+        self.dbfile = '{}-corpus.db'.format(self.slug)
+        PoloDb.__init__(self, self.dbfile)
         if self.nltk_data_path: nltk.data.path.append(self.nltk_data_path)
 
     def import_table_doc(self, src_file_name=None):

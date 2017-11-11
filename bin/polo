@@ -5,6 +5,7 @@ import argparse, sys, os
 from polo2 import PoloConfig
 from polo2 import PoloMallet
 from polo2 import PoloCorpus
+from polo2 import PoloGensim
 from polo2 import PoloRetro
 
 if __name__ == '__main__':
@@ -81,6 +82,12 @@ if __name__ == '__main__':
 
         print("Export mallet corpus")
         corpus.export_mallet_corpus()
+
+        print("Running Gensim HDP (experimental)")
+        gs = PoloGensim(config, corpus.dbfile)
+        gs.make_gs_corpus()
+        gs.make_gs_dict()
+        gs.get_hdp()
 
     elif args.cmd == 'mallet':
 
