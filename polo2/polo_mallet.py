@@ -318,7 +318,7 @@ class PoloMallet(PoloDb):
             x = topicword_wide.iloc[:, a].tolist()
             y = topicword_wide.iloc[:, b].tolist()
             cosim = pm.cosine_sim(x, y)
-            jsdiv = pm.JSdivergence(x, y)
+            jsdiv = pm.js_divergence(x, y)
 
             p_a = topic.loc[a, 'topic_rel_freq']
             p_b = topic.loc[b, 'topic_rel_freq']
