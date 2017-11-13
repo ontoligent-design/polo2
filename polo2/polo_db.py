@@ -13,6 +13,7 @@ class PoloDb():
         self.read_only = read_only
         try:
             self.conn = sqlite3.connect(self.dbfile)
+            self.conn.row_factory = sqlite3.Row
         except sqlite3.Error as e:
             raise ValueError("Can't connect to database:", e.args[0])
 
