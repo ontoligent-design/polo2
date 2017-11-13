@@ -328,8 +328,8 @@ class PoloMallet(PoloDb):
             p_bGa = p_ab / p_a
             i_ab = pm.pwmi(p_a, p_b, p_ab)
             c_ab = (1 - p_a) / (1 - p_aGb)
-            TOPICPAIR.append([a, b, p_a, p_b, p_ab, p_aGb, p_bGa, i_ab, c_ab, cosim, jsdiv])
-        topicpair = pd.DataFrame(TOPICPAIR, columns=['topic_a', 'topic_b', 'p_a', 'p_b', 'p_ab',
+            TOPICPAIR.append([a, b, p_ab, p_aGb, p_bGa, i_ab, c_ab, cosim, jsdiv])
+        topicpair = pd.DataFrame(TOPICPAIR, columns=['topic_a_id', 'topic_b_id', 'p_ab',
                                                      'p_aGb', 'p_bGa', 'i_ab', 'c_ab', 'cosine_sim', 'js_div'])
         self.put_table(topicpair, 'topicpair')
 
