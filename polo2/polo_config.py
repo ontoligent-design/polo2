@@ -1,11 +1,13 @@
 import configparser
 import os
+from collections import OrderedDict
+
 import sys
 import polo2
 
 class PoloConfig():
 
-    ini_schema = {
+    ini_schema = OrderdedDict({
         'DEFAULT': {
 
             "title": '<TITLE>',
@@ -40,7 +42,7 @@ class PoloConfig():
             "num_iterations": 500,
             "optimize_interval": 10
         }
-    }
+    })
     
     def __init__(self, ini_file, create=True, slug=None):
         if not os.path.isfile(ini_file):
