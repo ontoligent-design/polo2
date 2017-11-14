@@ -37,8 +37,12 @@ class PoloCorpus(PoloDb):
 
     def import_table_doc(self, src_file_name=None):
         # todo: Clarify requirements for doc -- delimitter, columns, header, etc.
+        # All of this stuff should be in a schema as you did before
         if not src_file_name: src_file_name = self.src_file_name
-        if self.src_file_sep == '': self.src_file_sep = '|'
+        if self.src_file_sep == '':
+            self.src_file_sep = '|'
+        elif self.src_file_sep == 'TAB':
+            self.src_file_sep = '\t'
         doc = pd.read_csv(src_file_name, header=0, sep=self.src_file_sep)
         # fixme: Reconcile this with what mallet is doing!
         # fixme: Put this in a separate function for general text manipulation
