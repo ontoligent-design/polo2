@@ -1,5 +1,6 @@
-import sqlite3, sys
+import sqlite3, re
 import pandas as pd
+
 
 # todo: Integrate SQLAlchemy to add indexes, etc.
 
@@ -33,7 +34,7 @@ class PoloDb():
             # fixme: Change ValueErrors to proper errors
             raise ValueError('Read-only mode for safety.')
 
-    def get_table(self, table_name=''):
+    def get_table(self, table_name = '', set_index = False):
         if self.cache_mode and table_name in self.tables:
             return self.tables[table_name]
         else:
@@ -45,6 +46,9 @@ class PoloDb():
                 df = pd.read_sql_query(sql, self.conn)
                 if self.cache_mode:
                     self.tables[table_name] = df
+                if set_index:
+                    idx = [col for col in df.columns if re.search(r'_id$', col)]
+                    df.set_index(idx, inplace=True)
                 return df
             else:
                 raise ValueError("Table `{}` needs to be created first.".format(table_name))
