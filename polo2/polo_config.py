@@ -8,7 +8,7 @@ import polo2
 class PoloConfig():
     
     ini_schema = OrderedDict([
-        'DEFAULT', OrderedDict([
+        ('DEFAULT', OrderedDict([
             ("title", '<TITLE>'),
             ("slug", '<SLUG>'),
             ("owner", '<PROJECT OWNER NAME>'),
@@ -32,12 +32,12 @@ class PoloConfig():
             ("num_top_docs", 100),
             ("doc_topics_max", 10),
             ("show_topics_interval", 100)
-        ]),
-        'trial1', OrderedDict([
+        ])),
+        ('trial1', OrderedDict([
             ("num_topics", 20),
             ("num_iterations", 500),
             ("optimize_interval", 10)
-        ])
+        ]))
     ])
 
     """
