@@ -8,23 +8,19 @@ import polo2
 class PoloConfig():
     
     ini_schema = OrderedDict([
-        'DEFAULT', OrderedDict(
-
+        'DEFAULT', OrderedDict([
             ("title", '<TITLE>'),
             ("slug", '<SLUG>'),
             ("owner", '<PROJECT OWNER NAME>'),
             ("base_path", '<BASE_PATH>'),
-
             ("src_file_name", "corpus/corpus.csv"),
             ("src_file_sep", '|'),
             ("src_base_url", '<URL_WITH_NO_TRAILING_SLASH>'),
             ("src_ord_col", 'doc_label'),
-
             ("use_stopwords", 1),
             ("extra_stops", 'corpus/extra-stopwords.txt'),
             ("use_nltk", 1),
             ("nltk_data_path", '<NLTK_DATA_PATH>'),
-
             ("mallet_path", '/usr/local/bin/mallet'),
             ("mallet_out_dir", 'trials'),
             ("mallet_corpus_input", 'trials/mallet-corpus.csv'),
@@ -36,12 +32,12 @@ class PoloConfig():
             ("num_top_docs", 100),
             ("doc_topics_max", 10),
             ("show_topics_interval", 100)
-        ),
-        'trial1', OrderedDict(
+        ]),
+        'trial1', OrderedDict([
             ("num_topics", 20),
             ("num_iterations", 500),
             ("optimize_interval", 10)
-        )
+        ])
     ])
 
     """
