@@ -7,7 +7,7 @@ import polo2
 
 class PoloConfig():
 
-    ini_schema = OrderdedDict({
+    ini_schema = OrderedDict({
         'DEFAULT': {
 
             "title": '<TITLE>',
