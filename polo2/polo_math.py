@@ -2,6 +2,7 @@ import numpy as np
 import scipy.stats as sps
 import math
 
+
 class PoloMath():
 
     @staticmethod
@@ -18,8 +19,8 @@ class PoloMath():
 
     @staticmethod
     def js_divergence(p1, p2):
-        P1 = p1/np.sum(p1)
-        P2 = p2/np.sum(p2)
+        P1 = p1 / np.sum(p1)
+        P2 = p2 / np.sum(p2)
         M = .5 * (P1 + P2)
         return .5 * (sps.entropy(P1, M) + sps.entropy(P2, M))
 
@@ -31,5 +32,3 @@ class PoloMath():
         else:
             i_ab = None
         return i_ab
-
-
