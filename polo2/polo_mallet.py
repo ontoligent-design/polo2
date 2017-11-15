@@ -21,7 +21,7 @@ class PoloMallet(PoloDb):
         self.cfg_output_dir = self.config.ini['DEFAULT']['mallet_out_dir']
         self.cfg_base_path = self.config.ini['DEFAULT']['base_path']
         self.cfg_verbose = self.config.ini['DEFAULT']['replacements']
-        self.cfg_thresh = float(self.config.ini['DEFAULT']['thresh'])
+        self.cfg_thresh = float(self.config.ini['DEFAULT']['thresh']) # Maybe cast when used
         self.cfg_input_corpus = self.config.ini['DEFAULT']['mallet_corpus_input']
         self.cfg_num_top_docs = self.config.ini['DEFAULT']['num_top_docs']
         self.cfg_doc_topics_max = self.config.ini['DEFAULT']['doc_topics_max']
@@ -35,10 +35,11 @@ class PoloMallet(PoloDb):
         self.cfg_num_iterations = int(self.config.ini[trial]['num_iterations'])
         self.cfg_optimize_interval = int(self.config.ini[trial]['optimize_interval']) # Put into DEFAULT
 
+        # fixme: Somehow this changes thresh from float to str
         # Trial overrides
-        for key in self.config.ini['DEFAULT']:
-            if key in config.ini[trial]:
-                setattr(self, 'cfg_{}'.format(key), config.ini[trial][key])
+        #for key in self.config.ini['DEFAULT']:
+        #    if key in self.config.ini[trial]:
+        #        setattr(self, 'cfg_{}'.format(key), self.config.ini[trial][key])
 
         self.generate_trial_name()
         self.file_prefix = '{}/{}'.format(self.cfg_output_dir, self.trial_name)
@@ -269,6 +270,7 @@ class PoloMallet(PoloDb):
         topicword_diags.set_index(['topic_id', 'word_id'], inplace=True)
         self.put_table(topicword_diags, 'topicword_diag', index=True)
 
+    # fixme: Deleting mallet files seems not to be working
     def del_mallet_files(self):
         file_keys = ['output-topic-keys', 'output-doc-topics',
                      'word-topic-counts-file', 'xml-topic-report', 'xml-topic-phrase-report',

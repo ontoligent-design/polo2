@@ -36,7 +36,7 @@ class PoloConfig():
             ("optimize_interval", 10)
         ]))
     ])
-
+    # todo: Move num_iterations and optimize_interval out of trial1 and update PoloMallet to refflect this
 
     def __init__(self, ini_file, create=True, slug=None):
         if not os.path.isfile(ini_file):
