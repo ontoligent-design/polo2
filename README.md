@@ -14,15 +14,16 @@ git clone https://github.com/ontoligent-design/polo2
 cd polo2
 
 # Install the package. Do this every time you pull from the repo to 
-# make the changes are active in your python environment.
+# make the changes active in your python environment.
 sudo python3 setup.py install
 
 # Test the installation -- this should return a help screen.
-# If this does not work, you may need to install some python libraries,
-# or you may be using the wrong version of python.
+# If this does not work, you may need to install some Python libraries,
+# or you may be using the wrong version of Python.
 polo
 
-# Now move out of the repo and create a new project directory. For example,
+# Now move out of the repo and create a new project directory with the polo
+# command line tool. For example,
 # you might move one level up from the cloned and have a project called
 # 'myproject'. If so, do the following: 
 cd ..
@@ -31,7 +32,7 @@ cd myproject
 
 # Edit the config.ini file to match your environment and parameters.
 # Information about the purpose and contents of this file is given below.
-# Of course, you don't need to use emacs for this. 
+# Of course, you don't need to use emacs for this :)
 emacs config.ini
 
 # Go into the corpus directory and create a scraper that pulls content from 
