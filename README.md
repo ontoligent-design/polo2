@@ -3,10 +3,10 @@
 ## Synopsis
 
 ```
-# Clone the repo somewhere suitable
+# Clone the repo somewhere suitable.
 git clone https://github.com/ontoligent-design/polo2
 
-# Change directory into the repo
+# Change directory into the repo.
 cd polo2
 
 # Install the package.
