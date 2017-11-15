@@ -60,15 +60,14 @@ The `config.ini` is an essential part of Polo. Consistent with Polo's design phi
 this file stores as much information as possible about the environment and parameters needed to 
 run Polo, and it is passed to most Polo objects you create.  
 
-The file uses the simple `INI` format, support for which is conveniently built into Python, via the
-`configparser` library. The structure of this format is simple: content is divided into sections,
+> The file uses the simple `INI` format, support for which is conveniently built into Python, via the
+[`configparser`](https://docs.python.org/3/library/configparser.html) library. The structure of this format is simple: content is divided into sections,
 indicated by bracketed labels on new lines, followed by a series of key/value pairs separated by 
-a colon. 
+a colon. If you're interested in using this format for your own projects, see the documentation to
+learn about what it can do -- Polo usings only a fraction of its functionality.
 
 When you run `polo setup myproject`, a `config.ini` file is automatically created for you, with
-some values added for you.
-
-Here is a template of this file, with comments to explain what each key means.
+some values added for you. Here is a template of this file, with comments to explain what each key means.
 
 ```ini
 [DEFAULT]
