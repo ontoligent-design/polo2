@@ -1,6 +1,10 @@
 # Polo2
 
-## Synopsis
+## Getting Started
+
+Follow the directions in the comments to get started with Polo2. This will install
+the package and create a project directory where you can run the polo command line
+tool.
 
 ```bash
 # Clone the repo somewhere suitable.
@@ -67,7 +71,8 @@ a colon or equal sign. If you're interested in using this format for your own pr
 learn about what it can do -- Polo usings only a fraction of its functionality.
 
 When you run `polo setup myproject`, a `config.ini` file is automatically created for you, with
-some values added for you. Here is a template of this file, with comments to explain what each key means.
+some values automatically added. Here is a template of this file, with comments to explain what 
+each key means.
 
 ```ini
 [DEFAULT]
