@@ -16,8 +16,6 @@ class PoloMallet(PoloDb):
         self.config = config
         self.trial = trial
 
-        # todo: Figure out if this mapping is necessary, and, if so, how to improve it
-        # todo: Add the ability for trial configs to override defaults and put in PoloConfig
         self.cfg_slug = self.config.ini['DEFAULT']['slug']
         self.cfg_mallet_path = self.config.ini['DEFAULT']['mallet_path']
         self.cfg_output_dir = self.config.ini['DEFAULT']['mallet_out_dir']
@@ -35,7 +33,12 @@ class PoloMallet(PoloDb):
 
         self.cfg_num_topics = int(self.config.ini[trial]['num_topics'])
         self.cfg_num_iterations = int(self.config.ini[trial]['num_iterations'])
-        self.cfg_optimize_interval = int(self.config.ini[trial]['optimize_interval'])
+        self.cfg_optimize_interval = int(self.config.ini[trial]['optimize_interval']) # Put into DEFAULT
+
+        # Trial overrides
+        for key in self.config.ini['DEFAULT']:
+            if key in config.ini[trial]:
+                setattr(self, 'cfg_{}'.format(key), config.ini[trial][key])
 
         self.generate_trial_name()
         self.file_prefix = '{}/{}'.format(self.cfg_output_dir, self.trial_name)
