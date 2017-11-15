@@ -2,7 +2,7 @@
 
 ## Synopsis
 
-```
+```sh
 # Clone the repo somewhere suitable.
 git clone https://github.com/ontoligent-design/polo2
 
@@ -16,11 +16,12 @@ sudo python3 setup.py install
 polo
 
 # Edit the config.ini file to match your environment and parameters.
-# More information about this file is given below.
+# Information about the purpose and contents of this file is given below.
 emacs config.ini
 
 # Go into the corpus directory and create a scraper that pulls content from 
 # some source and creates a corpus file in standard source corpus format. 
+# Information about the requirements of this file is given below.
 cd corpus
 emacs scraper.py
 
