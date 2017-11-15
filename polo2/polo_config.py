@@ -14,6 +14,7 @@ class PoloConfig():
             ("src_file_sep", '|'),
             ("src_base_url", '<URL_WITH_NO_TRAILING_SLASH>'),
             ("src_ord_col", 'doc_label'),
+            ("normalize", 1),
             ("use_stopwords", 1),
             ("extra_stops", 'corpus/extra-stopwords.txt'),
             ("use_nltk", 1),

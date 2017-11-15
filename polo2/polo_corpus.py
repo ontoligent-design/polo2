@@ -17,6 +17,7 @@ class PoloCorpus(PoloDb):
         self.corpus_file = config.ini['DEFAULT']['mallet_corpus_input']
         self.nltk_data_path = config.ini['DEFAULT']['nltk_data_path']
         self.extra_stops = config.ini['DEFAULT']['extra_stops']
+        self.normalize = config.ini['DEFAULT']['normalize']
 
         # Source file stuff
         self.src_file_name = config.ini['DEFAULT']['src_file_name']
@@ -35,7 +36,8 @@ class PoloCorpus(PoloDb):
         PoloDb.__init__(self, self.dbfile)
         if self.nltk_data_path: nltk.data.path.append(self.nltk_data_path)
 
-    def import_table_doc(self, src_file_name=None):
+    # todo: Add normalization key to config.ini and respond accordingly
+    def import_table_doc(self, src_file_name=None, normalize=True):
         # todo: Clarify requirements for doc -- delimitter, columns, header, etc.
         # All of this stuff should be in a schema as you did before
         if not src_file_name: src_file_name = self.src_file_name
@@ -48,15 +50,15 @@ class PoloCorpus(PoloDb):
         # fixme: Put this in a separate function for general text manipulation
         # fixme: Create mallet corpus from doc table and turn off its stopwards
         # todo: Consider providing orderdicts of replacements that users can choose or create
-        doc['doc_content'] = doc.doc_content.str.lower()
-        #doc['doc_content'] = doc.doc_content.str.replace(r'_', 'MYUNDERSCORE') # Keep underscores
-        doc['doc_content'] = doc.doc_content.str.replace(r'\n+', ' ') # Remove newlines
-        doc['doc_content'] = doc.doc_content.str.replace(r'<[^>]+>', ' ') # Remove tags
-        doc['doc_content'] = doc.doc_content.str.replace(r'\W+', ' ') # Remove non-alphanumerics
-        doc['doc_content'] = doc.doc_content.str.replace(r'[0-9]+', ' ') # Remove numbers
-        doc['doc_content'] = doc.doc_content.str.replace(r'\s+', ' ') # Collapse spaces
-        #doc['doc_content'] = doc.doc_content.str.replace('MYUNDERSCORE', '_') # Put underscores back
-
+        if self.normalize:
+            doc['doc_content'] = doc.doc_content.str.lower()
+            #doc['doc_content'] = doc.doc_content.str.replace(r'_', 'MYUNDERSCORE') # Keep underscores
+            doc['doc_content'] = doc.doc_content.str.replace(r'\n+', ' ') # Remove newlines
+            doc['doc_content'] = doc.doc_content.str.replace(r'<[^>]+>', ' ') # Remove tags
+            doc['doc_content'] = doc.doc_content.str.replace(r'\W+', ' ') # Remove non-alphanumerics
+            doc['doc_content'] = doc.doc_content.str.replace(r'[0-9]+', ' ') # Remove numbers
+            doc['doc_content'] = doc.doc_content.str.replace(r'\s+', ' ') # Collapse spaces
+            #doc['doc_content'] = doc.doc_content.str.replace('MYUNDERSCORE', '_') # Put underscores back
         doc.index.name = 'doc_id'
         self.put_table(doc, 'doc', index=True)
 
