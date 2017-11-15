@@ -50,7 +50,7 @@ class PoloCorpus(PoloDb):
         # fixme: Put this in a separate function for general text manipulation
         # fixme: Create mallet corpus from doc table and turn off its stopwards
         # todo: Consider providing orderdicts of replacements that users can choose or create
-        if self.normalize:
+        if int(self.normalize) == 1:
             doc['doc_content'] = doc.doc_content.str.lower()
             #doc['doc_content'] = doc.doc_content.str.replace(r'_', 'MYUNDERSCORE') # Keep underscores
             doc['doc_content'] = doc.doc_content.str.replace(r'\n+', ' ') # Remove newlines
