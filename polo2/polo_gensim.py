@@ -50,7 +50,7 @@ class PoloGensim:
         GROUP BY topic_id
         """.format(thresh)
         hdp_topics = pd.read_sql_query(sql, self.db.conn)
-        self.db.put_table(hdp_topics, 'hdd_topics')
+        self.db.put_table(hdp_topics, 'hdp_topics')
 
         thresh = 0.005 # Note this is different from what's in config.ini
         #hdp_dfn = hpd_dfn[htp_dfn.topic_freq >= thresh]

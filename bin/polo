@@ -83,11 +83,11 @@ if __name__ == '__main__':
         print("Export mallet corpus")
         corpus.export_mallet_corpus()
 
-        print("Running Gensim HDP (experimental)")
-        gs = PoloGensim(config, corpus.dbfile)
-        gs.make_gs_corpus()
-        gs.make_gs_dict()
-        gs.get_hdp()
+        #print("Running Gensim HDP (experimental)")
+        #gs = PoloGensim(config, corpus.dbfile)
+        #gs.make_gs_corpus()
+        #gs.make_gs_dict()
+        #gs.get_hdp()
 
     elif args.cmd == 'mallet':
 
