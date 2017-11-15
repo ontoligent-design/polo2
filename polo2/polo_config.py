@@ -82,6 +82,7 @@ class PoloConfig():
     def create_ini(self, slug, ini_file = 'config.template.ini'):
         new_ini = configparser.ConfigParser()
         new_ini.read_dict(self.ini_schema)
+        new_ini['DEFAULT']['slug'] = slug
         new_ini['DEFAULT']['base_path'] = '{}/{}'.format(os.getcwd(), slug)
         if not os.path.isfile(ini_file):
             with open(ini_file, 'w+') as configfile:
