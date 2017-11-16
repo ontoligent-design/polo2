@@ -59,14 +59,14 @@ class PoloMallet(PoloDb):
         if not os.path.exists(self.cfg_mallet_path):
             raise ValueError('Mallet cannot be found.')
 
-        if os.path.exists(self.cfg_extra_stops):
-            self.mallet['import-file']['extra-stopwords'] = self.cfg_extra_stops
-        if os.path.exists(self.cfg_replacements):
+        #if os.path.exists(self.cfg_extra_stops):
+        #    self.mallet['import-file']['extra-stopwords'] = self.cfg_extra_stops
+        if os.path.exists(self.cfg_replacements): # todo: Consider moving this step out of MALLET and into corpus prep
             self.mallet['import-file']['replacement-files'] = self.cfg_replacements
         self.mallet['import-file']['input'] = self.cfg_input_corpus
         self.mallet['import-file']['output'] = '{}/{}-corpus.mallet'.format(self.cfg_output_dir, self.trial)
-        self.mallet['import-file']['keep-sequence'] = 'TRUE'
-        self.mallet['import-file']['remove-stopwords'] = 'TRUE'
+        self.mallet['import-file']['keep-sequence'] = 'TRUE' # todo: Control this by config
+        self.mallet['import-file']['remove-stopwords'] = 'FALSE' # todo: Control this by config
 
         self.mallet['train-topics']['num-topics'] = self.cfg_num_topics
         self.mallet['train-topics']['num-top-words'] = self.cfg_num_top_words
