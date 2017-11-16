@@ -366,8 +366,7 @@ more important, of producing interactive data products with these models.
 Polo is built on the principle that software developers should put as much information
 as possible into config files and databases (the fewer of these the better) and to save logic for
 essential data processing work. The idea is to remove contingent information from code and to make 
-program design more solid and elegant. Functions
-should be as pure as possible, with minimum side effects, and their logic should be intuitive
-given the data structures they work on.  Although Polo is by no means written as a functional 
-program, it strives to be functional in a general sense, and to be as interpretable as 
-possible to users.
+program design more solid and elegant. Functions should be as pure as possible, with minimum side 
+effects, and their logic should be intuitive for users who have familiarized themselves with the 
+data structures the functions work on. Although Polo is by no means written as a functional program, 
+it strives to be functional in a general sense, and to be as interpretable as possible to users.
