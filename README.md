@@ -7,8 +7,8 @@
     `conda`, the package manager it comes with, has known conflicts with other package 
     managers, such as `brew` on MacOS. 
 * [NLTK](http://www.nltk.org/)
-    * This is used for stopwords right now but will be used by later functions. Install
-    this using a package manager like `conda` or just use `pip`, but once installed,
+    * This is used for stopwords right now but will be used more later. Install
+    this with `conda install nltk` or  `pip install nltk`. Once installed,
     make sure to download `nltk_data` to get relevant resources.
     * To install stopwords, open a Python command line (e.g. with ipython) and enter `import nltk` and then `nltk.download('stopwords')`.
 * [MALLET](http://mallet.cs.umass.edu/)
@@ -153,7 +153,8 @@ use_nltk = 1
 # how to download these files.
 nltk_data_path = /opt/nltk_data
 
-# The path to MALLET on your system.
+# The path to MALLET on your system. If MALLET is in the path of the user that is executing polo, then
+# you can just put 'mallet' here.
 mallet_path = /usr/local/bin/mallet
 
 # The relative path to the directory where MALLET will dump its data files. 

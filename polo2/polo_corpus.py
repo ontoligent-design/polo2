@@ -36,7 +36,6 @@ class PoloCorpus(PoloDb):
         PoloDb.__init__(self, self.dbfile)
         if self.nltk_data_path: nltk.data.path.append(self.nltk_data_path)
 
-    # todo: Add normalization key to config.ini and respond accordingly
     def import_table_doc(self, src_file_name=None, normalize=True):
         # todo: Clarify requirements for doc -- delimitter, columns, header, etc.
         # All of this stuff should be in a schema as you did before
@@ -46,19 +45,15 @@ class PoloCorpus(PoloDb):
         elif self.src_file_sep == 'TAB':
             self.src_file_sep = '\t'
         doc = pd.read_csv(src_file_name, header=0, sep=self.src_file_sep)
-        # fixme: Reconcile this with what mallet is doing!
-        # fixme: Put this in a separate function for general text manipulation
-        # fixme: Create mallet corpus from doc table and turn off its stopwards
-        # todo: Consider providing orderdicts of replacements that users can choose or create
+        # fixme: Put this in a separate and configurable function for general text normalization.
         if int(self.normalize) == 1:
             doc['doc_content'] = doc.doc_content.str.lower()
-            #doc['doc_content'] = doc.doc_content.str.replace(r'_', 'MYUNDERSCORE') # Keep underscores
+            doc['doc_content'] = doc.doc_content.str.replace(r'_+', ' ')  # Remove underscores
             doc['doc_content'] = doc.doc_content.str.replace(r'\n+', ' ') # Remove newlines
             doc['doc_content'] = doc.doc_content.str.replace(r'<[^>]+>', ' ') # Remove tags
             doc['doc_content'] = doc.doc_content.str.replace(r'\W+', ' ') # Remove non-alphanumerics
-            doc['doc_content'] = doc.doc_content.str.replace(r'[0-9]+', ' ') # Remove numbers
+            doc['doc_content'] = doc.doc_content.str.replace(r'\d+', ' ') # Remove numbers
             doc['doc_content'] = doc.doc_content.str.replace(r'\s+', ' ') # Collapse spaces
-            #doc['doc_content'] = doc.doc_content.str.replace('MYUNDERSCORE', '_') # Put underscores back
         doc.index.name = 'doc_id'
         self.put_table(doc, 'doc', index=True)
 
@@ -127,7 +122,30 @@ class PoloCorpus(PoloDb):
         self.put_table(ngram, 'ngram{}'.format(self.ngram_prefixes[n]), index=True)
 
     def export_mallet_corpus(self):
-        polo_corpus = self.get_table('doc')
-        #polo_corpus = polo_corpus[['doc_id', 'doc_label', 'doc_content']]
-        polo_corpus = polo_corpus[['doc_label', 'doc_content']] # Why does get_table() pull doc_id as index?
+        """We export the doctoken table as the input corpus to MALLET. This preserves our normalization
+        between the corpus and trial model databases."""
+        # Can't get pandas to do this, so resorting to SQL
+        mallet_corpus_sql = """
+        CREATE VIEW mallet_corpus AS
+        SELECT dt.doc_id, d.doc_label, GROUP_CONCAT(token_str, ' ') AS doc_content
+        FROM doctoken dt JOIN doc d USING (doc_id)
+        GROUP BY dt.doc_id
+        ORDER BY dt.doc_id;
+        """
+        self.conn.execute("DROP VIEW IF EXISTS mallet_corpus;")
+        self.conn.execute(mallet_corpus_sql)
+        self.conn.commit()
+        mallet_corpus = pd.read_sql_query('SELECT * FROM mallet_corpus', self.conn)
+        mallet_corpus.to_csv(self.corpus_file, index=False, header=False)
+
+        """
+        # This does not work like it does in Jupyter. It does not concatenate the texts but instead
+        # outputs one word per doc :-( 
+        doctokens = self.get_table('doctoken', set_index=True)
+        doc = self.get_table('doc', set_index=True)
+        polo_corpus = pd.DataFrame(doctokens.groupby(doctokens.index).apply(lambda x: x.token_str.str.cat(sep=' ')))
+        polo_corpus.columns = ['doc_content']
+        polo_corpus['doc_label'] = doc.doc_label
+        polo_corpus = polo_corpus[['doc_label', 'doc_content']]
         polo_corpus.to_csv(self.corpus_file, index=True, index_label='doc_id', header=False)
+        """

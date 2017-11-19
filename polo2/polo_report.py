@@ -29,5 +29,22 @@ class PoloReport(PoloDb):
         ax.set_yticklabels(labels)
         ax.set_xlabel('Average Topic Weight')
         ax.set_ylabel('Topic')
-        fig = ax.get_figure()
-        return fig
+        #fig = ax.get_figure()
+        #return fig
+
+    def show_topic_index_table(self):
+        topic_index = []
+        topic = self.get_table('topic', set_index=True)
+        topicphrase = self.get_table('topicphrase', set_index=True)
+        for t in topic.sort_values('topic_alpha', ascending=False).index:
+            tlab = '<b>T{}</b>'.format(t)
+            words = '<b>{}</b>'.format(topic.loc[t].topic_words)
+            phrases = ', '.join(topicphrase.loc[t].sort_values('phrase_weight', ascending=False).topic_phrase.tolist())
+            scale = '<span style="font-size:8pt;color:lightblue;margin:0;padding:0;">{}</span>'.format(
+                '&#9608;' * int(round(topic.loc[t].topic_alpha * 100)))
+            alpha = '<tt>{:6f}</tt>'.format(topic.loc[t].topic_alpha)
+            topic_index.append('<tr><td style="vertical-align:top;">{}</td></tr>'.format(
+                '</td><td style="text-align:left;vertical-align:top;">'.join(
+                    [tlab, alpha + ' ' + scale + '<br>' + words + '<br>' + phrases])))
+        topic_table = '<table style="font-size:12pt;">{}</table>'.format(''.join(topic_index))
+        return topic_table
