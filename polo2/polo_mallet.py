@@ -55,6 +55,7 @@ class PoloMallet(PoloDb):
                                                               self.cfg_num_iterations, int(ts))
     
     def mallet_init(self):
+        # todo: Consider putting this in the init for the object itself
         if not os.path.exists(self.cfg_mallet_path):
             raise ValueError('Mallet cannot be found.')
         #if os.path.exists(self.cfg_extra_stops):

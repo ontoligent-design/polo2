@@ -6,19 +6,19 @@ class PoloConfig():
     
     ini_schema = OrderedDict([
         ('DEFAULT', OrderedDict([
-            ("title", '<TITLE>'),
-            ("slug", '<SLUG>'),
-            ("owner", '<PROJECT OWNER NAME>'),
-            ("base_path", '<BASE_PATH>'),
+            ("title", 'Replace me with a descriptive title of the project, like "My Project" (without the quotes)'),
+            ("slug", 'Replace me with a short code name for the project, like "myproject" (without the quotes)'),
+            ("owner", 'Replace me with your name and/or email address'),
+            ("base_path", 'Replace me with the base path to the project directory this file is found in'),
             ("src_file_name", "corpus/corpus.csv"),
             ("src_file_sep", '|'),
-            ("src_base_url", '<URL_WITH_NO_TRAILING_SLASH>'),
+            ("src_base_url", 'Replace me with URL that can be used to view corpus documents online'),
             ("src_ord_col", 'doc_label'),
             ("normalize", 1),
             ("use_stopwords", 1),
             ("extra_stops", 'corpus/extra-stopwords.txt'),
             ("use_nltk", 1),
-            ("nltk_data_path", '<NLTK_DATA_PATH>'),
+            ("nltk_data_path", 'Replace me with the path to nltk_data'),
             ("mallet_path", '/usr/local/bin/mallet'),
             ("mallet_out_dir", 'trials'),
             ("mallet_corpus_input", 'trials/mallet-corpus.csv'),
@@ -58,17 +58,25 @@ class PoloConfig():
         return self.trials
 
     def validate_ini(self):
+
+        # Well-formed test for [DEFAULT]
         keys1 = self.ini_schema['DEFAULT'].keys()
         keys2 = self.ini['DEFAULT'].keys()
         test1 = self.compare_keys(keys1, keys2)
         if test1:
             raise ValueError("Missing config DEFAULT keys:", ', '.join(test1))
+
+        # Well-formed test for [trial1]
+        # todo: Change this if we decide to put some of these keys into DEFAULT
         keys3 = self.ini_schema['trial1'].keys()
         for trial in self.ini.sections():
             keys4 = self.ini[trial].keys()
             test2 = self.compare_keys(keys3, keys4)
             if test2:
                 raise ValueError("Missing config keys for trial `{}`.".format(trial), ', '.join(test2))
+
+        # todo: Create interactive validation of ALL keys here
+
         return True
 
     def compare_keys(self, keys1, keys2):
