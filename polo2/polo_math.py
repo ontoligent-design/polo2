@@ -19,6 +19,7 @@ class PoloMath():
 
     @staticmethod
     def js_divergence(p1, p2):
+        """Computes the Jensen=Shannon Divergence between two vectors (series)."""
         P1 = p1 / np.sum(p1)
         P2 = p2 / np.sum(p2)
         M = .5 * (P1 + P2)
@@ -26,9 +27,21 @@ class PoloMath():
 
     @staticmethod
     def pwmi(p_a, p_b, p_ab):
+        """Computes the adjusted point-wise mutual information of two items (a and b)
+        that appear in container vectors of some kind, e.g. items in a shopping
+        basket."""
         if p_ab > 0:
-            i_ab = math.log(p_ab / (p_a * p_b))
-            i_ab = i_ab / (math.log2(p_ab) * -1)
+            i_ab = math.log(p_ab / (p_a * p_b))  # Raw
+            i_ab = i_ab / (math.log2(p_ab) * -1) # Adjusted
         else:
             i_ab = None
         return i_ab
+
+    @staticmethod
+    def jscore(s1, s2):
+        """Computes teh Jaccard score (aka distance) for two vectors (series). Series passed must
+        share an index. This condition will be met for an unstacked matrix of weights or counts,
+        where the two series belong to the matrix."""
+        A = set(s1[s1 > 0].index)
+        B = set(s2[s2 > 0].index)
+        return 1 - (len(A & B) / len(A | B))
