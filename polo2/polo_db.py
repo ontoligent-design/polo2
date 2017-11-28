@@ -36,7 +36,10 @@ class PoloDb():
 
     def get_table(self, table_name = '', set_index = False):
         if self.cache_mode and table_name in self.tables:
-            return self.tables[table_name]
+            df = self.tables[table_name]
+            if set_index:
+                df = self._set_index(df)
+            return df
         else:
             cur = self.conn.cursor()
             cur.execute("select count(*) from sqlite_master where type='table' and name=?", (table_name,))
@@ -44,14 +47,21 @@ class PoloDb():
             if sql_check:
                 sql = 'select * from {}'.format(table_name)
                 df = pd.read_sql_query(sql, self.conn)
+                if set_index:
+                    df = self._set_index(df)
                 if self.cache_mode:
                     self.tables[table_name] = df
-                if set_index:
-                    idx = [col for col in df.columns if re.search(r'_id$', col)]
-                    df.set_index(idx, inplace=True)
                 return df
             else:
                 raise ValueError("Table `{}` needs to be created first.".format(table_name))
+
+    def _set_index(self, df):
+        idx = [col for col in df.columns if re.search(r'_id$', col)]
+        if len(idx):
+            df.set_index(idx, inplace=True)
+        else:
+            raise ValueError('No index field to set.')
+        return df
 
     def get_table_names(self):
         cursor = self.conn.cursor()
