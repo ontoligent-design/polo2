@@ -122,7 +122,7 @@ class PoloMallet(PoloDb):
         topic = pd.read_csv(src_file, sep='\t', header=None, index_col=False,
                             names=['topic_id', 'topic_alpha', 'topic_words'])
         topic.set_index('topic_id', inplace=True)
-        self.put_table(topic, 'topic')
+        self.put_table(topic, 'topic', index=True)
 
     def import_tables_topicword_and_word(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['word-topic-counts-file']
@@ -249,8 +249,7 @@ class PoloMallet(PoloDb):
 
         topic_diags = pd.DataFrame(TOPIC, columns=tkeys)
         topic_diags.set_index('topic_id', inplace=True)
-        topics = self.get_table('topic')
-        topics.set_index('topic_id', inplace=True)
+        topics = self.get_table('topic', set_index=True)
         topics = pd.concat([topics, topic_diags], axis=1)
         self.put_table(topics, 'topic', index=True) # fixme: This adds an extra index column
 
@@ -284,9 +283,68 @@ class PoloMallet(PoloDb):
 
     def create_table_topicpair(self):
 
-        doc = self.get_table('doc')
-        doc_num = len(doc.index)
-        del doc
+        # Get doc count to calculate topic frequencies
+        r = self.conn.execute("select count() from doc")
+        doc_num = int(r.fetchone()[0])
+
+        # Create the doctopic matrix dataframe
+        doctopic = self.get_table('doctopic', set_index=True)
+        dtm = doctopic.unstack()
+        if dtm.columns.nlevels == 2:
+            dtm.columns = dtm.columns.droplevel()
+        del doctopic
+
+        # Add topic frequency data to topic table
+        topic = self.get_table('topic', set_index=True)
+        topic['topic_freq'] = topic.apply(lambda x: len(dtm[dtm[x.name] > self.cfg_thresh]), axis=1)
+        topic['topic_rel_freq'] = topic.apply(lambda x: x.topic_freq / doc_num, axis=1)
+        self.put_table(topic, 'topic', index=True)
+
+        # Create topicword matrix dataframe
+        topicword = self.get_table('topicword', set_index=True)
+        topicword['word_count'] = topicword['word_count'].astype(int)
+        twm = topicword.unstack().fillna(0)
+        if twm.columns.nlevels == 2:
+            twm.columns = twm.columns.droplevel(0)
+        del topicword
+
+        # Create topicpair dataframe
+        from itertools import combinations
+        pairs = [pair for pair in combinations(topic.index, 2)]
+        topicpair = pd.DataFrame(pairs, columns=['topic_a_id', 'topic_b_id'])
+
+        # Calculate distances by document vector
+        #topicpair['cosim_doc'] = topicpair.apply(lambda x: pm.cosine_sim(dtm[x.topic_a_id], dtm[x.topic_b_id]), axis=1)
+        #topicpair['jscore_doc'] = topicpair.apply(lambda x: pm.jscore(dtm[x.topic_a_id], dtm[x.topic_b_id]), axis=1)
+        #topicpair['jsd_doc'] = topicpair.apply(lambda x: pm.js_divergence(dtm[x.topic_a_id], dtm[x.topic_b_id]), axis=1)
+
+        # Calculate distances by word vector -- SHOULD BE MORE ACCURATE
+        topicpair['cosim'] = topicpair.apply(lambda x: pm.cosine_sim(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
+        topicpair['jscore'] = topicpair.apply(lambda x: pm.jscore(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
+        topicpair['jsd'] = topicpair.apply(lambda x: pm.js_divergence(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
+
+        # Calculate PWMI
+        def get_p_ab(a, b):
+            p_ab = len(dtm[(dtm[a] > self.cfg_thresh) & (dtm[b] > self.cfg_thresh)]) / doc_num
+            return p_ab
+        topicpair['p_ab'] = topicpair.apply(lambda x: get_p_ab(x.topic_a_id, x.topic_b_id), axis=1)
+        topicpair['p_aGb'] = topicpair.apply(lambda x: x.p_ab / topic.loc[x.topic_b_id, 'topic_rel_freq'], axis=1)
+        topicpair['p_bGa'] = topicpair.apply(lambda x: x.p_ab / topic.loc[x.topic_a_id, 'topic_rel_freq'], axis=1)
+        def get_pwmi(a, b, p_ab):
+            if p_ab == 0: p_ab = .000001  # To prevent craziness in prob calcs
+            p_a = topic.loc[a, 'topic_rel_freq']
+            p_b = topic.loc[b, 'topic_rel_freq']
+            i_ab = pm.pwmi(p_a, p_b, p_ab)
+            return i_ab
+        topicpair['i_ab'] = topicpair.apply(lambda x: get_pwmi(x.topic_a_id, x.topic_b_id, x.p_ab), axis=1)
+        topicpair['x_ab'] = topicpair.apply(lambda x: (x.p_aGb + x.p_bGa) / 2, axis=1)
+
+        self.put_table(topicpair, 'topicpair')
+
+    def create_table_topicpair_old(self):
+
+        r = self.conn.execute("select count() from doc")
+        doc_num = int(r.fetchone()[0])
 
         doctopic = self.get_table('doctopic')
         dts = doctopic[doctopic.topic_weight >= self.cfg_thresh]
@@ -299,7 +357,7 @@ class PoloMallet(PoloDb):
         topic['topic_rel_freq'] = [len(dtsw[dtsw[t] > 0]) / doc_num for t in range(self.cfg_num_topics)]
         self.put_table(topic, 'topic')
 
-        # For cosine sim
+        # For cosine sim, etc
         topicword = self.get_table('topicword')
         topicword['word_count'] = topicword['word_count'].astype(int)
         topicword.set_index(['word_id', 'topic_id'], inplace=True)
@@ -312,11 +370,12 @@ class PoloMallet(PoloDb):
             a = pair[0]
             b = pair[1]
 
-            # Cosine sim and Jensen-Shannon Divergence
+            # Cosine sim, Jensen-Shannon Divergence, and Jaccard Score
             x = topicword_wide.iloc[:, a].tolist()
             y = topicword_wide.iloc[:, b].tolist()
             cosim = pm.cosine_sim(x, y)
             jsdiv = pm.js_divergence(x, y)
+            jscore = pm.jscore(topicword_wide.iloc[:, a], topicword_wide.iloc[:, b])
 
             p_a = topic.loc[a, 'topic_rel_freq']
             p_b = topic.loc[b, 'topic_rel_freq']
@@ -326,9 +385,9 @@ class PoloMallet(PoloDb):
             p_bGa = p_ab / p_a
             i_ab = pm.pwmi(p_a, p_b, p_ab)
             c_ab = (1 - p_a) / (1 - p_aGb)
-            TOPICPAIR.append([a, b, p_ab, p_aGb, p_bGa, i_ab, c_ab, cosim, jsdiv])
+            TOPICPAIR.append([a, b, p_ab, p_aGb, p_bGa, i_ab, c_ab, cosim, jsdiv, jscore])
         topicpair = pd.DataFrame(TOPICPAIR, columns=['topic_a_id', 'topic_b_id', 'p_ab',
-                                                     'p_aGb', 'p_bGa', 'i_ab', 'c_ab', 'cosine_sim', 'js_div'])
+                                                     'p_aGb', 'p_bGa', 'i_ab', 'c_ab', 'cosine_sim', 'js_div', 'jscore'])
         self.put_table(topicpair, 'topicpair')
 
     def get_doctopic_wide(self):

@@ -38,10 +38,10 @@ class PoloMath():
         return i_ab
 
     @staticmethod
-    def jscore(s1, s2):
+    def jscore(s1, s2, thresh = 0):
         """Computes teh Jaccard score (aka distance) for two vectors (series). Series passed must
         share an index. This condition will be met for an unstacked matrix of weights or counts,
         where the two series belong to the matrix."""
-        A = set(s1[s1 > 0].index)
-        B = set(s2[s2 > 0].index)
+        A = set(s1[s1 > thresh].index)
+        B = set(s2[s2 > thresh].index)
         return 1 - (len(A & B) / len(A | B))
