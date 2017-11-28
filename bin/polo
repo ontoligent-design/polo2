@@ -62,7 +62,8 @@ if __name__ == '__main__':
         except ValueError as e:
             print("Can't create corpus object.", e)
             sys.exit(1)
-        corpus.cache_mode = True
+        corpus.cache_mode = False
+        print("Corpus cache mode:", corpus.cache_mode)
 
         print("Importing stopwords")
         corpus.import_table_stopword(use_nltk=True)
@@ -116,7 +117,8 @@ if __name__ == '__main__':
             print("Can't create mallet object. Most likely due to bad trial name.")
             sys.exit(1)
 
-        mallet.cache_mode = True
+        mallet.cache_mode = False
+        print('Mallet cache mode:', mallet.cache_mode)
 
         print('Importing corpus')
         mallet.mallet_import()
