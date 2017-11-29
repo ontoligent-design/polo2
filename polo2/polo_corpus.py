@@ -97,7 +97,8 @@ class PoloCorpus(PoloDb):
         doctokenbow = doctokenbow.merge(token[['token_id', 'token_str']], on="token_str")
         doctokenbow = doctokenbow[['doc_id', 'token_id', 'token_count']]
         doctokenbow.sort_values('doc_id', inplace=True)
-        self.put_table(doctokenbow, 'doctokenbow', if_exists='replace')
+        doctokenbow.set_index(['doc_id', 'token_id'], inplace=True)
+        self.put_table(doctokenbow, 'doctokenbow', if_exists='replace', index=True)
 
     def add_tables_ngram_and_docngram(self, n = 2):
         if n not in range(2, 5):
