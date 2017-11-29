@@ -28,6 +28,7 @@ class PoloDb():
     def put_table(self, df, table_name='test', if_exists='replace', index=False, index_label=None):
         if not self.read_only:
             df.to_sql(table_name, self.conn, if_exists=if_exists, index=index, index_label=index_label)
+
             if self.cache_mode:
                 self.tables[table_name] = df.reset_index() # Index reset is crucial
         else:
@@ -62,6 +63,18 @@ class PoloDb():
         else:
             raise ValueError('No index field to set.')
         return df
+
+    # todo: Finish writing the method add_pkeys_to_tables()
+    def  add_pkeys_to_tables(self):
+        """Add primary keys to db tables"""
+        res1 = self.conn.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        for table in [row[0] for row in res1.fetchall()]:
+            res2 = self.conn.execute("SELECT sql FROM sqlite_master WHERE name = ?", (table,))
+            info = res2.fetchone()
+            if (re.search(r'PRIMARY KEY', info[0])):
+                continue
+            id_cols = [re.sub(r'\W+', '', token) for token in info[0].split() if re.search('_id', token)]
+            alter_sql = ''
 
     def get_table_names(self):
         cursor = self.conn.cursor()
