@@ -138,8 +138,10 @@ class PoloMallet(PoloDb):
                 TOPICWORD.append((int(word_id), int(topic_id), int(word_count)))
         word = pd.DataFrame(WORD, columns=['word_id', 'word_str'])
         topicword = pd.DataFrame(TOPICWORD, columns=['word_id', 'topic_id', 'word_count'])
-        self.put_table(word, 'word')
-        self.put_table(topicword, 'topicword')
+        word.set_index('word_id', inplace=True)
+        topicword.set_index(['word_id', 'topic_id'], inplace=True)
+        self.put_table(word, 'word', index=True)
+        self.put_table(topicword, 'topicword', index=True)
 
     def import_table_doctopic(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['output-doc-topics']
@@ -158,9 +160,10 @@ class PoloMallet(PoloDb):
                     topic_weight = row[i + 1]
                     DOCTOPIC.append([doc_id, topic_id, topic_weight])
             doctopic = pd.DataFrame(DOCTOPIC, columns=['doc_id', 'topic_id', 'topic_weight'])
+            doctopic.set_index(['doc_id', 'topic_id'], inplace=True)
             doc = pd.DataFrame(DOC, columns=['doc_id', 'doc_label'])
             doc.set_index('doc_id', inplace=True)
-            self.put_table(doctopic, 'doctopic')
+            self.put_table(doctopic, 'doctopic', index=True)
             self.put_table(doc, 'doc', index=True)
         else:
             doctopic = pd.read_csv(src_file, sep='\t', header=None)
@@ -176,7 +179,8 @@ class PoloMallet(PoloDb):
             doctopic_narrow = pd.lreshape(doctopic, {'topic_weight': y})
             doctopic_narrow['topic_id'] = [i for i in range(self.cfg_num_topics) for doc_id in doctopic['doc_id']]
             doctopic_narrow = doctopic_narrow[['doc_id', 'topic_id', 'topic_weight']]
-            self.put_table(doctopic_narrow, 'doctopic')
+            doctopic_narrow.set_index(['doc_id', 'topic_id'], inplace=True)
+            self.put_table(doctopic_narrow, 'doctopic', index=True)
 
     def import_table_topicphrase(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['xml-topic-phrase-report']
@@ -192,7 +196,8 @@ class PoloMallet(PoloDb):
                 TOPICPHRASE.append((topic_id, topic_phrase, phrase_weight, phrase_count))
         topicphrase = pd.DataFrame(TOPICPHRASE, columns=['topic_id', 'topic_phrase',
                                                          'phrase_weight', 'phrase_count'])
-        self.put_table(topicphrase, 'topicphrase')
+        topicphrase.set_index(['topic_id', 'topic_phrase'], inplace=True)
+        self.put_table(topicphrase, 'topicphrase', index=True)
 
     def import_table_config(self):
         # fixme: Make this automatic; find a way to dump all values
@@ -251,7 +256,7 @@ class PoloMallet(PoloDb):
         topic_diags.set_index('topic_id', inplace=True)
         topics = self.get_table('topic', set_index=True)
         topics = pd.concat([topics, topic_diags], axis=1)
-        self.put_table(topics, 'topic', index=True) # fixme: This adds an extra index column
+        self.put_table(topics, 'topic', index=True)
 
         topicword_diags = pd.DataFrame(TOPICWORD, columns=wkeys)
         topicword_diags.set_index(['topic_id', 'word_str'], inplace=True)
@@ -269,6 +274,7 @@ class PoloMallet(PoloDb):
                      'diagnostics-file', 'topic-word-weights-file']
         for fk in file_keys:
             if os.path.isfile(self.mallet['train-topics'][fk]):
+                print("Deleting {}".format(fk))
                 os.remove(str(self.mallet['train-topics'][fk]))
 
     # UPDATE OR ADD TABLES WITH STATS
@@ -279,7 +285,8 @@ class PoloMallet(PoloDb):
         doc = self.get_table('doc')
         topic_entropy = doctopic.groupby('doc_id')['topic_weight'].apply(lambda x: sp.entropy(x))
         doc['topic_entropy'] = topic_entropy
-        self.put_table(doc, 'doc')
+        doc.set_index('doc_id', inplace=True)
+        self.put_table(doc, 'doc', index=True)
 
     def create_table_topicpair(self):
 
@@ -339,7 +346,8 @@ class PoloMallet(PoloDb):
         topicpair['i_ab'] = topicpair.apply(lambda x: get_pwmi(x.topic_a_id, x.topic_b_id, x.p_ab), axis=1)
         topicpair['x_ab'] = topicpair.apply(lambda x: (x.p_aGb + x.p_bGa) / 2, axis=1)
 
-        self.put_table(topicpair, 'topicpair')
+        topicpair.set_index(['topic_a_id', 'topic_b_id'], inplace=True)
+        self.put_table(topicpair, 'topicpair', index=True)
 
     def create_table_topicpair_old(self):
 
