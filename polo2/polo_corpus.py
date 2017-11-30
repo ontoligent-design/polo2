@@ -72,6 +72,7 @@ class PoloCorpus(PoloDb):
     def add_table_doctoken(self):
         # todo: Add token_ord column
         doc = self.get_table('doc')
+        doc = doc[~doc.doc_content.isnull()]
         doctoken = pd.concat([pd.Series(row.doc_id, row.doc_content.split()) for _, row in doc.iterrows()]).reset_index()
         doctoken.columns = ['token_str', 'doc_id']
         doctoken = doctoken[['doc_id', 'token_str']]
