@@ -349,6 +349,7 @@ class PoloMallet(PoloDb):
         topicpair.set_index(['topic_a_id', 'topic_b_id'], inplace=True)
         self.put_table(topicpair, 'topicpair', index=True)
 
+    """
     def create_table_topicpair_old(self):
 
         r = self.conn.execute("select count() from doc")
@@ -397,6 +398,7 @@ class PoloMallet(PoloDb):
         topicpair = pd.DataFrame(TOPICPAIR, columns=['topic_a_id', 'topic_b_id', 'p_ab',
                                                      'p_aGb', 'p_bGa', 'i_ab', 'c_ab', 'cosine_sim', 'js_div', 'jscore'])
         self.put_table(topicpair, 'topicpair')
+    """
 
     def get_doctopic_wide(self):
         doctopic = self.get_table('doctopic', set_index=True)
