@@ -47,6 +47,7 @@ class PoloShell(cmd.Cmd):
         pass
 
     def do_set_ini(self, arg):
+        "Set the config file (usually to something other than config.ini)."
         if arg:
             try:
                 self.config = PoloConfig(arg)
@@ -56,13 +57,31 @@ class PoloShell(cmd.Cmd):
             self.default_ini = arg
 
     def do_show_ini(self, arg):
+        "Show the file being used for the config"
         print('INI file:', self.default_ini)
 
     def do_test(self, arg):
-        print(arg)
+        "Just a test"
+        base_path = self.config.ini['DEFAULT']['base_path']
+        print(base_path)
+
+    def do_make_all(self, arg):
+        'Generate and import corpus then run mallet. Optionally pass a trial name.'
+        self.do_make_corpus_source(None)
+        self.do_create_corpus(None)
+        self.do_run_mallet(arg)
+
+    def do_make_corpus_source(self, arg):
+        "Generate the source corpus file using the project's Scraper"
+        print("Locating local Scraper")
+        sys.path.append(self.config.ini['DEFAULT']['base_path'])
+        from corpus.scraper import Scraper
+        scraper = Scraper()
+        print("Generating corpus file")
+        scraper.generate_corpus_file()
 
     def do_create_corpus(self, arg):
-        """Create the corpus database from the source data"""
+        "Create the corpus database from the source data"
         print("Initializing corpus")
         try:
             corpus = PoloCorpus(self.config)
@@ -86,9 +105,13 @@ class PoloShell(cmd.Cmd):
         print("Importing bigrams")
         corpus.add_tables_ngram_and_docngram(n=2)
 
+        print("Export mallet corpus")
+        corpus.export_mallet_corpus()
+
         self.corpus = corpus
 
     def do_show_trials(self, arg):
+        "Show all the trial names in the config"
         trials = self.config.get_trial_names()
         print('Trials: ', ', '.join(trials))
 
