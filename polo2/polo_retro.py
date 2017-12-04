@@ -60,7 +60,8 @@ class PoloRetro:
         new_src_doc['doc_ord'] = None
         new_src_doc['doc_content'] = src_doc.doc_content
         new_src_doc['doc_original'] = src_doc.doc_original
-        new_src_doc['doc_year'] = src_doc.doc_year
+        if 'doc_year' in src_doc.columns:
+            new_src_doc['doc_year'] = src_doc.doc_year
         new_src_doc['doc_date'] = src_doc.doc_date
         new_src_doc['doc_citation'] = None
         self.retro.put_table(new_src_doc, 'src_doc', if_exists='replace', index=True)
@@ -150,19 +151,22 @@ class PoloRetro:
     def create_topicpair_table(self):
         topicpair = self.model.get_table('topicpair')
         new_tp = pd.DataFrame(columns='topic_id1 topic_id2 cosine_sim js_div'.split())
-        new_tp['topic_id1'] = topicpair.topic_a
-        new_tp['topic_id2'] = topicpair.topic_b
-        new_tp['cosine_sim'] = topicpair.cosine_sim
-        new_tp['js_div'] = topicpair.js_div
+        new_tp['topic_id1'] = topicpair.topic_a_id
+        new_tp['topic_id2'] = topicpair.topic_b_id
+        new_tp['cosine_sim'] = topicpair.cosim
+        new_tp['js_div'] = topicpair.jsd
         self.retro.put_table(new_tp, 'topicpair', if_exists='replace')
 
     def create_topicpair_by_deps_table(self):
         topicpair = self.model.get_table('topicpair')
+        topic = self.model.get_table('topic')
+        topicpair = topicpair.merge(topic[['topic_id', 'topic_rel_freq']], left_on='topic_a_id', right_on='topic_id', how='inner')
+        topicpair = topicpair.merge(topic[['topic_id', 'topic_rel_freq']], left_on='topic_b_id', right_on='topic_id', how='inner')
         new_tp = pd.DataFrame(columns='topic_a topic_b p_a p_b p_ab p_aGb p_bGa i_ab'.split())
-        new_tp['topic_a'] = topicpair.topic_a
-        new_tp['topic_b'] = topicpair.topic_b
-        new_tp['p_a'] = topicpair.p_a
-        new_tp['p_b'] = topicpair.p_b
+        new_tp['topic_a'] = topicpair.topic_a_id
+        new_tp['topic_b'] = topicpair.topic_b_id
+        new_tp['p_a'] = topicpair.topic_rel_freq_x
+        new_tp['p_b'] = topicpair.topic_rel_freq_y
         new_tp['p_ab'] = topicpair.p_ab
         new_tp['p_aGb'] = topicpair.p_aGb
         new_tp['p_bGa'] = topicpair.p_bGa
