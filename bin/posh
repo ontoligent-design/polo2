@@ -24,8 +24,10 @@ class PoloShell(cmd.Cmd):
                 print("Can't create config object.", e)
                 sys.exit(1)
             print("Using config.ini")
-            trials = self.config.get_trial_names()
-            print("Available trials:", ', '.join(trials))
+            self.trials = self.config.get_trial_names()
+            self.slug = self.config.ini['DEFAULT']['slug']
+            self.base_path = self.config.ini['DEFAULT']['base_path']
+            print("Available trials:", ', '.join(self.trials))
 
     def onerror(self):
         """Called if an exception is raised in any of precmd(), onecmd(),
@@ -62,8 +64,7 @@ class PoloShell(cmd.Cmd):
 
     def do_test(self, arg):
         "Just a test"
-        base_path = self.config.ini['DEFAULT']['base_path']
-        print(base_path)
+        print(db_files, arg)
 
     def do_make_all(self, arg):
         'Generate and import corpus then run mallet. Optionally pass a trial name.'
@@ -109,6 +110,25 @@ class PoloShell(cmd.Cmd):
         corpus.export_mallet_corpus()
 
         self.corpus = corpus
+
+    def do_retro(self, arg):
+
+        trial = 'trial1'
+        if arg: trial = arg
+        corpus_dbfile = '{}/{}-corpus.db'.format(self.base_path, self.slug)
+        model_dbfile =  '{}/{}-mallet-{}.db'.format(self.base_path, self.slug, trial)
+        if not os.path.isfile(model_dbfile):
+            print(model_dbfile, 'not found')
+        elif not os.path.isfile(corpus_dbfile):
+            print(corpus_dbfile, 'not found')
+        else:
+            print('Corpus db:', corpus_dbfile)
+            print('Model db:', model_dbfile)
+
+            from polo2 import PoloRetro
+            retro = PoloRetro(self.config)
+            retro.retro_combine(corpus_dbfile, model_dbfile)
+            retro.create_all_tables()
 
     def do_show_trials(self, arg):
         "Show all the trial names in the config"
