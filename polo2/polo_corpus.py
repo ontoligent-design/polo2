@@ -39,11 +39,8 @@ class PoloCorpus(PoloDb):
     def import_table_doc(self, src_file_name=None, normalize=True):
         # todo: Clarify requirements for doc -- delimitter, columns, header, etc.
         # All of this stuff should be in a schema as you did before
-        if not src_file_name: src_file_name = self.src_file_name
-        if self.src_file_sep == '':
-            self.src_file_sep = '|'
-        elif self.src_file_sep == 'TAB':
-            self.src_file_sep = '\t'
+        if not src_file_name:
+            src_file_name = self.src_file_name
         doc = pd.read_csv(src_file_name, header=0, sep=self.src_file_sep)
         # fixme: Put this in a separate and configurable function for general text normalization.
         if int(self.normalize) == 1:
@@ -54,6 +51,7 @@ class PoloCorpus(PoloDb):
             doc['doc_content'] = doc.doc_content.str.replace(r'\W+', ' ') # Remove non-alphanumerics
             doc['doc_content'] = doc.doc_content.str.replace(r'\d+', ' ') # Remove numbers
             doc['doc_content'] = doc.doc_content.str.replace(r'\s+', ' ') # Collapse spaces
+            doc['doc_content'] = doc.doc_content.str.replace(r'(^\s+|\s+$)', '') # Remove leading and trailing spaces
         doc.index.name = 'doc_id'
         self.put_table(doc, 'doc', index=True)
 

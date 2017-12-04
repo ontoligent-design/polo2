@@ -50,6 +50,13 @@ class PoloConfig():
         self.ini._interpolation = configparser.ExtendedInterpolation()
         self.ini.read(ini_file)
         self.validate_ini()
+
+        # Perhaps put into a method
+        if self.ini['DEFAULT']['src_file_sep'] == 'TAB':
+            self.ini['DEFAULT']['src_file_sep'] = '\t'
+        elif self.ini['DEFAULT']['src_file_sep'] == '':
+            self.ini['DEFAULT']['src_file_sep'] = '|'
+
         self.trials = self.ini.sections()
 
     def get_trial_names(self):
