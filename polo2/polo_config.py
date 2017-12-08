@@ -109,3 +109,17 @@ class PoloConfig():
                 raise ValueError("`{}` not created successfully.".format(ini_file))
         else:
             raise ValueError("`{}` already exists.".format(ini_file))
+
+    def generate_corpus_db_file_path(self):
+        corpus_db_file_path = '{}/{}-corpus.db'.format(self.ini['DEFAULT']['base_path'], self.ini['DEFAULT']['slug'])
+        return corpus_db_file_path
+
+    def generate_model_db_file_path(self, trial_name = 'trial1'):
+        self.validate_trial_name(trial_name)
+        corpus_db_file_path = '{}/{}-mallet-{}.db'.format(self.ini['DEFAULT']['base_path'], self.ini['DEFAULT']['slug'], trial_name)
+        return corpus_db_file_path
+
+    def validate_trial_name(self, trial_name):
+        if trial_name not in self.ini:
+            raise ValueError("Trial name not found")
+

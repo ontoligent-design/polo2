@@ -32,7 +32,8 @@ class PoloCorpus(PoloDb):
             if key in config.ini['DEFAULT']:
                 setattr(self, 'use_nltk', config.ini['DEFAULT'][key])
 
-        self.dbfile = '{}-corpus.db'.format(self.slug)
+        #self.dbfile = '{}-corpus.db'.format(self.slug) # todo: Put in a method
+        self.dbfile = config.generate_corpus_db_file_path()
         PoloDb.__init__(self, self.dbfile)
         if self.nltk_data_path: nltk.data.path.append(self.nltk_data_path)
 
@@ -76,7 +77,7 @@ class PoloCorpus(PoloDb):
         doctoken = doctoken[['doc_id', 'token_str']]
         if self.use_stopwords:
             stopwords = self.get_table('stopword')
-            doctoken = doctoken[~doctoken.token_str.isin(stopwords.token_str)]
+            doctoken = doctoken[~doctoken.token_str.isin(stopwords.token_str.tolist())]
         doctokenbow = pd.DataFrame(doctoken.groupby('doc_id').token_str.value_counts())
         doctokenbow.columns = ['token_count']
         self.put_table(doctokenbow, 'doctokenbow', index=True)
