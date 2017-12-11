@@ -139,6 +139,7 @@ class PoloCorpus(PoloDb):
         mallet_corpus = pd.read_sql_query('SELECT * FROM mallet_corpus', self.conn)
         mallet_corpus.to_csv(self.corpus_file, index=False, header=False)
 
+
         """
         # This does not work like it does in Jupyter. It does not concatenate the texts but instead
         # outputs one word per doc :-( 

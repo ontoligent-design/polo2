@@ -90,3 +90,4 @@ class PoloDb():
     def clear_table_cache(self):
         for table_name in self.tables:
             self.tables.pop(table_name, None)
+
