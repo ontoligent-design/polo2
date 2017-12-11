@@ -62,7 +62,8 @@ class PoloRetro:
         new_src_doc['doc_original'] = src_doc.doc_original
         if 'doc_year' in src_doc.columns:
             new_src_doc['doc_year'] = src_doc.doc_year
-        new_src_doc['doc_date'] = src_doc.doc_date
+        if 'doc_date' in src_doc.columns:
+            new_src_doc['doc_date'] = src_doc.doc_date
         new_src_doc['doc_citation'] = None
         self.retro.put_table(new_src_doc, 'src_doc', if_exists='replace', index=True)
 
