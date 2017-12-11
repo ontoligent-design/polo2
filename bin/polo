@@ -81,8 +81,14 @@ if __name__ == '__main__':
         print("Importing bigrams")
         corpus.add_tables_ngram_and_docngram(n=2)
 
-        print("Export mallet corpus")
+        print("Exporting corpus file for mallet")
         corpus.export_mallet_corpus()
+
+        # Run this here since it does not need to be run
+        # for each trial
+        mallet = PoloMallet(config)
+        print('Converting corpus for mallet')
+        mallet.mallet_import()
 
         #print("Running Gensim HDP (experimental)")
         #gs = PoloGensim(config, corpus.dbfile)
@@ -120,8 +126,8 @@ if __name__ == '__main__':
         mallet.cache_mode = False
         print('Mallet cache mode:', mallet.cache_mode)
 
-        print('Importing corpus')
-        mallet.mallet_import()
+        #print('Importing corpus')
+        #mallet.mallet_import()
 
         print('Training model')
         mallet.mallet_train()
