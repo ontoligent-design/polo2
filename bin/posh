@@ -178,10 +178,17 @@ class PoloShell(cmd.Cmd):
         print("Adding topicpair table")
         mallet.create_table_topicpair()
 
-        print("Cleaning up")
-        mallet.del_mallet_files()
+        #print("Cleaning up")
+        #mallet.del_mallet_files()
+        self.mallet = mallet
 
         print("Done with", mallet.trial_name)
+        print('Run clean_up now')
+
+    def do_clean_up(self):
+        """Delete mallet's output files."""
+        print("Cleaning up after mallet")
+        self.mallet.del_mallet_files()
 
     def do_create_ini(self, arg):
         if arg:
