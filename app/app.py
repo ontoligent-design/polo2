@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template
 import os, configparser, sys
 
 app = Flask(__name__)
@@ -11,9 +11,11 @@ config.read(ini_file)
 
 @app.route("/")
 def hello():
-    projects_dir = config.get('DEFAULT', 'projects_dir')
-    dirs = '<br />\n'.join([dir for dir in os.listdir(projects_dir) if os.path.isfile(dir + '/config.ini')])
-    return "Projects Directory: {}".format(dirs)
+    data = {}
+    data['projects_dir'] = config.get('DEFAULT', 'projects_dir')
+    data['dirs'] = [dir for dir in os.listdir(data['projects_dir'])
+                    if os.path.isfile('{}/{}/config.ini'.format(data['projects_dir'], dir))]
+    return render_template('home.html', **data)
 
 @app.route("/project")
 def projects():

@@ -1,0 +1,11 @@
+{% extends "layout.html" %}
+{% block main %}
+    <ul>
+        <li>Project Dir: {{projects_dir}}</li>
+        <ul>
+            {% for dir in dirs %}
+            <li>{{dir}}</li>
+            {% endfor %}
+        </ul>
+    </ul>
+{% endblock %}

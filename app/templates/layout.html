@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Polo</title>
+        <link rel="stylesheet" type="text/css" href="https://www.w3schools.com/w3css/4/w3.css">
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='default.css') }}">
+    </head>
+    <body>
+        <title>Polo</title>
+        <div>
+            <h1>Polo</h1>
+            <div id="main" class="w3-container">
+                {% block main %} {% endblock %}
+            </div>
+        </div>
+        <div id="footer" class="">
+            {% block footer %}
+            Footer goes here
+            {% endblock %}
+        </div>
+    </body>
+</html>
