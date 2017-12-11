@@ -154,15 +154,16 @@ class PoloMallet(PoloDb):
                 row = line.split('\t')
                 row.pop()  # Pretty sure this is right
                 doc_id = row[0]
+                src_doc_id = row[1].split(',')[0]
                 doc_label = row[1].split(',')[1]
-                DOC.append([doc_id, doc_label])
+                DOC.append([doc_id, src_doc_id, doc_label])
                 for i in range(2, len(row), 2):
                     topic_id = row[i]
                     topic_weight = row[i + 1]
                     DOCTOPIC.append([doc_id, topic_id, topic_weight])
             doctopic = pd.DataFrame(DOCTOPIC, columns=['doc_id', 'topic_id', 'topic_weight'])
             doctopic.set_index(['doc_id', 'topic_id'], inplace=True)
-            doc = pd.DataFrame(DOC, columns=['doc_id', 'doc_label'])
+            doc = pd.DataFrame(DOC, columns=['doc_id', 'src_doc_id', 'doc_label'])
             doc.set_index('doc_id', inplace=True)
             self.put_table(doctopic, 'doctopic', index=True)
             self.put_table(doc, 'doc', index=True)
@@ -170,8 +171,9 @@ class PoloMallet(PoloDb):
             doctopic = pd.read_csv(src_file, sep='\t', header=None)
             doc = pd.DataFrame(doctopic.iloc[:, 1])
             doc.columns = ['doc_tmp']
+            doc['src_doc_id'] = doc.doc_tmp.apply(lambda x: x.split(',')[0])
             doc['doc_label'] = doc.doc_tmp.apply(lambda x: x.split(',')[1])
-            doc = doc[['doc_label']]
+            doc = doc[['src_doc_id', 'doc_label']]
             doc.index.name = 'doc_id'
             self.put_table(doc, 'doc', index=True)
             doctopic.drop(1, axis = 1, inplace=True)

@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, re
 import nltk
 import pandas as pd
 
@@ -43,6 +43,7 @@ class PoloCorpus(PoloDb):
         if not src_file_name:
             src_file_name = self.src_file_name
         doc = pd.read_csv(src_file_name, header=0, sep=self.src_file_sep)
+        doc.index.name = 'doc_id'
         # fixme: Put this in a separate and configurable function for general text normalization.
         if int(self.normalize) == 1:
             doc['doc_content'] = doc.doc_content.str.lower()
@@ -53,7 +54,6 @@ class PoloCorpus(PoloDb):
             doc['doc_content'] = doc.doc_content.str.replace(r'\d+', ' ') # Remove numbers
             doc['doc_content'] = doc.doc_content.str.replace(r'\s+', ' ') # Collapse spaces
             doc['doc_content'] = doc.doc_content.str.replace(r'(^\s+|\s+$)', '') # Remove leading and trailing spaces
-        doc.index.name = 'doc_id'
         self.put_table(doc, 'doc', index=True)
 
     def import_table_stopword(self, use_nltk=False):
@@ -131,14 +131,15 @@ class PoloCorpus(PoloDb):
         SELECT dt.doc_id, d.doc_label, GROUP_CONCAT(token_str, ' ') AS doc_content
         FROM doctoken dt JOIN doc d USING (doc_id)
         GROUP BY dt.doc_id
-        ORDER BY dt.doc_id;
+        ORDER BY dt.doc_id
         """
-        self.conn.execute("DROP VIEW IF EXISTS mallet_corpus;")
+        self.conn.execute("DROP VIEW IF EXISTS mallet_corpus")
         self.conn.execute(mallet_corpus_sql)
         self.conn.commit()
         mallet_corpus = pd.read_sql_query('SELECT * FROM mallet_corpus', self.conn)
+        rgx = re.compile(r'\s+')
+        mallet_corpus['doc_label'] = mallet_corpus.doc_label.str.replace(rgx, '_')
         mallet_corpus.to_csv(self.corpus_file, index=False, header=False)
-
 
         """
         # This does not work like it does in Jupyter. It does not concatenate the texts but instead
