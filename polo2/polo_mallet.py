@@ -8,7 +8,7 @@ from polo2 import PoloMath as pm
 
 class PoloMallet(PoloDb):
 
-    def __init__(self, config, trial):
+    def __init__(self, config, trial='trial1'):
 
         if trial not in config.trials:
             raise ValueError("Invalid trail name `{}`.format(trial)")
@@ -46,7 +46,8 @@ class PoloMallet(PoloDb):
         self.mallet = {'import-file': {}, 'train-topics': {}}
         self.mallet_init()
 
-        dbfile = "{}/{}-mallet-{}.db".format(self.cfg_base_path, self.cfg_slug, self.trial)
+        #dbfile = "{}/{}-mallet-{}.db".format(self.cfg_base_path, self.cfg_slug, self.trial)
+        dbfile = self.config.generate_model_db_file_path(self.trial)
         PoloDb.__init__(self, dbfile)
 
     def generate_trial_name(self):
@@ -58,14 +59,14 @@ class PoloMallet(PoloDb):
         # todo: Consider putting this in the init for the object itself
         if not os.path.exists(self.cfg_mallet_path):
             raise ValueError('Mallet cannot be found.')
-        #if os.path.exists(self.cfg_extra_stops):
-        #    self.mallet['import-file']['extra-stopwords'] = self.cfg_extra_stops
+
         if os.path.exists(self.cfg_replacements): # todo: Consider moving this step out of MALLET and into corpus prep
             self.mallet['import-file']['replacement-files'] = self.cfg_replacements
         self.mallet['import-file']['input'] = self.cfg_input_corpus
-        self.mallet['import-file']['output'] = '{}/{}-corpus.mallet'.format(self.cfg_output_dir, self.trial)
+        self.mallet['import-file']['output'] = '{}/{}-corpus.mallet'.format(self.cfg_output_dir, self.trial) # Put this in corpus?
         self.mallet['import-file']['keep-sequence'] = 'TRUE' # todo: Control this by config
         self.mallet['import-file']['remove-stopwords'] = 'FALSE' # todo: Control this by config
+
         self.mallet['train-topics']['num-topics'] = self.cfg_num_topics
         self.mallet['train-topics']['num-top-words'] = self.cfg_num_top_words
         self.mallet['train-topics']['num-iterations'] = self.cfg_num_iterations
