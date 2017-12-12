@@ -1,11 +1,13 @@
 {% extends "layout.html" %}
 {% block main %}
+    <h1>{{foo}}</h1>
     <ul>
-        <li>Project Dir: {{projects_dir}}</li>
-        <ul>
-            {% for dir in dirs %}
-            <li>{{dir}}</li>
-            {% endfor %}
-        </ul>
+        {% for proj in projects %}
+        <li><a href="/projects/{{proj}}">{{proj}}</a></li>
+        {% endfor %}
     </ul>
+{% endblock %}
+
+{% block footer %}
+    <a href="/project">TEST</a>
 {% endblock %}
