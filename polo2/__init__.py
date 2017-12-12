@@ -10,5 +10,4 @@ from polo2.polo_retro import PoloRetro
 from polo2.polo_gensim import PoloGensim
 from polo2.polo_scraper import PoloScraper
 
-#__all__ = ['PoloDb', 'PoloFile', 'PoloConfig', 'PoloCorpus', 'PoloMallet', 'PoloMath', 'PoloText', 'PoloReport', 'PoloRetro', 'PoloGensim']
 __all__ = 'PoloDb PoloFile PoloConfig PoloCorpus PoloMallet PoloMath PoloText PoloReport PoloRetro PoloGensim PoloScraper'.split()

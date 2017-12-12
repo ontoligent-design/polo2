@@ -1,3 +1,9 @@
-#main {
+#main {}
 
-}
+table td { vertical-align: top; border-top: 1px dotted gray; margin: 0; padding: 1rem; }
+table td:first-child { text-align: right; }
+table .topic_id { font-size: large; font-weight:bold;}
+table .topic_words { font-weight: bold; font-size: large; }
+table td .topic_alpha_zscore { padding: 0 .5rem; }
+table td .topic_alpha_zscore.neg { background-color: red; color: white; }
+table td .topic_alpha_zscore.pos { background-color: green; color: white; }

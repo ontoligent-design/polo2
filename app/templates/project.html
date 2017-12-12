@@ -1,5 +1,34 @@
 {% extends "layout.html" %}
+
+
+{% block title %}
+Project: {{ini.title}}
+{% endblock %}
+
 {% block main %}
-<li>{{slug}}</li>
-<li>{{doc_count}}</li>
+
+<div class="topic_list w3-container w3-half">
+    <h2>Metrics</h2>
+    {{topic_list | safe}}
+</div>
+
+<div class="w3-half">
+    <h2>Topics</h2>
+    <table class="w3-table">
+        <tr>
+            <td>Documents</td>
+            <td>{{doc_count}}</td>
+        </tr>
+        <tr>
+            <td>Topics</td>
+            <td>{{topic_count}}</td>
+        </tr>
+        <tr>
+            <td>Trials</td>
+            <td>{% for trial in trials %}<a href="/projects/{{slug}}/{{trial}}">{{trial}}</a>{% endfor %}</td>
+        </tr>
+    </table>
+</div>
+
+
 {% endblock %}

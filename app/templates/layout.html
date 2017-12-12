@@ -4,13 +4,17 @@
         <title>Polo | {{page_title}}</title>
         <link rel="stylesheet" type="text/css" href="https://www.w3schools.com/w3css/4/w3.css">
         <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     </head>
     <body>
+        <div id="banner" class="w3-container">
+            <h1>{% block title %}{{page_title}}{% endblock %}</h1>
+        </div>
         <div id="main" class="w3-container">
             {% block main %} {% endblock %}
         </div>
         <div id="footer" class="w3-container">
-            {% block footer %} {% endblock %}
+            {% block footer %}&copy; 2017 Ontoligent Design{% endblock %}
         </div>
     </body>
 </html>

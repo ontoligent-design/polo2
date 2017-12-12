@@ -1,13 +1,11 @@
 {% extends "layout.html" %}
+
+{% block title %}{{page_title}}{% endblock %}
+
 {% block main %}
-    <h1>{{foo}}</h1>
     <ul>
         {% for proj in projects %}
         <li><a href="/projects/{{proj}}">{{proj}}</a></li>
         {% endfor %}
     </ul>
-{% endblock %}
-
-{% block footer %}
-    <a href="/project">TEST</a>
 {% endblock %}
