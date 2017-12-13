@@ -1,19 +1,49 @@
 {% extends "layout.html" %}
 
-
 {% block title %}
-Project: {{ini.title}}
+{{page_title}}
 {% endblock %}
 
 {% block main %}
 
+<div class="w3-container">
+    <a class="w3-btn w3-orange" href="/projects/{{slug}}/{{trial}}/topic_label_heatmap">Topic-Label Heatmap</a>
+</div>
+
 <div class="topic_list w3-container w3-half">
-    <h2>Metrics</h2>
-    {{topic_list | safe}}
+    <h2>Topics</h2>
+    <p>Topics listed in order of <b>&alpha;</b>.</p>
+    <table>
+        {% for topic in topic_list %}
+        <tr>
+            <td>
+                <div class="topic_id w3-badge">T{{topic.topic_id}}</div>
+                <div class="topic_alpha">&alpha;={{topic.topic_alpha}}</div>
+                <div class="topic_alpha_zscore {{topic.topic_alpha_zsign}}">{{topic.topic_alpha_zscore}}</div>
+            </td>
+            <td>
+                <div class="w3-white">
+                    <div class="w3-green" style="height:24px; width:{{topic.topic_alpha_percent}}%"></div>
+                </div>
+                <div class="topic_words">{{topic.topic_words}}</div>
+                <div class="topic_phrases">{{topic.topic_phrases}}</div>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
 </div>
 
 <div class="w3-half">
-    <h2>Topics</h2>
+
+    <h2>Test</h2>
+    <div id="topic_alpha_hist"></div>
+    <script>
+    var trace = {x: {{test.topic_alpha.tolist()}}, type: 'histogram'};
+    var data = [trace];
+    Plotly.newPlot('topic_alpha_hist', data, {'title':'Histogram of Topic Alpha'});
+    </script>
+
+    <h2>Metrics</h2>
     <table class="w3-table">
         <tr>
             <td>Documents</td>
@@ -25,10 +55,9 @@ Project: {{ini.title}}
         </tr>
         <tr>
             <td>Trials</td>
-            <td>{% for trial in trials %}<a href="/projects/{{slug}}/{{trial}}">{{trial}}</a>{% endfor %}</td>
+            <td>{% for trial in trials %}<a class="w3-btn w3-green" href="/projects/{{slug}}/{{trial}}">{{trial}}</a>&nbsp;{% endfor %}</td>
         </tr>
     </table>
 </div>
-
 
 {% endblock %}

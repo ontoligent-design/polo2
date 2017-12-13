@@ -60,45 +60,37 @@ class Elements(object):
             cards.append(card)
         return cards
 
-    def display_topic_list(self, by_alpha=True, format='simple_table'):
-        topic_list = self.get_topic_list(by_alpha)
-        if format == 'simple_table':
-            df = pd.DataFrame(topic_list)
-            el = df.to_html()
-        elif format == 'w3_cards':
-            cards = []
-            for topic in topic_list:
-                alpha_bar = self.make_progress_bar(color='blue', percent=topic['topic_alpha_percent'])
-                card = """
-                <tr>
-                    <td>
-                        <div class="topic_id">{}</div>
-                        <div class="topic_alpha">{}</div>
-                        <div class="topic_alpha_zscore {}">{}</div>
-                    </td>
-                    <td>
-                        {}
-                        <div class="topic_words">{}</div>
-                        <div class="topic_phrases">{}</td>
-                    </td>
-                </tr>
-                """.format(topic['topic_id'], topic['topic_alpha'], topic['topic_alpha_zsign'], topic['topic_alpha_zscore'], alpha_bar, topic['topic_words'], topic['topic_phrases'])
-                cards.append(card)
-            el = ("<table>{}</table>").format('\n'.join(cards))
-        else:
-            el = "NO FORMAT GIVEN"
-        return el
-
     def get_prhases_for_topic(self, topic_id):
         sql = "SELECT topic_phrase FROM topicphrase WHERE topic_id = {} ORDER BY phrase_weight DESC".format(topic_id)
         phrases = ', '.join(pd.read_sql_query(sql, self.model.conn).topic_phrase.tolist())
         return phrases
 
-    def make_progress_bar(self, color='grey', height=24, percent = 0, content=''):
-        bar = """<div class="w3-light-{0}">
-        <div class="w3-{0}" style="height:{1}px; width:{2}%">{3}</div>
-        </div>""".format(color, height, percent, content)
+    def get_topic_entropy_hist(self):
+        doctopics = self.model.get_table('doctopic', set_index=True)
+        doctopics.unstack()
 
-        return bar
+    def get_topic_label_matrix(self, doc_col = None, thresh = 0.05):
+        if not doc_col:
+            doc_col = self.config.ini['DEFAULT']['src_ord_col'] # Should wrap these calls with a method
+        src_docs = self.corpus.get_table('doc', set_index=True)
+        #doctopics = trial.modeldb.get_table('doctopic', set_index=True)
+        doctopics = pd.read_sql_query('SELECT * FROM doctopic WHERE topic_weight >= {}'.format(thresh),
+                                      self.model.conn)
+        doctopics.set_index(['doc_id', 'topic_id'], inplace=True)
+        dtw = doctopics.unstack()
+        dtw[doc_col] = src_docs[doc_col]
+        dtm = dtw.groupby(doc_col).mean().fillna(0)
+        if dtm.columns.nlevels == 2:
+            dtm.columns = dtm.columns.droplevel(0)
+
+        topics = self.model.get_table('topic', set_index=True)
+        topics = topics.sort_values('topic_alpha', ascending=False)
+        dtm = dtm[topics.index.tolist()]
+        dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_words), axis=1)
+
+        return dtm
+
+    def test(self):
+        return self.model.get_table('topic', set_index=True)
 
 

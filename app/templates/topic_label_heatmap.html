@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+
+{% block title %}
+{{page_title}}
+{% endblock %}
+
+{% block main %}
+<div class="w3-container">
+    <a class="w3-btn w3-orange" href="/projects/{{slug}}/{{trial}}">Back to Project</a>
+</div>
+<div class="w3-container">
+
+    <div id="topic_heatmap"></div>
+    <script type="text/javascript">
+    var colors = 'YlGnBu'
+    var x = {{dtm.columns.astype('str').tolist() | tojson | safe}}
+    var y = {{dtm.index.astype('str').tolist() | tojson | safe}}
+    var z = {{dtm.values.tolist() | tojson | safe}}
+    var data = [ {x:x, y:y, z:z, type:'heatmap', colorscale: colors, reversescale:true} ];
+    var layout = { height: 2000, xaxis: {type: 'category'}, yaxis: {type: 'category'} };
+    Plotly.newPlot('topic_heatmap', data, layout);
+    </script>
+
+    <div id="topic_heatmap_t"></div>
+    <script type="text/javascript">
+    var colors = 'YlGnBu'
+    var x = {{dtm.T.columns.astype('str').tolist() | tojson | safe}}
+    var y = {{dtm.T.index.astype('str').tolist() | tojson | safe}}
+    var z = {{dtm.T.values.tolist() | tojson | safe}}
+    var data = [ {x:x, y:y, z:z, type:'heatmap', colorscale: colors, reversescale:true} ];
+    var layout = { height: 2000, xaxis: {type: 'category'}, yaxis: {type: 'category'} };
+    Plotly.newPlot('topic_heatmap_t', data, layout);
+    </script>
+
+</div>
+{% endblock %}

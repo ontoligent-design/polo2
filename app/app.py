@@ -10,7 +10,10 @@ app = Flask(__name__)
 app.config.from_object('config')
 
 projects_dir = app.config['PROJECTS_DIR']
-data = {}
+data = {} # Use to store variables to pass to templates
+data['main_menu'] = [
+    ('/projects', 'Projects'),
+]
 
 @app.route("/")
 @app.route("/projects")
@@ -26,21 +29,33 @@ def test():
 @app.route("/projects/<slug>")
 @app.route("/projects/<slug>/<trial>")
 def projects(slug, trial='trial1'):
-
     cfg = get_project_config(slug)
     els = Elements(cfg, trial)
-
     data['ini'] = cfg.ini['DEFAULT']
     data['trials'] = cfg.get_trial_names()
     data['slug'] = slug
-    data['page_title'] = 'Project ' + slug
+    data['trial'] = trial
+    data['page_title'] = 'Project {}, Trial {}'.format(slug, trial)
     data['doc_count'] = els.get_doc_count()
     data['topic_count'] = els.get_topic_count()
-    data['topic_list'] = els.display_topic_list(format='w3_cards')
-
+    data['topic_list'] = els.get_topic_list()
+    data['topics'] = els.model.get_table('topic', set_index=True)
+    data['test'] = els.test()
     return render_template("project.html", **data)
 
-# Helpers
+@app.route("/projects/<slug>/<trial>/topic_label_heatmap")
+def topic_label_heatmap(slug, trial='trial1'):
+    cfg = get_project_config(slug)
+    els = Elements(cfg, trial)
+    data['ini'] = cfg.ini['DEFAULT']
+    data['trials'] = cfg.get_trial_names()
+    data['slug'] = slug
+    data['trial'] = trial
+    data['page_title'] = 'Project {}, Trial {}, Topic-Label Heatmap'.format(slug, trial)
+    data['dtm'] = els.get_topic_label_matrix()
+    return render_template("topic_label_heatmap.html", **data)
+
+# Helpers -- Consider moving to module
 def get_project_config_file(slug):
     return '{}/{}/config.ini'.format(projects_dir, slug)
 
