@@ -1,29 +1,43 @@
 {% extends "layout.html" %}
 
-{% block title %}
-{{page_title}}
-{% endblock %}
-
 {% block main %}
 
-<div class="w3-container">
-    <a class="w3-btn w3-orange" href="/projects/{{slug}}/{{trial}}/topic_label_heatmap">Topic-Label Heatmap</a>
+<div class="w3-bar">
+    <a class="w3-bar-item w3-button w3-orange" href="/projects/{{slug}}/{{trial}}/topic_label_heatmap">Topic-Label Heatmap</a>
 </div>
 
-<div class="topic_list w3-container w3-half">
+<div class="topic_list w3-container w3-twothird">
     <h2>Topics</h2>
     <p>Topics listed in order of <b>&alpha;</b>.</p>
-    <table>
+    <table class="w3-table">
+        <script>
+            var weight_max = {{dtm.values.max()}};
+            var layout = {
+                xaxis: {visible: false, showgrid: false, showline: false, showticklabels: false},
+                yaxis: {visible: false, showgrid: false, showline: false, showticklabels: false, range: [0, weight_max]},
+                margin: {l: 10, r: 10, b: 50, t: 0, pad: 50}
+            }
+            var config = {displaylogo: false, displayModeBar: false, scrollZoom: false, editable: false, staticPlot: false};
+        </script>
         {% for topic in topic_list %}
         <tr>
             <td>
-                <div class="topic_id w3-badge">T{{topic.topic_id}}</div>
+                <div id="topic_trend_graph_{{topic.topic_id}}" style="width:200px; height:100px;"></div>
+                <script type="text/javascript">
+                var x{{topic.topic_id}} = {{ dtm[topic.topic_id.astype('str')].index.astype('str').tolist() | tojson | safe }}
+                var y{{topic.topic_id}} = {{ dtm[topic.topic_id.astype('str')].values.tolist() | tojson | safe }}
+                var data{{topic.topic_id}} = [{x:x{{topic.topic_id}}, y:y{{topic.topic_id}}, type:'line', hoverinfo: 'x+y', showlegend: false}]
+                Plotly.newPlot("topic_trend_graph_{{topic.topic_id}}", data{{topic.topic_id}}, layout, config)
+                </script>
+            </td>
+            <td>
+                <a class="topic_id w3-button w3-blue" href="/projects/{{slug}}/{{trial}}/topic/{{topic.topic_id}}" target="_blank">T{{topic.topic_id}}</a>
                 <div class="topic_alpha">&alpha;={{topic.topic_alpha}}</div>
                 <div class="topic_alpha_zscore {{topic.topic_alpha_zsign}}">{{topic.topic_alpha_zscore}}</div>
             </td>
             <td>
-                <div class="w3-white">
-                    <div class="w3-green" style="height:24px; width:{{topic.topic_alpha_percent}}%"></div>
+                <div class="">
+                    <div class="w3-light-green" style="height:24px; width:{{topic.topic_alpha_percent}}%"></div>
                 </div>
                 <div class="topic_words">{{topic.topic_words}}</div>
                 <div class="topic_phrases">{{topic.topic_phrases}}</div>
@@ -33,9 +47,23 @@
     </table>
 </div>
 
-<div class="w3-half">
+<div class="w3-rest">
 
-    <h2>Test</h2>
+    <h2>Top Bigrams</h2>
+    <p>Top bigrams in the corpus out of <tt>{{bigrams.ngram_count.sum()}}</tt> unique bigrams.</p>
+    <table class="w3-table">
+        {% for i in bigrams.index %}
+        <tr>
+            <td style="width:20%;">{{bigrams.loc[i].ngram | replace('_', '&nbsp;') | safe }}</td>
+            <!-- <td>{{bigrams.loc[i].ngram_count}}</td> -->
+            <td>
+                <div class="w3-light-green" style="height:24px; width:{{bigrams.loc[i].ngram_percent}}%"></div>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <h2>Topic Alpha</h2>
     <div id="topic_alpha_hist"></div>
     <script>
     var trace = {x: {{test.topic_alpha.tolist()}}, type: 'histogram'};
@@ -54,8 +82,16 @@
             <td>{{topic_count}}</td>
         </tr>
         <tr>
+            <td>Max Topic Weight</td>
+            <td>{{dtm.values.max()}}</td>
+        </tr>
+        <tr>
             <td>Trials</td>
-            <td>{% for trial in trials %}<a class="w3-btn w3-green" href="/projects/{{slug}}/{{trial}}">{{trial}}</a>&nbsp;{% endfor %}</td>
+            <td>
+                {% for trial in trials %}
+                <a class="w3-btn w3-green" href="/projects/{{slug}}/{{trial}}">{{trial}}</a>&nbsp;
+                {% endfor %}
+            </td>
         </tr>
     </table>
 </div>

@@ -35,12 +35,14 @@ def projects(slug, trial='trial1'):
     data['trials'] = cfg.get_trial_names()
     data['slug'] = slug
     data['trial'] = trial
-    data['page_title'] = 'Project {}, Trial {}'.format(slug, trial)
+    data['page_title'] = '{}, {}'.format(slug, trial)
     data['doc_count'] = els.get_doc_count()
     data['topic_count'] = els.get_topic_count()
     data['topic_list'] = els.get_topic_list()
     data['topics'] = els.model.get_table('topic', set_index=True)
     data['test'] = els.test()
+    data['bigrams'] = els.get_top_bigrams()
+    data['dtm'] = els.get_topicdocord_matrix()
     return render_template("project.html", **data)
 
 @app.route("/projects/<slug>/<trial>/topic_label_heatmap")
@@ -51,9 +53,32 @@ def topic_label_heatmap(slug, trial='trial1'):
     data['trials'] = cfg.get_trial_names()
     data['slug'] = slug
     data['trial'] = trial
-    data['page_title'] = 'Project {}, Trial {}, Topic-Label Heatmap'.format(slug, trial)
-    data['dtm'] = els.get_topic_label_matrix()
+    data['page_title'] = '{}, {}: Topic-Label Heatmap'.format(slug, trial)
+    data['dtm'] = els.get_topicdoclabel_matrix()
     return render_template("topic_label_heatmap.html", **data)
+
+@app.route('/projects/<slug>/<trial>/docs/<int:topic_id>/<doc_label>')
+def docs_for_topic_and_label(slug, topic_id, doc_label, trial='trial1'):
+    cfg = get_project_config(slug)
+    els = Elements(cfg, trial)
+    data['slug'] = slug
+    data['trial'] = trial
+    data['page_title'] = '{}, {}: Topic {}, Label {}'.format(slug, trial, topic_id, doc_label)
+    data['topic_id'] = topic_id
+    data['doc_label'] = doc_label
+    data['docs'] = els.get_docs_for_topic_and_label(topic_id, doc_label)
+    return render_template('docs_for_topic_and_label.html', **data)
+
+@app.route("/projects/<slug>/<trial>/topic/<int:topic_id>")
+def topic(slug, topic_id, trial='trial1'):
+    cfg = get_project_config(slug)
+    els = Elements(cfg, trial)
+    data['topic_id'] = topic_id
+    data['slug'] = slug
+    data['page_title'] = '{}, {}: Topic {}'.format(slug, trial, topic_id)
+    data['topic'] = els.get_topic(topic_id)
+    data['trend'] = els.get_topicdoc_ord_for_topic(topic_id)
+    return render_template('topic.html', **data)
 
 # Helpers -- Consider moving to module
 def get_project_config_file(slug):

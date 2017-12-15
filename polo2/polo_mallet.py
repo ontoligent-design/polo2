@@ -41,7 +41,9 @@ class PoloMallet(PoloDb):
         #    if key in self.config.ini[trial]:
         #        setattr(self, 'cfg_{}'.format(key), self.config.ini[trial][key])
 
-        self.generate_trial_name()
+        #self.generate_trial_name()
+        #self.file_prefix = '{}/{}'.format(self.cfg_output_dir, self.trial_name)
+        self.trial_name = self.trial # HACK
         self.file_prefix = '{}/{}'.format(self.cfg_output_dir, self.trial_name)
         self.mallet = {'import-file': {}, 'train-topics': {}}
         self.mallet_init()
@@ -102,7 +104,7 @@ class PoloMallet(PoloDb):
         self.mallet_run_command('train-topics')
 
     def clean_up(self):
-        file_mask = '{}/{}-*.*'.format(self.cfg_output_dir,self.trial_name)
+        file_mask = '{}-*.*'.format(self.file_prefix)
         my_cmd = 'rm {}'.format(file_mask)
         try:
             os.system(my_cmd)
@@ -352,59 +354,31 @@ class PoloMallet(PoloDb):
         topicpair.set_index(['topic_a_id', 'topic_b_id'], inplace=True)
         self.put_table(topicpair, 'topicpair', index=True)
 
-    """
-    def create_table_topicpair_old(self):
+    def create_topicdoc_col_matrix(self, group_col):
 
-        r = self.conn.execute("select count() from doc")
-        doc_num = int(r.fetchone()[0])
+        # Get source doc table
+        corpus_db_file = self.config.generate_corpus_db_file_path()
+        corpus = PoloDb(corpus_db_file)
+        src_docs = corpus.get_table('doc', set_index=True)
+        del corpus
 
-        doctopic = self.get_table('doctopic')
-        dts = doctopic[doctopic.topic_weight >= self.cfg_thresh]
-        dtsw = dts.pivot(index='doc_id', columns='topic_id', values='topic_weight')
-        del doctopic
-        del dts
+        # Get reduced doctopic table
+        doctopics = pd.read_sql_query('SELECT * FROM doctopic WHERE topic_weight >= {}'.format(self.cfg_thresh),
+                                      self.conn)
+        doctopics.set_index(['doc_id', 'topic_id'], inplace=True)
+        dtw = doctopics.unstack()
+        del doctopics
 
-        topic = self.get_table('topic')
-        topic['topic_freq'] = [len(dtsw[dtsw[t] > 0]) for t in range(self.cfg_num_topics)]
-        topic['topic_rel_freq'] = [len(dtsw[dtsw[t] > 0]) / doc_num for t in range(self.cfg_num_topics)]
-        self.put_table(topic, 'topic')
+        if group_col == 'ord':
+            doc_col = self.config.ini['DEFAULT']['src_ord_col']
+        elif group_col == 'label':
+            doc_col = 'doc_label'
+        else:
+            group_col = 'ord'
+            doc_col = self.config.ini['DEFAULT']['src_ord_col']
 
-        # For cosine sim, etc
-        topicword = self.get_table('topicword')
-        topicword['word_count'] = topicword['word_count'].astype(int)
-        topicword.set_index(['word_id', 'topic_id'], inplace=True)
-        topicword_wide = topicword.unstack().reset_index().fillna(0)
-        topicword_wide.columns = topicword_wide.columns.droplevel(0)
-
-        TOPICPAIR = []
-        from itertools import combinations
-        for pair in list(combinations(topic.index, 2)):
-            a = pair[0]
-            b = pair[1]
-
-            # Cosine sim, Jensen-Shannon Divergence, and Jaccard Score
-            x = topicword_wide.iloc[:, a].tolist()
-            y = topicword_wide.iloc[:, b].tolist()
-            cosim = pm.cosine_sim(x, y)
-            jsdiv = pm.js_divergence(x, y)
-            jscore = pm.jscore(topicword_wide.iloc[:, a], topicword_wide.iloc[:, b])
-
-            p_a = topic.loc[a, 'topic_rel_freq']
-            p_b = topic.loc[b, 'topic_rel_freq']
-            p_ab = len(dtsw[(dtsw[a] > 0) & (dtsw[b] > 0)]) / doc_num
-            if p_ab == 0: p_ab = .000001 # To prevent craziness in prob calcs
-            p_aGb = p_ab / p_b
-            p_bGa = p_ab / p_a
-            i_ab = pm.pwmi(p_a, p_b, p_ab)
-            c_ab = (1 - p_a) / (1 - p_aGb)
-            TOPICPAIR.append([a, b, p_ab, p_aGb, p_bGa, i_ab, c_ab, cosim, jsdiv, jscore])
-        topicpair = pd.DataFrame(TOPICPAIR, columns=['topic_a_id', 'topic_b_id', 'p_ab',
-                                                     'p_aGb', 'p_bGa', 'i_ab', 'c_ab', 'cosine_sim', 'js_div', 'jscore'])
-        self.put_table(topicpair, 'topicpair')
-    """
-
-    def get_doctopic_wide(self):
-        doctopic = self.get_table('doctopic', set_index=True)
-        #doctopic.set_index(['doc_id', 'topic_id'], inplace=True)
-        doctopic_wide = doctopic.unstack()
-        return doctopic_wide
+        dtw[doc_col] = src_docs[doc_col]
+        dtm = dtw.groupby(doc_col).mean().fillna(0)
+        if dtm.columns.nlevels == 2:
+            dtm.columns = dtm.columns.droplevel(0)
+        self.put_table(dtm, 'topicdoc{}_matrix'.format(group_col), index=True)

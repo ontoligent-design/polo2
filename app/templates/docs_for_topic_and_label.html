@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+
+{% block title %}
+{{page_title}}
+{% endblock %}
+
+{% block main %}
+
+<div class="w3-half">
+{% for doc_id in docs.index %}
+<div class="doc">
+    <h3>{{docs.loc[doc_id].doc_title}}</h3>
+    <p>{{docs.loc[doc_id].doc_original}}</p>
+</div>
+{% endfor %}
+</div>
+
+{% endblock %}
