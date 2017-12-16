@@ -393,8 +393,8 @@ class PoloMallet(PoloDb):
             group_col = 'ord'
             doc_col = self.config.ini['DEFAULT']['src_ord_col']
 
-        dtw[doc_col] = src_docs[doc_col]
-        dtg = dtw.groupby(doc_col)
+        dtw['doc_group'] = src_docs[doc_col]
+        dtg = dtw.groupby('doc_group')
         dtm = dtg.mean().fillna(0)
         if dtm.columns.nlevels == 2:
             dtm.columns = dtm.columns.droplevel(0)

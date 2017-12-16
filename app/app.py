@@ -11,6 +11,8 @@ app.config.from_object('config')
 
 projects_dir = app.config['PROJECTS_DIR']
 data = {} # Use to store variables to pass to templates
+
+# todo: Write a Drupal-like menu handler
 data['main_menu'] = {
     '/projects': 'Projects'
 }
@@ -31,20 +33,30 @@ def test():
 def project(slug, trial='trial1'):
     cfg = get_project_config(slug)
     els = Elements(cfg, trial)
-    data['ini'] = cfg.ini['DEFAULT']
-    data['trials'] = cfg.get_trial_names()
+
     data['slug'] = slug
     data['trial'] = trial
     data['page_title'] = '{}, {}'.format(slug, trial)
+
+    data['ini'] = cfg.ini['DEFAULT'] # Really?
+    data['trials'] = cfg.get_trial_names()
+    data['src_ord_col'] = cfg.ini['DEFAULT']['src_ord_col']
+
     data['doc_count'] = els.get_doc_count()
     data['topic_count'] = els.get_topic_count()
+
+    # todo: Put all this in elements as data['topics'] = els.get_topics()
+    # todo: Rewrite template to handle phrases as part of topics dataframe
     data['topics'] = els.model.get_table('topic', set_index=True)
     data['topics']['topic_alpha_zsign'] = data['topics'].topic_alpha_zscore.apply(lambda x: 'pos' if x > 0 else 'neg')
     alpha_max = data['topics'].topic_alpha.max()
     data['topics']['topic_alpha_percent'] = ((data['topics'].topic_alpha / alpha_max) * 100).astype(int)
     data['topic_phrases'] = els.model.get_table('topicphrase', set_index=True)
+
     data['bigrams'] = els.get_top_bigrams()
     data['dtm'] = els.get_topicdocord_matrix()
+    data['doc_ord_counts'] = els.get_topicdocgrooup_counts('topicdocord_matrix_counts')
+    data['dtm_sums'] = els.get_topicdoc_sum_matrix(data['dtm'], data['doc_ord_counts'])
     return render_template("project.html", **data)
 
 @app.route("/projects/<slug>/<trial>/topic_label_heatmap")
@@ -97,7 +109,7 @@ def get_project_config_file(slug):
     return '{}/{}/config.ini'.format(projects_dir, slug)
 
 def get_project_config(slug):
-    pcfg_file = get_project_config_file(slug) #'{}/{}/config.ini'.format(projects_dir, slug)
+    pcfg_file = get_project_config_file(slug)
     pcfg = PoloConfig(pcfg_file)
     return pcfg
 

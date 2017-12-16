@@ -8,7 +8,7 @@
 
 <div class="topic_list w3-container w3-twothird">
     <h2>Topics</h2>
-    <p>Topics listed in order of <b>&alpha;</b>.</p>
+    <p>Topics listed in order of <b>&alpha;</b>. Trend graphs show topic weight <b>averages</b> within the feature {[src_ord_col}}.</p>
     <table class="w3-table">
 
         <script type="text/javascript">
@@ -50,31 +50,10 @@
 
 </div>
 
-<div class="w3-rest">
+<div class="w3-third">
 
-    <h2>Top Bigrams</h2>
-    <p>Top bigrams in the corpus out of <tt>{{bigrams.ngram_count.sum()}}</tt> unique bigrams.</p>
-    <table class="w3-table">
-        {% for i in bigrams.index %}
-        <tr>
-            <td style="width:20%;">{{bigrams.loc[i].ngram | replace('_', '&nbsp;') | safe }}</td>
-            <!-- <td>{{bigrams.loc[i].ngram_count}}</td> -->
-            <td>
-                <div class="w3-light-green" style="height:24px; width:{{bigrams.loc[i].ngram_percent}}%"></div>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+    <h2>Corpus Metrics</h2>
 
-    <h2>Topic Alpha</h2>
-    <div id="topic_alpha_hist"></div>
-    <script>
-    var data = [{x: {{topics.topic_alpha.tolist()}}, type: 'histogram'}]
-    var layout = {'title':'Histogram of Topic Alpha'}
-    Plotly.newPlot('topic_alpha_hist', data, layout)
-    </script>
-
-    <h2>Metrics</h2>
     <table class="w3-table">
         <tr>
             <td>Documents</td>
@@ -96,6 +75,44 @@
                 {% endfor %}
             </td>
         </tr>
+        <tr>
+            <td>Grouping Feature</td>
+            <td>{{src_ord_col}}</td>
+        </tr>
+
+    </table>
+
+    <div id="doc_ord_counts"></div>
+    <script>
+        x = {{doc_ord_counts.index.values.tolist() | tojson | safe}}
+        y = {{doc_ord_counts.doc_count.values.tolist() | tojson | safe}}
+        data = [{x:x, y:y, type:'bar', hoverinfo: 'x+y', showlegend: false}]
+        layout = {title:'Documents Counts per Group'}
+        Plotly.newPlot('doc_ord_counts', data, layout)
+    </script>
+
+    <div id="topic_alpha_hist"></div>
+    <script>
+    var data = [{x: {{topics.topic_alpha.tolist()}}, type: 'histogram'}]
+    var layout = {'title':'Histogram of Topic Alpha'}
+    Plotly.newPlot('topic_alpha_hist', data, layout)
+    </script>
+
+</div>
+
+<div class="w3-rest">
+    <h2>Top Bigrams</h2>
+    <p>Top bigrams in the corpus out of <tt>{{bigrams.ngram_count.sum()}}</tt> unique bigrams.</p>
+    <table class="w3-table">
+        {% for i in bigrams.index %}
+        <tr>
+            <td style="width:20%;">{{bigrams.loc[i].ngram | replace('_', '&nbsp;') | safe }}</td>
+            <!-- <td>{{bigrams.loc[i].ngram_count}}</td> -->
+            <td>
+                <div class="w3-light-green" style="height:24px; width:{{bigrams.loc[i].ngram_percent}}%"></div>
+            </td>
+        </tr>
+        {% endfor %}
     </table>
 </div>
 

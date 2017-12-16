@@ -73,6 +73,15 @@ class Elements(object):
         dtm.set_index(col1, inplace=True)
         return dtm
 
+    def get_topicdocgrooup_counts(self, table_name):
+        doc_counts = pd.DataFrame(self.model.get_table(table_name))
+        doc_counts.set_index('doc_group', inplace=True)
+        return doc_counts
+
+    def get_topicdoc_sum_matrix(self, dtm, group_counts):
+        df = dtm.apply(lambda x: x * group_counts.doc_count.values, axis=0)
+        return df
+
     def get_topicdoc_ord_for_topic(self, topic_id):
         topic_id = int(topic_id)
         doc_col = self.config.ini['DEFAULT']['src_ord_col']
