@@ -39,7 +39,7 @@ class PoloDb():
         if self.cache_mode and table_name in self.tables:
             df = self.tables[table_name]
             if set_index:
-                df = self._set_index(df)
+                df = self._set_index(df) # fixme: Find index fields to set
             return df
         else:
             cur = self.conn.cursor()

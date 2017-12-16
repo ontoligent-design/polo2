@@ -11,9 +11,9 @@ app.config.from_object('config')
 
 projects_dir = app.config['PROJECTS_DIR']
 data = {} # Use to store variables to pass to templates
-data['main_menu'] = [
-    ('/projects', 'Projects'),
-]
+data['main_menu'] = {
+    '/projects': 'Projects'
+}
 
 @app.route("/")
 @app.route("/projects")
@@ -28,7 +28,7 @@ def test():
 
 @app.route("/projects/<slug>")
 @app.route("/projects/<slug>/<trial>")
-def projects(slug, trial='trial1'):
+def project(slug, trial='trial1'):
     cfg = get_project_config(slug)
     els = Elements(cfg, trial)
     data['ini'] = cfg.ini['DEFAULT']
@@ -38,9 +38,11 @@ def projects(slug, trial='trial1'):
     data['page_title'] = '{}, {}'.format(slug, trial)
     data['doc_count'] = els.get_doc_count()
     data['topic_count'] = els.get_topic_count()
-    data['topic_list'] = els.get_topic_list()
     data['topics'] = els.model.get_table('topic', set_index=True)
-    data['test'] = els.test()
+    data['topics']['topic_alpha_zsign'] = data['topics'].topic_alpha_zscore.apply(lambda x: 'pos' if x > 0 else 'neg')
+    alpha_max = data['topics'].topic_alpha.max()
+    data['topics']['topic_alpha_percent'] = ((data['topics'].topic_alpha / alpha_max) * 100).astype(int)
+    data['topic_phrases'] = els.model.get_table('topicphrase', set_index=True)
     data['bigrams'] = els.get_top_bigrams()
     data['dtm'] = els.get_topicdocord_matrix()
     return render_template("project.html", **data)
@@ -56,6 +58,16 @@ def topic_label_heatmap(slug, trial='trial1'):
     data['page_title'] = '{}, {}: Topic-Label Heatmap'.format(slug, trial)
     data['dtm'] = els.get_topicdoclabel_matrix()
     return render_template("topic_label_heatmap.html", **data)
+
+@app.route('/projects/<slug>/<trial>/docs')
+def doc_list(slug, trial='trial1'):
+    cfg = get_project_config(slug)
+    els = Elements(cfg, trial)
+    data['slug'] = slug
+    data['trial'] = trial
+    data['page_title'] = '{}, {}'.format(slug, trial)
+    data['doc_entropy'] = els.get_doc_entropy()
+    return render_template('doc_list.html', **data)
 
 @app.route('/projects/<slug>/<trial>/docs/<int:topic_id>/<doc_label>')
 def docs_for_topic_and_label(slug, topic_id, doc_label, trial='trial1'):

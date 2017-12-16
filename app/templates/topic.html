@@ -13,13 +13,13 @@
     var layout = {
         title: "Average Topic Weight Trend",
         xaxis: {title: 'doc group', tickangle: 45, visible: true, showgrid: true, showline: true, showticklabels: true},
-        yaxis: {title: 'topic weight', visible: true, showgrid: true, showline: true, showticklabels: true, range: [0.0, 1.0]},
+        yaxis: {title: 'topic weight', visible: true, showgrid: true, showline: true, showticklabels: true},
         margin: {l: 50, r: 50, b: 100, t: 30, pad: 10}
     }
     var config = {displaylogo: false, displayModeBar: false, scrollZoom: false, editable: false, staticPlot: false}
     var x = {{ trend.ord_val.tolist() | tojson | safe }}
     var y = {{ trend.topic_weight.values.tolist() | tojson | safe }}
-    var data = [{x:x, y:y, type:'line', hoverinfo: 'x+y', showlegend: false}]
+    var data = [{x:x, y:y, type:'bar', hoverinfo: 'x+y', showlegend: false}]
     Plotly.newPlot("topic_trend_graph", data, layout, config)
     </script>
 </div>

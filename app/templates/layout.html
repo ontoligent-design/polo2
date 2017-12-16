@@ -16,7 +16,7 @@
     <body>
         <div id="navigation" class="w3-bar w3-black">
             {% for item in main_menu %}
-            <a href="{{item[0]}}" class="w3-bar-item w3-button">{{item[1]}}</a>
+            <a href="{{item}}" class="w3-bar-item w3-button">{{main_menu[item]}}</a>
             {% endfor %}
         </div>
         <div id="banner" class="w3-container">

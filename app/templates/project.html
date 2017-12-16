@@ -10,41 +10,44 @@
     <h2>Topics</h2>
     <p>Topics listed in order of <b>&alpha;</b>.</p>
     <table class="w3-table">
-        <script>
-            var weight_max = {{dtm.values.max()}};
+
+        <script type="text/javascript">
             var layout = {
                 xaxis: {visible: false, showgrid: false, showline: false, showticklabels: false},
-                yaxis: {visible: false, showgrid: false, showline: false, showticklabels: false, range: [0, weight_max]},
-                margin: {l: 10, r: 10, b: 50, t: 0, pad: 50}
+                yaxis: {visible: true, showgrid: true, showline: false, showticklabels: false},
+                margin: {l: 10, r: 10, b: 50, t: 0, pad: 0}
             }
             var config = {displaylogo: false, displayModeBar: false, scrollZoom: false, editable: false, staticPlot: false};
         </script>
-        {% for topic in topic_list %}
+
+        {% for topic_id in topics.sort_values('topic_alpha', ascending=False).index %}
         <tr>
-            <td>
-                <div id="topic_trend_graph_{{topic.topic_id}}" style="width:200px; height:100px;"></div>
+            <td class="w3-container">
+                <div id="topic_trend_graph_{{topic_id}}" style="width:200px; height:100px;"></div>
                 <script type="text/javascript">
-                var x{{topic.topic_id}} = {{ dtm[topic.topic_id.astype('str')].index.astype('str').tolist() | tojson | safe }}
-                var y{{topic.topic_id}} = {{ dtm[topic.topic_id.astype('str')].values.tolist() | tojson | safe }}
-                var data{{topic.topic_id}} = [{x:x{{topic.topic_id}}, y:y{{topic.topic_id}}, type:'line', hoverinfo: 'x+y', showlegend: false}]
-                Plotly.newPlot("topic_trend_graph_{{topic.topic_id}}", data{{topic.topic_id}}, layout, config)
+                var x{{topic_id}} = {{ dtm[topic_id.astype('str')].index.astype('str').tolist() | tojson | safe }}
+                var y{{topic_id}} = {{ dtm[topic_id.astype('str')].values.tolist() | tojson | safe }}
+                var data{{topic_id}} = [{x:x{{topic_id}}, y:y{{topic_id}}, type:'bar', hoverinfo: 'x+y', showlegend: false}]
+                Plotly.newPlot("topic_trend_graph_{{topic_id}}", data{{topic_id}}, layout, config)
                 </script>
             </td>
-            <td>
-                <a class="topic_id w3-button w3-blue" href="/projects/{{slug}}/{{trial}}/topic/{{topic.topic_id}}" target="_blank">T{{topic.topic_id}}</a>
-                <div class="topic_alpha">&alpha;={{topic.topic_alpha}}</div>
-                <div class="topic_alpha_zscore {{topic.topic_alpha_zsign}}">{{topic.topic_alpha_zscore}}</div>
+            <td class="w3-container">
+                <a class="topic_id w3-button w3-blue" href="/projects/{{slug}}/{{trial}}/topic/{{topic_id}}" target="_blank">T{{topic_id}}</a>
+                <div class="topic_alpha">&alpha;={{topics.loc[topic_id].topic_alpha}}</div>
+                <div class="topic_alpha_zscore {{topics.loc[topic_id].topic_alpha_zsign}}">{{topics.loc[topic_id].topic_alpha_zscore | round(2) }}</div>
             </td>
-            <td>
+            <td class="w3-container">
                 <div class="">
-                    <div class="w3-light-green" style="height:24px; width:{{topic.topic_alpha_percent}}%"></div>
+                    <div class="w3-light-green" style="height:24px; width:{{topics.loc[topic_id].topic_alpha_percent}}%"></div>
                 </div>
-                <div class="topic_words">{{topic.topic_words}}</div>
-                <div class="topic_phrases">{{topic.topic_phrases}}</div>
+                <div class="topic_words">{{topics.loc[topic_id].topic_words}}</div>
+                <div class="topic_phrases">{{topic_phrases.loc[topic_id].topic_phrase | join(', ' )}}</div>
             </td>
         </tr>
         {% endfor %}
+
     </table>
+
 </div>
 
 <div class="w3-rest">
@@ -66,9 +69,9 @@
     <h2>Topic Alpha</h2>
     <div id="topic_alpha_hist"></div>
     <script>
-    var trace = {x: {{test.topic_alpha.tolist()}}, type: 'histogram'};
-    var data = [trace];
-    Plotly.newPlot('topic_alpha_hist', data, {'title':'Histogram of Topic Alpha'});
+    var data = [{x: {{topics.topic_alpha.tolist()}}, type: 'histogram'}]
+    var layout = {'title':'Histogram of Topic Alpha'}
+    Plotly.newPlot('topic_alpha_hist', data, layout)
     </script>
 
     <h2>Metrics</h2>

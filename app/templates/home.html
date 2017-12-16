@@ -1,9 +1,11 @@
 {% extends "layout.html" %}
 
 {% block main %}
+
     <ul class="w3-ul">
-        {% for proj in projects %}
+        {% for proj in projects | sort() %}
         <li><a href="/projects/{{proj}}">{{proj}}</a></li>
         {% endfor %}
     </ul>
+
 {% endblock %}

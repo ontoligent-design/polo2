@@ -1,6 +1,7 @@
 import os, time, re
 import pandas as pd
 from lxml import etree
+from scipy import stats
 from polo2 import PoloDb
 from polo2 import PoloFile
 from polo2 import PoloMath as pm
@@ -30,6 +31,7 @@ class PoloMallet(PoloDb):
         self.cfg_num_threads = int(self.config.ini['DEFAULT']['num_threads'])
         self.cfg_extra_stops = self.config.ini['DEFAULT']['extra_stops']
         self.cfg_replacements = self.config.ini['DEFAULT']['replacements']
+        self.cfg_tw_quantile = 0.8 # todo: Put this in config.ini
 
         self.cfg_num_topics = int(self.config.ini[trial]['num_topics'])
         self.cfg_num_iterations = int(self.config.ini[trial]['num_iterations'])
@@ -52,6 +54,8 @@ class PoloMallet(PoloDb):
         dbfile = self.config.generate_model_db_file_path(self.trial)
         PoloDb.__init__(self, dbfile)
 
+
+    # todo: Remove or replace
     def generate_trial_name(self):
         ts = time.time()
         self.trial_name = '{}-model-t{}-i{}-{}'.format(self.trial, self.cfg_num_topics,
@@ -65,7 +69,7 @@ class PoloMallet(PoloDb):
         if os.path.exists(self.cfg_replacements): # todo: Consider moving this step out of MALLET and into corpus prep
             self.mallet['import-file']['replacement-files'] = self.cfg_replacements
         self.mallet['import-file']['input'] = self.cfg_input_corpus
-        self.mallet['import-file']['output'] = '{}/{}-corpus.mallet'.format(self.cfg_output_dir, self.trial) # Put this in corpus?
+        self.mallet['import-file']['output'] = '{}/mallet-corpus.mallet'.format(self.cfg_output_dir) # Put this in corpus?
         self.mallet['import-file']['keep-sequence'] = 'TRUE' # todo: Control this by config
         self.mallet['import-file']['remove-stopwords'] = 'FALSE' # todo: Control this by config
 
@@ -125,6 +129,7 @@ class PoloMallet(PoloDb):
         topic = pd.read_csv(src_file, sep='\t', header=None, index_col=False,
                             names=['topic_id', 'topic_alpha', 'topic_words'])
         topic.set_index('topic_id', inplace=True)
+        topic['topic_alpha_zscore'] = stats.zscore(topic.topic_alpha)
         self.put_table(topic, 'topic', index=True)
 
     def import_tables_topicword_and_word(self, src_file=None):
@@ -165,6 +170,8 @@ class PoloMallet(PoloDb):
                     DOCTOPIC.append([doc_id, topic_id, topic_weight])
             doctopic = pd.DataFrame(DOCTOPIC, columns=['doc_id', 'topic_id', 'topic_weight'])
             doctopic.set_index(['doc_id', 'topic_id'], inplace=True)
+            doctopic['topic_weight_zscore'] = stats.zscore(doctopic.topic_weight)
+            self.computed_thresh = round(doctopic.topic_weight.quantile(self.cfg_tw_quantile),2)
             doc = pd.DataFrame(DOC, columns=['doc_id', 'src_doc_id', 'doc_label'])
             doc.set_index('doc_id', inplace=True)
             self.put_table(doctopic, 'doctopic', index=True)
@@ -185,7 +192,12 @@ class PoloMallet(PoloDb):
             doctopic_narrow['topic_id'] = [i for i in range(self.cfg_num_topics) for doc_id in doctopic['doc_id']]
             doctopic_narrow = doctopic_narrow[['doc_id', 'topic_id', 'topic_weight']]
             doctopic_narrow.set_index(['doc_id', 'topic_id'], inplace=True)
+            doctopic_narrow['topic_weight_zscore'] = stats.zscore(doctopic_narrow.topic_weight)
+            self.computed_thresh = round(doctopic_narrow.topic_weight.quantile(self.cfg_tw_quantile), 2)
             self.put_table(doctopic_narrow, 'doctopic', index=True)
+
+        # todo: Revisit this; in the best place?
+        self.set_config_item('computed_thresh', self.computed_thresh)
 
     def import_table_topicphrase(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['xml-topic-phrase-report']
@@ -284,16 +296,19 @@ class PoloMallet(PoloDb):
 
     # UPDATE OR ADD TABLES WITH STATS
 
+    # todo: Consider moving into method that creates doc and doctopic tables
     def add_topic_entropy(self):
-        import scipy.stats as sp
         doctopic = self.get_table('doctopic')
         doc = self.get_table('doc')
-        topic_entropy = doctopic.groupby('doc_id')['topic_weight'].apply(lambda x: sp.entropy(x))
+        topic_entropy = doctopic.groupby('doc_id')['topic_weight'].apply(lambda x: stats.entropy(x))
         doc['topic_entropy'] = topic_entropy
+        doc['topic_entropy_zscore'] = stats.zscore(doc.topic_entropy)
         doc.set_index('doc_id', inplace=True)
         self.put_table(doc, 'doc', index=True)
 
     def create_table_topicpair(self):
+
+        thresh = self.get_thresh()
 
         # Get doc count to calculate topic frequencies
         r = self.conn.execute("select count() from doc")
@@ -301,14 +316,14 @@ class PoloMallet(PoloDb):
 
         # Create the doctopic matrix dataframe
         doctopic = self.get_table('doctopic', set_index=True)
-        dtm = doctopic.unstack()
+        dtm = doctopic['topic_weight'].unstack()
         if dtm.columns.nlevels == 2:
             dtm.columns = dtm.columns.droplevel()
         del doctopic
 
         # Add topic frequency data to topic table
         topic = self.get_table('topic', set_index=True)
-        topic['topic_freq'] = topic.apply(lambda x: len(dtm[dtm[x.name] > self.cfg_thresh]), axis=1)
+        topic['topic_freq'] = topic.apply(lambda x: len(dtm[dtm[x.name] >= thresh]), axis=1)
         topic['topic_rel_freq'] = topic.apply(lambda x: x.topic_freq / doc_num, axis=1)
         self.put_table(topic, 'topic', index=True)
 
@@ -337,7 +352,7 @@ class PoloMallet(PoloDb):
 
         # Calculate PWMI
         def get_p_ab(a, b):
-            p_ab = len(dtm[(dtm[a] > self.cfg_thresh) & (dtm[b] > self.cfg_thresh)]) / doc_num
+            p_ab = len(dtm[(dtm[a] >= thresh) & (dtm[b] >= thresh)]) / doc_num
             return p_ab
         topicpair['p_ab'] = topicpair.apply(lambda x: get_p_ab(x.topic_a_id, x.topic_b_id), axis=1)
         topicpair['p_aGb'] = topicpair.apply(lambda x: x.p_ab / topic.loc[x.topic_b_id, 'topic_rel_freq'], axis=1)
@@ -362,11 +377,12 @@ class PoloMallet(PoloDb):
         src_docs = corpus.get_table('doc', set_index=True)
         del corpus
 
-        # Get reduced doctopic table
-        doctopics = pd.read_sql_query('SELECT * FROM doctopic WHERE topic_weight >= {}'.format(self.cfg_thresh),
-                                      self.conn)
-        doctopics.set_index(['doc_id', 'topic_id'], inplace=True)
-        dtw = doctopics.unstack()
+        # Get doctopic table
+        #thresh = self.get_thresh()
+        #doctopics = pd.read_sql_query('SELECT * FROM doctopic WHERE topic_weight >= ?', self.conn, params=(thresh,))
+        #doctopics.set_index(['doc_id', 'topic_id'], inplace=True)
+        doctopics = self.get_table('doctopic', set_index=True)
+        dtw = doctopics['topic_weight'].unstack()
         del doctopics
 
         if group_col == 'ord':
@@ -378,7 +394,65 @@ class PoloMallet(PoloDb):
             doc_col = self.config.ini['DEFAULT']['src_ord_col']
 
         dtw[doc_col] = src_docs[doc_col]
-        dtm = dtw.groupby(doc_col).mean().fillna(0)
+        dtg = dtw.groupby(doc_col)
+        dtm = dtg.mean().fillna(0)
         if dtm.columns.nlevels == 2:
             dtm.columns = dtm.columns.droplevel(0)
         self.put_table(dtm, 'topicdoc{}_matrix'.format(group_col), index=True)
+        dtm_counts = dtg[0].count().fillna(0)
+        dtm_counts.name = 'doc_count'
+        self.put_table(dtm_counts, 'topicdoc{}_matrix_counts'.format(group_col), index=True)
+
+    def get_thresh(self):
+        config = self.get_table('config')
+        if len(config[config.key == 'computed_thresh'].values):
+            thresh = config[config.key == 'computed_thresh']['value'].astype('float').tolist()[0]
+        else:
+            thresh = self.cfg_thresh
+        return thresh
+
+    def add_topic_alpha_stats(self):
+        topic = self.get_table('topic')
+        items = dict(
+            topic_alpha_max = topic.topic_alpha.max(),
+            topic_alpha_min = topic.topic_alpha.min(),
+            topic_alpha_avg = topic.topic_alpha.mean()
+        )
+        self.set_config_items(items)
+
+    def add_doctopic_weight_stats(self):
+        doctopic = self.get_table('doctopic')
+        items = dict(
+            doctopic_weight_min = doctopic.topic_weight.min(),
+            doctopic_weight_max = doctopic.topic_weight.max(),
+            doctopic_weight_avg = doctopic.topic_weight.mean()
+        )
+        self.set_config_items(items)
+
+    def add_doctopic_entropy_stats(self):
+        doc = self.get_table('doc')
+        items = dict(
+            doctopic_entropy_min = doc.topic_entropy.min(),
+            doctopic_entropy_max = doc.topic_entropy.max(),
+            doctopic_entropy_avg = doc.topic_entropy.mean()
+        )
+        self.set_config_items(items)
+
+    def set_config_items(self, items = dict()):
+        for key in items.keys():
+            self.set_config_item(key, items[key])
+
+    sql_config_delete = "DELETE FROM config WHERE key = ?"
+    sql_config_insert = "INSERT INTO config (key, value) VALUES (?,?)"
+    def set_config_item(self, key, val):
+        self.conn.execute(self.sql_config_delete, (key,))
+        self.conn.execute(self.sql_config_insert, (key, val))
+        self.conn.commit()
+
+    sql_config_select = "SELECT FROM config WHERE key = ?"
+    def get_config_item(self, key):
+        cur = self.conn.cursor()
+        cur.execute(self.sql_config_select, (key,))
+        val = cur.fetchone()[0]
+        cur.close()
+        return val
