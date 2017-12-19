@@ -2,9 +2,16 @@
 
 {% block main %}
 
-<div class="w3-third">
+<div class="w3-row">
     <h2>Documents by Topic entropy</h2>
-    <p>Explain</p>
+    <div id="doc_topic_entropy" style="height:600px;width:100%"></div>
+    <script>
+        layout = {}
+        x = {{doc_entropy.h.values.tolist() | tojson | safe}}
+        y = {{doc_entropy.n.values.tolist() | tojson | safe}}
+        data = [{x:x, y:y, type:'bar'}]
+        Plotly.newPlot('doc_topic_entropy', data, layout)
+    </script>
 </div>
 
 {% endblock %}

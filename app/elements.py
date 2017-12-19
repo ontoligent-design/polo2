@@ -31,11 +31,20 @@ class Elements(object):
 
     def get_topic(self, topic_id):
         topic_id = int(topic_id)
-        sql = 'SELECT * FROM topic WHERE topic_id = {}'.format(topic_id)
-        df = pd.read_sql_query(sql, self.model.conn)
+        sql = 'SELECT * FROM topic WHERE topic_id = ?'
+        df = pd.read_sql_query(sql, self.model.conn, params=(topic_id,))
         df.set_index('topic_id', inplace=True)
         df['topic_phrases'] = self.get_topic_phrases(topic_id)
         return df
+
+    def get_topics(self):
+        topics = self.model.get_table('topic', set_index=True)
+        topics['topic_alpha_zsign'] = topics.topic_alpha_zscore.apply(lambda x: 'pos' if x > 0 else 'neg')
+        alpha_max = topics.topic_alpha.max()
+        topics['topic_alpha_percent'] = ((topics.topic_alpha / alpha_max) * 100).astype(int)
+        topic_phrases = self.model.get_table('topicphrase')
+        topics['topic_phrases'] = topic_phrases.groupby('topic_id').apply(lambda x: ', '.join(x.topic_phrase))
+        return topics
 
     def get_top_bigrams(self, limit = 50):
         limit = int(limit)
@@ -85,8 +94,20 @@ class Elements(object):
     def get_topicdoc_ord_for_topic(self, topic_id):
         topic_id = int(topic_id)
         doc_col = self.config.ini['DEFAULT']['src_ord_col']
-        sql = "SELECT {0} as ord_val, `{1}` as topic_weight FROM topicdocord_matrix ORDER BY {0}".format(doc_col, topic_id)
+        sql = "SELECT  doc_group, `{1}` as topic_weight FROM topicdocord_matrix ORDER BY doc_group".format(doc_col, topic_id)
         df = pd.read_sql_query(sql, self.model.conn)
+        return df
+
+    def get_docs_for_topic(self, topic_id, limit=10):
+        sql = "SELECT doc_id, topic_weight, topic_weight_zscore FROM doctopic " \
+              "WHERE topic_id = ? ORDER BY topic_weight DESC LIMIT {}".format(limit)
+        df = pd.read_sql_query(sql, self.model.conn, params=(topic_id,))
+        df.set_index('doc_id', inplace=True)
+        doc_ids = ','.join(df.index.astype('str').tolist())
+        sql2 = "SELECT doc_id, doc_title, doc_content, doc_key FROM doc WHERE doc_id IN ({})".format(doc_ids)
+        df2 = pd.read_sql_query(sql2, self.corpus.conn,)
+        df2.set_index('doc_id', inplace=True)
+        df = df.join(df2)
         return df
 
     def get_docs_for_topic_and_label(self, topic_id, doc_col_value, doc_col = None):
@@ -97,11 +118,37 @@ class Elements(object):
         return src_docs
 
     def get_doc_entropy(self):
-        sql = "SELECT ROUND(topic_entropy, 2) as h FROM doc"
+        sql = "SELECT ROUND(topic_entropy, 2) as h, count() as n FROM doc GROUP BY h ORDER BY h"
         df = pd.read_sql_query(sql, self.model.conn)
         return df
 
     def test(self):
         return 1
+
+    def get_topicpair_matrix(self, sim=None, symmetric=True):
+        """Get topic pair matrix by similarity or contiguity measure.
+         sim values include cosim, jscore, and i_ab"""
+        pairs = self.model.get_table('topicpair', set_index=True)
+        if symmetric:
+            tpm = pairs.append(pairs.reorder_levels(['topic_b_id', 'topic_a_id'])).unstack()
+        else:
+            tpm = pairs.unstack()
+
+        if sim:
+            return tpm[sim]
+        else:
+            return tpm
+
+    def get_topics_related(self, topic_id):
+        sql1 = "SELECT topic_b_id as topic_id, jsd, jscore, p_ab, p_aGb, p_bGa, i_ab " \
+               "FROM topicpair WHERE topic_a_id = ?".format(topic_id)
+        sql2 = "SELECT topic_a_id as topic_id, jsd, jscore, p_ab, p_aGb, p_bGa, i_ab " \
+               "FROM topicpair WHERE topic_b_id = ?".format(topic_id)
+        df1 = pd.read_sql_query(sql1, self.model.conn, params=(topic_id,))
+        df2 = pd.read_sql_query(sql2, self.model.conn, params=(topic_id,))
+        df1 = df2.append(df1)
+        df1.sort_values('topic_id', inplace=True)
+        df1.set_index('topic_id', inplace=True)
+        return df1
 
 

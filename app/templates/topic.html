@@ -3,25 +3,97 @@
 {% block main %}
 
 <div class="w3-half">
-    <div class="w3-xxlarge">{{topic.topic_words.values[0]}}</div>
-    <div class="w3-xlarge">{{topic.topic_phrases.values[0]}}</div>
+
+    <!-- Topic Info -->
+    <div class="w3-container">
+        <div class="w3-light-gray">
+            <div class="w3-light-green" style="padding-left:.5rem;height:24px;width:{{topics.loc[topic_id].topic_alpha_percent}}%">
+                &alpha;&nbsp;=&nbsp;{{topic.topic_alpha.tolist()[0] | round(5)}}
+            </div>
+        </div>
+        <div class="w3-xxlarge">{{topic.topic_words.values[0]}}</div>
+        <div class="w3-xlarge">{{topic.topic_phrases.values[0]}}</div>
+    </div>
+
+    <!-- Related Topics -->
+    <div class="w3-container">
+        <h2>Related Topics</h2>
+        <table id="topic_rels_table" data-order='[[ 2, "desc" ]]' data-page-length='{{rels.index.max() + 1}}'>
+            <thead>
+                <tr>
+                    <th>TID</th>
+                    <th>Top Words</th>
+                    <th>Contiguity</th>
+                    <th>Similarity</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for t in rels.index %}
+            <tr class="item">
+                <td><b>{{t}}</b></td>
+                <td><a href="/projects/{{slug}}/{{trial}}/topic/{{t}}">{{topics.loc[t].topic_words | safe}}</a></td>
+                {% for col in [ 'i_ab', 'jsd'] %}
+                {% set max_val = rels[col].max() %} <!-- Inefficient -->
+                {% set min_val = rels[col].min() %} <!-- Inefficient -->
+                {% set cur_val = rels.loc[t][col] %}
+                {% set pos_percent = (cur_val / max_val) * 100 %}
+                {% set neg_percent = (cur_val / min_val) * 100 %}
+                {% set div_color = 'light-blue' if cur_val > 0 else 'pale-red' %}
+                {% set div_percent = pos_percent if cur_val > 0 else neg_percent %}
+                <td>
+                    <div class="">
+                        <div class="w3-{{div_color}}" style="padding-left:.5rem;height:24px;width:{{div_percent}}%">{{cur_val|round(5)}}</div>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <script>
+        $(document).ready(function() {
+            $('#topic_rels_table').DataTable({
+                paging: false,
+                searching: false,
+                columns: [{'width':'32px'},{},{},{}]
+            });
+        } );
+        </script>
+    </div>
+
 </div>
 
 <div class="w3-half">
-    <div class="" id="topic_trend_graph"></div>
-    <script type="text/javascript">
-    var layout = {
-        title: "Average Topic Weight Trend",
-        xaxis: {title: 'doc group', tickangle: 45, visible: true, showgrid: true, showline: true, showticklabels: true},
-        yaxis: {title: 'topic weight', visible: true, showgrid: true, showline: true, showticklabels: true},
-        margin: {l: 50, r: 50, b: 100, t: 30, pad: 10}
-    }
-    var config = {displaylogo: false, displayModeBar: false, scrollZoom: false, editable: false, staticPlot: false}
-    var x = {{ trend.ord_val.tolist() | tojson | safe }}
-    var y = {{ trend.topic_weight.values.tolist() | tojson | safe }}
-    var data = [{x:x, y:y, type:'bar', hoverinfo: 'x+y', showlegend: false}]
-    Plotly.newPlot("topic_trend_graph", data, layout, config)
-    </script>
+
+    <!-- Topic Trend Graph -->
+    <div class="w3-container">
+        <div class="" id="topic_trend_graph"></div>
+        <script type="text/javascript">
+        var layout = {
+            title: "Average Topic Weight Trend",
+            xaxis: {title: 'doc group', tickangle: 45, visible: true, showgrid: false, showline: true, showticklabels: true},
+            yaxis: {title: 'topic weight', visible: true, showgrid: true, showline: true, showticklabels: true},
+            margin: {l: 50, r: 50, b: 100, t: 30, pad: 10}
+        }
+        var config = {displaylogo: false, displayModeBar: false, scrollZoom: false, editable: false, staticPlot: false}
+        var x = {{ trend.doc_group.tolist() | tojson | safe }}
+        var y = {{ trend.topic_weight.values.tolist() | tojson | safe }}
+        var data = [{x:x, y:y, type:'bar', hoverinfo: 'x+y', showlegend: false}]
+        Plotly.newPlot("topic_trend_graph", data, layout, config)
+        </script>
+    </div>
+
+    <!-- Related Documents -->
+    <div class="w3-container">
+        <h2>Related Documents</h2>
+        {% for doc_id in docs.index %}
+        <div>
+            <h3><a href="/projecgs/{{slug}}/{{trial}}/doc/{{doc_id}}">{{docs.loc[doc_id].doc_title}}</a></h3>
+            <p>{{docs.loc[doc_id].doc_content}}s</p>
+        </div>
+        {% endfor %}
+    </div>
+
 </div>
 
 {% endblock %}

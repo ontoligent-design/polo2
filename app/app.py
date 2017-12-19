@@ -38,6 +38,15 @@ def project(slug, trial='trial1'):
     data['trial'] = trial
     data['page_title'] = '{}, {}'.format(slug, trial)
 
+    path_prefix =  '/projects/{}/{}'.format(slug, trial)
+    data['sub_menu'] = [
+        ("{}".format(path_prefix), "Project"),
+        ("{}/topic_label_heatmap".format(path_prefix), "Topic Label Heatmap"),
+        ("{}/topic_pair_heatmap/jsd".format(path_prefix), "Topic Pair Similiarity Heatmap"),
+        ("{}/topic_pair_heatmap/i_ab".format(path_prefix), "Topic Pair Contiguity Heatmap"),
+        ("{}/docs".format(path_prefix), "Documents")
+    ]
+
     data['ini'] = cfg.ini['DEFAULT'] # Really?
     data['trials'] = cfg.get_trial_names()
     data['src_ord_col'] = cfg.ini['DEFAULT']['src_ord_col']
@@ -45,13 +54,7 @@ def project(slug, trial='trial1'):
     data['doc_count'] = els.get_doc_count()
     data['topic_count'] = els.get_topic_count()
 
-    # todo: Put all this in elements as data['topics'] = els.get_topics()
-    # todo: Rewrite template to handle phrases as part of topics dataframe
-    data['topics'] = els.model.get_table('topic', set_index=True)
-    data['topics']['topic_alpha_zsign'] = data['topics'].topic_alpha_zscore.apply(lambda x: 'pos' if x > 0 else 'neg')
-    alpha_max = data['topics'].topic_alpha.max()
-    data['topics']['topic_alpha_percent'] = ((data['topics'].topic_alpha / alpha_max) * 100).astype(int)
-    data['topic_phrases'] = els.model.get_table('topicphrase', set_index=True)
+    data['topics'] = els.get_topics()
 
     data['bigrams'] = els.get_top_bigrams()
     data['dtm'] = els.get_topicdocord_matrix()
@@ -70,6 +73,19 @@ def topic_label_heatmap(slug, trial='trial1'):
     data['page_title'] = '{}, {}: Topic-Label Heatmap'.format(slug, trial)
     data['dtm'] = els.get_topicdoclabel_matrix()
     return render_template("topic_label_heatmap.html", **data)
+
+@app.route("/projects/<slug>/<trial>/topic_pair_heatmap/<sim>")
+def topic_pair_heatmap(slug, trial='trial1', sim=None):
+    cfg = get_project_config(slug)
+    els = Elements(cfg, trial)
+    data['ini'] = cfg.ini['DEFAULT']
+    data['trials'] = cfg.get_trial_names()
+    data['slug'] = slug
+    data['trial'] = trial
+    data['sim'] = sim
+    data['page_title'] = '{}, {}: Topic Pair Heatmap by {}'.format(slug, trial, sim)
+    data['tpm'] = els.get_topicpair_matrix()
+    return render_template("topic_pair_heatmap.html", **data)
 
 @app.route('/projects/<slug>/<trial>/docs')
 def doc_list(slug, trial='trial1'):
@@ -99,9 +115,13 @@ def topic(slug, topic_id, trial='trial1'):
     els = Elements(cfg, trial)
     data['topic_id'] = topic_id
     data['slug'] = slug
+    data['trial'] = trial
     data['page_title'] = '{}, {}: Topic {}'.format(slug, trial, topic_id)
+    data['topics'] = els.get_topics()
     data['topic'] = els.get_topic(topic_id)
     data['trend'] = els.get_topicdoc_ord_for_topic(topic_id)
+    data['rels'] = els.get_topics_related(topic_id)
+    data['docs'] = els.get_docs_for_topic(topic_id)
     return render_template('topic.html', **data)
 
 # Helpers -- Consider moving to module

@@ -64,9 +64,9 @@
     <script type="text/javascript">
     var colors = 'YlGnBu'
     var reverse = true
-    var x = {{dtm.columns.astype('str').tolist() | tojson | safe}}
-    var y = {{dtm.index.astype('str').tolist() | tojson | safe}}
-    var z = {{dtm.values.tolist() | tojson | safe}}
+    var x = {{tpm[sim].columns.astype('str').tolist() | tojson | safe}}
+    var y = {{tpm[sim].index.astype('str').tolist() | tojson | safe}}
+    var z = {{tpm[sim].values.tolist() | tojson | safe}}
 
     var data = [ {x:x, y:y, z:z, type:'heatmap', colorscale:colors, reversescale:reverse} ];
     var layout = { height: (32 * y.length + 500), xaxis: {type: 'category'}, yaxis: {type: 'category'},
