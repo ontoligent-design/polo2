@@ -2,16 +2,53 @@
 
 {% block main %}
 
-<div class="w3-row">
-    <h2>Documents by Topic entropy</h2>
-    <div id="doc_topic_entropy" style="height:600px;width:100%"></div>
-    <script>
-        layout = {}
-        x = {{doc_entropy.h.values.tolist() | tojson | safe}}
-        y = {{doc_entropy.n.values.tolist() | tojson | safe}}
-        data = [{x:x, y:y, type:'bar'}]
-        Plotly.newPlot('doc_topic_entropy', data, layout)
-    </script>
+<div class="w3-half">
+    <div class="w3-container">
+        <h2>Documents by Topic entropy</h2>
+        <div class="">Mean topic entropy <span class="w3-badge w3-blue">{{doc_entropy_avg}}</span></div>
+        <div id="doc_topic_entropy" style="height:600px;width:100%"></div>
+    </div>
 </div>
+
+<div class="w3-half">
+    <div class="w3-container">
+        <h2>Documents</h2>
+        {% for doc_id in docs.index %}
+        {% set doc = docs.loc[doc_id] %}
+        <h3>
+            {{doc.doc_title}}
+        </h3>
+        <div>{{doc.doc_content}}</div>
+        <div class="w3-margin-top">
+            <span class="w3-tag w3-green">h {{doc.topic_entropy | round(2) }}</span>
+            <span class="w3-tag w3-green">{{doc.doc_label}}</span>
+            <span class="w3-tag w3-green">{{doc.topic_weight}}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block code %}
+
+// Doc Topic Entropy Graph
+layout = {}
+y_max = {{doc_entropy.n.max()}}
+h_avg = {{doc_entropy_avg}}
+x = {{doc_entropy.h.values.tolist() | tojson | safe}}
+y = {{doc_entropy.n.values.tolist() | tojson | safe}}
+
+data = [{ x:x, y:y, type:'bar', name:'round h' , hoverinfo:'x+y' },
+        { x:[h_avg, h_avg], y:[0, y_max + .1 * y_max], type:'lines', name:'mean h', hoverinfo:'x' }]
+Plotly.newPlot('doc_topic_entropy', data, layout)
+
+plot = document.getElementById("doc_topic_entropy")
+plot.on('plotly_click', function(data) {
+    h = data.points[0].x
+    url = '/projects/{{slug}}/{{trial}}/docs/h/' + h
+    window.open(url, '_self')
+})
+
 
 {% endblock %}

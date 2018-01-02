@@ -1,6 +1,6 @@
 from polo2 import PoloDb
 import pandas as pd
-from scipy import stats
+
 
 class Elements(object):
 
@@ -55,8 +55,8 @@ class Elements(object):
 
     def get_topic_phrases(self, topic_id):
         topic_id = int(topic_id)
-        sql = "SELECT topic_phrase FROM topicphrase WHERE topic_id = {} ORDER BY phrase_weight DESC".format(topic_id)
-        phrases = ', '.join(pd.read_sql_query(sql, self.model.conn).topic_phrase.tolist())
+        sql = "SELECT topic_phrase FROM topicphrase WHERE topic_id = ? ORDER BY phrase_weight DESC"
+        phrases = ', '.join(pd.read_sql_query(sql, self.model.conn, params=(topic_id,)).topic_phrase.tolist())
         return phrases
 
     def get_topic_entropy_hist(self):
@@ -67,13 +67,11 @@ class Elements(object):
         dtm = self.model.get_table('topicdoclabel_matrix', set_index=False)
         col1 = dtm.columns.tolist()[0]
         dtm.set_index(col1, inplace=True)
-
         topics = self.model.get_table('topic', set_index=True)
         if sort_by_alpha:
             topics = topics.sort_values('topic_alpha', ascending=True)
         dtm = dtm[topics.index.astype('str').tolist()]
         dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_words), axis=1)
-
         return dtm
 
     def get_topicdocord_matrix(self):
@@ -99,10 +97,11 @@ class Elements(object):
         return df
 
     def get_docs_for_topic(self, topic_id, limit=10):
-        sql = "SELECT doc_id, topic_weight, topic_weight_zscore FROM doctopic " \
-              "WHERE topic_id = ? ORDER BY topic_weight DESC LIMIT {}".format(limit)
+        sql = "SELECT src_doc_id, topic_weight, topic_weight_zscore FROM doctopic " \
+              "JOIN doc USING(doc_id) WHERE topic_id = ? " \
+              "ORDER BY topic_weight DESC LIMIT {}".format(limit)
         df = pd.read_sql_query(sql, self.model.conn, params=(topic_id,))
-        df.set_index('doc_id', inplace=True)
+        df.set_index('src_doc_id', inplace=True)
         doc_ids = ','.join(df.index.astype('str').tolist())
         sql2 = "SELECT doc_id, doc_title, doc_content, doc_key FROM doc WHERE doc_id IN ({})".format(doc_ids)
         df2 = pd.read_sql_query(sql2, self.corpus.conn,)
@@ -110,17 +109,49 @@ class Elements(object):
         df = df.join(df2)
         return df
 
-    def get_docs_for_topic_and_label(self, topic_id, doc_col_value, doc_col = None):
+    def get_docs_for_topic_and_label(self, topic_id, doc_col_value, doc_col = None, limit = 100):
         if not doc_col:
             doc_col = self.config.ini['DEFAULT']['src_ord_col'] # Should wrap these calls with a method
-        src_docs = pd.read_sql_query("SELECT * FROM doc "
-                                     "WHERE {} = ? LIMIT 100".format(doc_col), self.corpus.conn, params=(doc_col_value,))
-        return src_docs
+        df = pd.read_sql_query("SELECT doc_id, doc_title, doc_content, doc_key  FROM doc WHERE {} = ? LIMIT {}".format(doc_col, limit),
+                               self.corpus.conn, params=(doc_col_value,))
+        df.set_index('doc_id', inplace=True)
+        doc_ids = ','.join(df.index.astype('str').tolist())
+        sql2 = "SELECT d.*, topic_weight FROM doc d " \
+               "JOIN doctopic dt USING(doc_id) " \
+               "WHERE src_doc_id IN ({}) AND topic_id = ? " \
+               "ORDER BY topic_weight DESC LIMIT 10 ".format(doc_ids)
+        df2 = pd.read_sql_query(sql2, self.model.conn, params=(topic_id,))
+        df2.set_index('src_doc_id', inplace=True)
+        df = df.join(df2)
+        return df.sort_values('topic_weight', ascending=False)
 
+    def get_docs_for_topic_entropy(self, topic_entropy, limit = 100):
+        topic_entropy_min = float(topic_entropy) - .05
+        topic_entropy_max = float(topic_entropy) + .05
+        sql = "SELECT src_doc_id, topic_entropy, topic_entropy_zscore FROM doc " \
+              "WHERE topic_entropy >= ? AND topic_entropy < ? " \
+              "ORDER BY src_doc_id LIMIT {} ".format(limit)
+        df = pd.read_sql_query(sql, self.model.conn, params=(topic_entropy_min, topic_entropy_max))
+        df.set_index('src_doc_id', inplace=True)
+        doc_ids = ','.join(df.index.astype('str').tolist())
+        sql2 = "SELECT doc_id, doc_title, doc_content, doc_key, doc_label " \
+               "FROM doc WHERE doc_id IN ({})".format(doc_ids)
+        df2 = pd.read_sql_query(sql2, self.corpus.conn,)
+        df2.set_index('doc_id', inplace=True)
+        df = df.join(df2)
+        return df
+
+    # todo: Put this in database?
     def get_doc_entropy(self):
-        sql = "SELECT ROUND(topic_entropy, 2) as h, count() as n FROM doc GROUP BY h ORDER BY h"
+        sql = "SELECT ROUND(topic_entropy, 1) as h, count() as n FROM doc GROUP BY h ORDER BY h"
         df = pd.read_sql_query(sql, self.model.conn)
         return df
+
+    # todo: Put this in database
+    def get_doc_entropy_avg(self):
+        sql = "SELECT ROUND(AVG(topic_entropy), 1) as h_avg FROM doc"
+        df = pd.read_sql_query(sql, self.model.conn)
+        return df['h_avg'].tolist()[0]
 
     def test(self):
         return 1

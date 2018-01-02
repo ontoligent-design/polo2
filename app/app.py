@@ -1,5 +1,6 @@
 import os, sys
 from flask import Flask, render_template
+#from flask_caching import Cache
 from polo2 import PoloDb, PoloConfig
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -8,6 +9,7 @@ from elements import Elements
 
 app = Flask(__name__)
 app.config.from_object('config')
+#cache = Cache(app,config={'CACHE_TYPE': 'simple'})
 
 projects_dir = app.config['PROJECTS_DIR']
 data = {} # Use to store variables to pass to templates
@@ -38,6 +40,7 @@ def project(slug, trial='trial1'):
     data['trial'] = trial
     data['page_title'] = '{}, {}'.format(slug, trial)
 
+    # todo: Find a better way to do handle menus
     path_prefix =  '/projects/{}/{}'.format(slug, trial)
     data['sub_menu'] = [
         ("{}".format(path_prefix), "Project"),
@@ -93,8 +96,38 @@ def doc_list(slug, trial='trial1'):
     els = Elements(cfg, trial)
     data['slug'] = slug
     data['trial'] = trial
+    path_prefix =  '/projects/{}/{}'.format(slug, trial)
+    data['sub_menu'] = [
+        ("{}".format(path_prefix), "Project"),
+        ("{}/topic_label_heatmap".format(path_prefix), "Topic Label Heatmap"),
+        ("{}/topic_pair_heatmap/jsd".format(path_prefix), "Topic Pair Similiarity Heatmap"),
+        ("{}/topic_pair_heatmap/i_ab".format(path_prefix), "Topic Pair Contiguity Heatmap")
+    ]
     data['page_title'] = '{}, {}'.format(slug, trial)
     data['doc_entropy'] = els.get_doc_entropy()
+    data['doc_entropy_avg'] = els.get_doc_entropy_avg()
+    data['topic_entropy'] = data['doc_entropy_avg']
+    data['docs'] = els.get_docs_for_topic_entropy(data['doc_entropy_avg'])
+    return render_template('doc_list.html', **data)
+
+@app.route('/projects/<slug>/<trial>/docs/h/<topic_entropy>')
+def docs_for_entropy(slug, topic_entropy, trial='trial1'):
+    cfg = get_project_config(slug)
+    els = Elements(cfg, trial)
+    data['slug'] = slug
+    data['trial'] = trial
+    path_prefix =  '/projects/{}/{}'.format(slug, trial)
+    data['sub_menu'] = [
+        ("{}".format(path_prefix), "Project"),
+        ("{}/topic_label_heatmap".format(path_prefix), "Topic Label Heatmap"),
+        ("{}/topic_pair_heatmap/jsd".format(path_prefix), "Topic Pair Similiarity Heatmap"),
+        ("{}/topic_pair_heatmap/i_ab".format(path_prefix), "Topic Pair Contiguity Heatmap")
+    ]
+    data['page_title'] = '{}, {}, Docs with Topic Entropy {}'.format(slug, trial, topic_entropy)
+    data['doc_entropy'] = els.get_doc_entropy()
+    data['doc_entropy_avg'] = els.get_doc_entropy_avg()
+    data['topic_entropy'] = float(topic_entropy)
+    data['docs'] = els.get_docs_for_topic_entropy(topic_entropy)
     return render_template('doc_list.html', **data)
 
 @app.route('/projects/<slug>/<trial>/docs/<int:topic_id>/<doc_label>')
@@ -103,11 +136,21 @@ def docs_for_topic_and_label(slug, topic_id, doc_label, trial='trial1'):
     els = Elements(cfg, trial)
     data['slug'] = slug
     data['trial'] = trial
+    path_prefix =  '/projects/{}/{}'.format(slug, trial)
+    data['sub_menu'] = [
+        ("{}".format(path_prefix), "Project"),
+        ("{}/topic_label_heatmap".format(path_prefix), "Topic Label Heatmap"),
+        ("{}/topic_pair_heatmap/jsd".format(path_prefix), "Topic Pair Similiarity Heatmap"),
+        ("{}/topic_pair_heatmap/i_ab".format(path_prefix), "Topic Pair Contiguity Heatmap")
+    ]
     data['page_title'] = '{}, {}: Topic {}, Label {}'.format(slug, trial, topic_id, doc_label)
     data['topic_id'] = topic_id
     data['doc_label'] = doc_label
+    data['doc_entropy'] = els.get_doc_entropy()
+    data['doc_entropy_avg'] = els.get_doc_entropy_avg()
+    data['topic_entropy'] = data['doc_entropy_avg']
     data['docs'] = els.get_docs_for_topic_and_label(topic_id, doc_label)
-    return render_template('docs_for_topic_and_label.html', **data)
+    return render_template('doc_list.html', **data)
 
 @app.route("/projects/<slug>/<trial>/topic/<int:topic_id>")
 def topic(slug, topic_id, trial='trial1'):

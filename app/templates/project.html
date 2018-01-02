@@ -1,43 +1,36 @@
 {% extends "layout.html" %}
 
+{% block styles %}
+
+table td { vertical-align: top; margin: 0; padding: 1rem; }
+table td:first-child { text-align: right; }
+table .topic_id { font-size: large; font-weight:bold; }
+table .topic_words { font-weight: bold; font-size: large; }
+table td .topic_alpha_zscore { padding: 0 .5rem; }
+table td .topic_alpha_zscore.neg { color: red; }
+table td .topic_alpha_zscore.pos { color: green; }
+
+{% endblock %}
+
 {% block main %}
 
 <div class="w3-twothird">
 
+    <!-- Topic List -->
     <div class="w3-container">
-
-        <!-- Topic List -->
         <h2>Topic List</h2>
         <p>Topics listed in order of <b>&alpha;</b>. Trend graphs show topic weight <b>averages</b> within the feature {{src_ord_col}}.</p>
         <table class="w3-table">
-            <script type="text/javascript">
-                var layout = {
-                    xaxis: {visible: false, showgrid: false, showline: false, showticklabels: false, type: 'category'},
-                    yaxis: {visible: true, showgrid: true, showline: false, showticklabels: false},
-                    margin: {l: 10, r: 10, b: 50, t: 0, pad: 0}
-                }
-                var config = {displaylogo: false, displayModeBar: false, scrollZoom: false, editable: false, staticPlot: false};
-            </script>
             {% for topic_id in topics.sort_values('topic_alpha', ascending=False).index %}
             <tr>
-
-                <td class="w3-container">
+                <td>
                     <div id="topic_trend_graph_{{topic_id}}" style="width:200px; height:100px;"></div>
-                    <script type="text/javascript">
-                    var x{{topic_id}} = {{ dtm[topic_id.astype('str')].index.astype('str').tolist() | tojson | safe }}
-                    var y{{topic_id}} = {{ dtm[topic_id.astype('str')].values.tolist() | tojson | safe }}
-                    var data{{topic_id}} = [{x:x{{topic_id}}, y:y{{topic_id}}, type:'bar', hoverinfo: 'x+y', showlegend: false}]
-                    Plotly.newPlot("topic_trend_graph_{{topic_id}}", data{{topic_id}}, layout, config)
-                    </script>
                 </td>
-
-                <td class="w3-container">
+                <td>
                     <a class="topic_id w3-button w3-blue" href="/projects/{{slug}}/{{trial}}/topic/{{topic_id}}" target="_blank">T{{topic_id}}</a>
-                    <!-- <div class="topic_alpha">&alpha;={{topics.loc[topic_id].topic_alpha}}</div> -->
                     <div class="topic_alpha_zscore {{topics.loc[topic_id].topic_alpha_zsign}}">{{topics.loc[topic_id].topic_alpha_zscore | round(2) }}</div>
                 </td>
-
-                <td class="w3-container">
+                <td>
                     <div class="">
                         <div class="w3-light-green" style="padding-left:.5rem;height:24px; width:{{topics.loc[topic_id].topic_alpha_percent}}%">
                             {{topics.loc[topic_id].topic_alpha}}
@@ -46,20 +39,18 @@
                     <div class="topic_words">{{topics.loc[topic_id].topic_words}}</div>
                     <div class="topic_phrases">{{topics.loc[topic_id].topic_phrases}}</div>
                 </td>
-
             </tr>
             {% endfor %}
         </table>
     </div>
+
 </div>
 
 <div class="w3-third">
 
+    <!-- Corpus Metrics -->
     <div class="w3-container">
-
-        <!-- Corpus Metrics -->
         <h2>Corpus Metrics</h2>
-
         <table class="w3-table">
             <tr>
                 <td>Documents</td>
@@ -104,6 +95,7 @@
         Plotly.newPlot('topic_alpha_hist', data, layout)
         </script>
     </div>
+
 </div>
 
 <div class="w3-rest">
@@ -127,5 +119,23 @@
 
     </div>
 </div>
+
+{% endblock %}
+
+{% block code %}
+
+// General config for trend graphs
+var layout = {
+    xaxis: {visible: false, showgrid: false, showline: false, showticklabels: false, type: 'category'},
+    yaxis: {visible: true, showgrid: true, showline: false, showticklabels: false},
+    margin: {l: 10, r: 10, b: 50, t: 0, pad: 0}
+}
+var config = {displaylogo: false, displayModeBar: false, scrollZoom: false, editable: false, staticPlot: false};
+{% for topic_id in topics.sort_values('topic_alpha', ascending=False).index %}
+var x{{topic_id}} = {{ dtm[topic_id.astype('str')].index.astype('str').tolist() | tojson | safe }}
+var y{{topic_id}} = {{ dtm[topic_id.astype('str')].values.tolist() | tojson | safe }}
+var data{{topic_id}} = [{x:x{{topic_id}}, y:y{{topic_id}}, type:'bar', hoverinfo: 'x+y', showlegend: false}]
+Plotly.newPlot("topic_trend_graph_{{topic_id}}", data{{topic_id}}, layout, config)
+{% endfor %}
 
 {% endblock %}

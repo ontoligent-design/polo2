@@ -7,7 +7,9 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
         <link rel="stylesheet" type="text/css" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
         <link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css">
-
+        <style type="text/css">
+        {% block styles %}{% endblock %}
+        </style>
         <script src="https://www.w3schools.com/lib/w3.js"></script>
         <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
         <script src="https://code.jquery.com/jquery-3.2.1.min.js"
@@ -17,16 +19,17 @@
                 integrity="sha256-T0Vest3yCU7pafRw9r+settMBX6JkKN06dqBnpQ8d30="
                 crossorigin="anonymous"></script>
         <script src="//cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
+
     </head>
     <body>
 
-        <div id="main_menu" class="w3-bar w3-black">
+        <div id="main-menu" class="w3-bar w3-black">
             {% for item in main_menu %}
             <a href="{{item}}" class="w3-bar-item w3-button">{{main_menu[item]}}</a>
             {% endfor %}
         </div>
 
-        <div id="sub_menu" class="w3-bar w3-gray">
+        <div id="sub-menu" class="w3-bar w3-gray">
             {% for item in sub_menu %}
             <a class="w3-bar-item w3-button w3-orange" href="{{item[0]}}">{{item[1]}}</a>
             {% endfor %}
@@ -36,15 +39,20 @@
             <h1>{% block title %}{{page_title}}{% endblock %}</h1>
         </div>
 
-        <div id="main" class="">
+        <div id="main">
             {% block main %} {% endblock %}
         </div>
 
-        <div id="footer" class="">
+        <div id="footer" class="w3-container" style="text-align:right;">
             {% block footer %}
             <span class="w3-btn w3-black">&copy; 2017 Ontoligent Design</span>
             {% endblock %}
         </div>
+
+        <script id="code-block" type="text/javascript">
+            {% block code %}
+            {% endblock %}
+        </script>
 
     </body>
 </html>

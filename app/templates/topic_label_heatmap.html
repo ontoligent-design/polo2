@@ -1,97 +1,109 @@
 {% extends "layout.html" %}
 
+{% block styles %}
+#custom-handle {
+    width: 3em;
+    height: 1.6em;
+    top: 50%;
+    margin-top: -.8em;
+    text-align: center;
+    line-height: 1.6em;
+}
+
+{% endblock %}
+
 {% block main %}
 
-<div class="w3-container">
+<div class="w3-row">
+    <!--
+        <div id="colorscale_slider" style="margin:1rem; width:200px;">
+            <div id="custom-handle" class="ui-slider-handle"></div>
+        </div>
+    -->
 
-    <style>
-      #custom-handle {
-        width: 3em;
-        height: 1.6em;
-        top: 50%;
-        margin-top: -.8em;
-        text-align: center;
-        line-height: 1.6em;
-      }
-    </style>
-    <div id="colorscale_slider" style="margin:1rem; width:200px;">
-     <div id="custom-handle" class="ui-slider-handle"></div>
+    <div class="w3-container">
+        <div id="topic_heatmap_t"></div>
     </div>
-    <script>
-    $(function() {
-        var handle = $("#custom-handle");
-        $("#colorscale_slider").slider({
-        create: function() {
-            handle.text( $(this).slider("value"));
-        },
-        slide: function(event, ui) {
-            handle.text(ui.value)
-            var update1 = {
-                height: ui.value
-            }
-            var update2 = {
-                width: ui.value
-            }
-            /*
-            var colors = [[[0, 'rgb(255,255,255)'],[(ui.value / 100), 'rgb(128,128,128)'],[1, 'rgb(0,0,0)']]]
-            var update = {
-                'colorscale': colors,
-                'reversescale': false
-            }
-            */
-            var my_div1 = document.getElementById('topic_heatmap')
-            Plotly.relayout(my_div1, update1)
+    <div class="w3-container">
+        <div id="topic_heatmap"></div>
+    </div>
 
-            //var my_div2 = document.getElementById('topic_heatmap_t')
-            //Plotly.relayout(my_div2, update2)
-        },
-        change: function( event, ui ) {
-            //alert(ui.value);
-            // DO SOMETHING WITH PLOTLY
-        },
-        orientation: "horizontal",
-        min: 100,
-        max: 2000,
-        value: 800
-        });
-    });
-    </script>
-
-
-    <div id="topic_heatmap"></div>
-    <div id="topic_heatmap_t"></div>
-
-    <script type="text/javascript">
-    var colors = 'YlGnBu'
-    var reverse = true
-    var x = {{dtm.columns.astype('str').tolist() | tojson | safe}}
-    var y = {{dtm.index.astype('str').tolist() | tojson | safe}}
-    var z = {{dtm.values.tolist() | tojson | safe}}
-
-    var data = [ {x:x, y:y, z:z, type:'heatmap', colorscale:colors, reversescale:reverse} ];
-    var layout = { height: (32 * y.length + 500), xaxis: {type: 'category'}, yaxis: {type: 'category'},
-        margin: {b: 400, l: 100, t:100, r:0}};
-    Plotly.newPlot('topic_heatmap', data, layout);
-
-    var dataT = [ {x:y, y:x, z:z, type:'heatmap', colorscale:colors, reversescale:reverse, transpose:true} ];
-    var layoutT = { height: (32 * x.length + 200), xaxis: {type: 'category'}, yaxis: {type: 'category'},
-        margin: {l: 400, b: 100, t:100, r:0} };
-    Plotly.newPlot('topic_heatmap_t', dataT, layoutT);
-
-    plot_hm1 = document.getElementById("topic_heatmap")
-    plot_hm1.on('plotly_click', function(data) {
-        topic_id = data.points[0].x.match(/T(\d+) /)[1]
-        label = data.points[0].y.replace(' ', '+')
-        url = '/projects/{{slug}}/{{trial}}/docs/' + topic_id + '/' + label
-        window.open(url)
-    })
-    plot_hm2 = document.getElementById("topic_heatmap_t")
-    plot_hm2.on('plotly_click', function(data) {
-        topic_id = data.points[0].y.match(/T(\d+) /)[1]
-        label = data.points[0].x.replace(' ', '+')
-        url = '/projects/{{slug}}/{{trial}}/docs/' + topic_id + '/' + label
-        window.open(url)
-    })
-    </script>
 </div>
+
+{% endblock %}
+
+{% block code %}
+
+// Slider
+$(function() {
+    var handle = $("#custom-handle");
+    $("#colorscale_slider").slider({
+    create: function() {
+        handle.text( $(this).slider("value"));
+    },
+    slide: function(event, ui) {
+        handle.text(ui.value)
+        var update1 = {
+            height: ui.value
+        }
+        var update2 = {
+            width: ui.value
+        }
+        /*
+        var colors = [[[0, 'rgb(255,255,255)'],[(ui.value / 100), 'rgb(128,128,128)'],[1, 'rgb(0,0,0)']]]
+        var update = {
+            'colorscale': colors,
+            'reversescale': false
+        }
+        */
+        var my_div1 = document.getElementById('topic_heatmap')
+        Plotly.relayout(my_div1, update1)
+
+        //var my_div2 = document.getElementById('topic_heatmap_t')
+        //Plotly.relayout(my_div2, update2)
+    },
+    change: function( event, ui ) {
+        //alert(ui.value);
+        // DO SOMETHING WITH PLOTLY
+    },
+    orientation: "horizontal",
+    min: 100,
+    max: 2000,
+    value: 800
+    });
+});
+
+// Heatmaps
+var colors = 'YlGnBu'
+var reverse = true
+var x = {{dtm.columns.astype('str').tolist() | tojson | safe}}
+var y = {{dtm.index.astype('str').tolist() | tojson | safe}}
+var z = {{dtm.values.tolist() | tojson | safe}}
+
+var data = [ {x:x, y:y, z:z, type:'heatmap', colorscale:colors, reversescale:reverse} ];
+var layout = { height: (32 * y.length + 500), xaxis: {type: 'category'}, yaxis: {type: 'category'},
+    margin: {b: 400, l: 100, t:100, r:0}};
+Plotly.newPlot('topic_heatmap', data, layout);
+
+var dataT = [ {x:y, y:x, z:z, type:'heatmap', colorscale:colors, reversescale:reverse, transpose:true} ];
+var layoutT = { height: (32 * x.length + 200), xaxis: {type: 'category', side:'top', tickangle: 45}, yaxis: {type: 'category'},
+    margin: {l: 400, b: 0, t:200, r:0} };
+Plotly.newPlot('topic_heatmap_t', dataT, layoutT);
+
+plot_hm1 = document.getElementById("topic_heatmap")
+plot_hm1.on('plotly_click', function(data) {
+    topic_id = data.points[0].x.match(/T(\d+) /)[1]
+    label = data.points[0].y //.replace(' ', '+')
+    url = '/projects/{{slug}}/{{trial}}/docs/' + topic_id + '/' + label
+    window.open(url, "_self")
+})
+plot_hm2 = document.getElementById("topic_heatmap_t")
+plot_hm2.on('plotly_click', function(data) {
+    topic_id = data.points[0].y.match(/T(\d+) /)[1]
+    label = data.points[0].x //.replace(' ', '+')
+    url = '/projects/{{slug}}/{{trial}}/docs/' + topic_id + '/' + label
+    window.open(url, "_self")
+})
+
+
 {% endblock %}

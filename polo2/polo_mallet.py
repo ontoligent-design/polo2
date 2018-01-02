@@ -118,11 +118,11 @@ class PoloMallet(PoloDb):
     # TABLE IMPORT METHODS
 
     def tables_to_db(self):
+        self.import_table_config()
         self.import_table_topic()
         self.import_tables_topicword_and_word()
         self.import_table_doctopic()
         self.import_table_topicphrase()
-        self.import_table_config()
 
     def import_table_topic(self, src_file=None):
         if not src_file: src_file = self.mallet['train-topics']['output-topic-keys']
@@ -161,7 +161,7 @@ class PoloMallet(PoloDb):
                 row = line.split('\t')
                 row.pop()  # Pretty sure this is right
                 doc_id = row[0]
-                src_doc_id = row[1].split(',')[0]
+                src_doc_id = int(row[1].split(',')[0])
                 doc_label = row[1].split(',')[1]
                 DOC.append([doc_id, src_doc_id, doc_label])
                 for i in range(2, len(row), 2):
@@ -171,7 +171,7 @@ class PoloMallet(PoloDb):
             doctopic = pd.DataFrame(DOCTOPIC, columns=['doc_id', 'topic_id', 'topic_weight'])
             doctopic.set_index(['doc_id', 'topic_id'], inplace=True)
             doctopic['topic_weight_zscore'] = stats.zscore(doctopic.topic_weight)
-            self.computed_thresh = round(doctopic.topic_weight.quantile(self.cfg_tw_quantile),2)
+            self.computed_thresh = round(doctopic.topic_weight.quantile(self.cfg_tw_quantile), 3)
             doc = pd.DataFrame(DOC, columns=['doc_id', 'src_doc_id', 'doc_label'])
             doc.set_index('doc_id', inplace=True)
             self.put_table(doctopic, 'doctopic', index=True)
@@ -180,7 +180,7 @@ class PoloMallet(PoloDb):
             doctopic = pd.read_csv(src_file, sep='\t', header=None)
             doc = pd.DataFrame(doctopic.iloc[:, 1])
             doc.columns = ['doc_tmp']
-            doc['src_doc_id'] = doc.doc_tmp.apply(lambda x: x.split(',')[0])
+            doc['src_doc_id'] = doc.doc_tmp.apply(lambda x: int(x.split(',')[0]))
             doc['doc_label'] = doc.doc_tmp.apply(lambda x: x.split(',')[1])
             doc = doc[['src_doc_id', 'doc_label']]
             doc.index.name = 'doc_id'
@@ -193,7 +193,7 @@ class PoloMallet(PoloDb):
             doctopic_narrow = doctopic_narrow[['doc_id', 'topic_id', 'topic_weight']]
             doctopic_narrow.set_index(['doc_id', 'topic_id'], inplace=True)
             doctopic_narrow['topic_weight_zscore'] = stats.zscore(doctopic_narrow.topic_weight)
-            self.computed_thresh = round(doctopic_narrow.topic_weight.quantile(self.cfg_tw_quantile), 2)
+            self.computed_thresh = round(doctopic_narrow.topic_weight.quantile(self.cfg_tw_quantile), 3)
             self.put_table(doctopic_narrow, 'doctopic', index=True)
 
         # todo: Revisit this; in the best place?
