@@ -76,18 +76,28 @@ $(function() {
 // Heatmaps
 var colors = 'YlGnBu'
 var reverse = true
-var x = {{dtm.columns.astype('str').tolist() | tojson | safe}}
-var y = {{dtm.index.astype('str').tolist() | tojson | safe}}
+var x = {{dtm.columns.astype('str').tolist() | tojson | safe}} // LABELS
+var y = {{dtm.index.astype('str').tolist() | tojson | safe}} // TOPICS
 var z = {{dtm.values.tolist() | tojson | safe}}
 
+// Put in function and in library
+function get_max_len (arr, font_size = 16, font_aspect_ratio = .6) {
+    var max_str = arr.sort(function (a, b) { console.log(a.length, b.length); return b.length - a.length; })[0];
+    return ((max_str.length * font_size) * font_aspect_ratio) + 10
+}
+var tick_font_size = 16
+var font_aspect_ratio = .6
+var x_max_len = get_max_len(x.slice(), tick_font_size, font_aspect_ratio)
+var y_max_len = get_max_len(y.slice(), tick_font_size, font_aspect_ratio)
+
 var data = [ {x:x, y:y, z:z, type:'heatmap', colorscale:colors, reversescale:reverse} ];
-var layout = { height: (32 * y.length + 500), xaxis: {type: 'category'}, yaxis: {type: 'category'},
-    margin: {b: 400, l: 100, t:100, r:0}};
+var layout = { height: (32 * y.length + x_max_len), xaxis: {type: 'category', tickfont: {size: tick_font_size}}, yaxis: {type: 'category', tickfont: {size: tick_font_size}},
+    margin: {b: x_max_len + 10, l: y_max_len, t: 100, r: 0}, paper_bgcolor: '#fff'};
 Plotly.newPlot('topic_heatmap', data, layout);
 
 var dataT = [ {x:y, y:x, z:z, type:'heatmap', colorscale:colors, reversescale:reverse, transpose:true} ];
-var layoutT = { height: (32 * x.length + 200), xaxis: {type: 'category', side:'top', tickangle: 45}, yaxis: {type: 'category'},
-    margin: {l: 400, b: 0, t:200, r:0} };
+var layoutT = { height: (32 * x.length + y_max_len), xaxis: {type: 'category', side:'top', tickangle: 90, tickfont: {size: tick_font_size}}, yaxis: {type: 'category', tickfont: {size: tick_font_size}},
+    margin: {l: x_max_len, b: 50, t: y_max_len + 10, r: 0}, paper_bgcolor: '#fff'};
 Plotly.newPlot('topic_heatmap_t', dataT, layoutT);
 
 plot_hm1 = document.getElementById("topic_heatmap")

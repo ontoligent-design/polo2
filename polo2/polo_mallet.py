@@ -130,6 +130,7 @@ class PoloMallet(PoloDb):
                             names=['topic_id', 'topic_alpha', 'topic_words'])
         topic.set_index('topic_id', inplace=True)
         topic['topic_alpha_zscore'] = stats.zscore(topic.topic_alpha)
+        topic['topic_gloss'] = 'TBA'
         self.put_table(topic, 'topic', index=True)
 
     def import_tables_topicword_and_word(self, src_file=None):

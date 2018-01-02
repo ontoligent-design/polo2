@@ -63,17 +63,45 @@ class Elements(object):
         doctopics = self.model.get_table('doctopic', set_index=True)
         doctopics.unstack()
 
+    # fixme: Deprecated function
     def get_topicdoclabel_matrix(self, sort_by_alpha = True):
         dtm = self.model.get_table('topicdoclabel_matrix', set_index=False)
         col1 = dtm.columns.tolist()[0]
         dtm.set_index(col1, inplace=True)
+
         topics = self.model.get_table('topic', set_index=True)
         if sort_by_alpha:
             topics = topics.sort_values('topic_alpha', ascending=True)
         dtm = dtm[topics.index.astype('str').tolist()]
-        dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_words), axis=1)
+        if 'topic_gloss' in topics.columns:
+            dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_gloss), axis=1)
+        else:
+            dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_words), axis=1)
         return dtm
 
+    def get_topicdoc_matrix(self, sort_by_alpha = True, by='label'):
+
+        if by == 'label':
+            dtm = self.model.get_table('topicdoclabel_matrix', set_index=False)
+        elif by == 'ord':
+            dtm = self.model.get_table('topicdocord_matrix', set_index=False)
+        else:
+            dtm = self.model.get_table('topicdoclabel_matrix', set_index=False)
+
+        col1 = dtm.columns.tolist()[0]
+        dtm.set_index(col1, inplace=True)
+
+        topics = self.model.get_table('topic', set_index=True)
+        if sort_by_alpha:
+            topics = topics.sort_values('topic_alpha', ascending=True)
+        dtm = dtm[topics.index.astype('str').tolist()]
+        if 'topic_gloss' in topics.columns:
+            dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_gloss), axis=1)
+        else:
+            dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_words), axis=1)
+        return dtm
+
+    # fixme: Deprecated function
     def get_topicdocord_matrix(self):
         dtm = self.model.get_table('topicdocord_matrix', set_index=False)
         col1 = dtm.columns.tolist()[0]

@@ -44,7 +44,8 @@ def project(slug, trial='trial1'):
     path_prefix =  '/projects/{}/{}'.format(slug, trial)
     data['sub_menu'] = [
         ("{}".format(path_prefix), "Project"),
-        ("{}/topic_label_heatmap".format(path_prefix), "Topic Label Heatmap"),
+        ("{}/topic_heatmap/label".format(path_prefix), "Topic Label Heatmap"),
+        ("{}/topic_heatmap/ord".format(path_prefix), "Topic Ordinal Heatmap"),
         ("{}/topic_pair_heatmap/jsd".format(path_prefix), "Topic Pair Similiarity Heatmap"),
         ("{}/topic_pair_heatmap/i_ab".format(path_prefix), "Topic Pair Contiguity Heatmap"),
         ("{}/docs".format(path_prefix), "Documents")
@@ -65,8 +66,9 @@ def project(slug, trial='trial1'):
     data['dtm_sums'] = els.get_topicdoc_sum_matrix(data['dtm'], data['doc_ord_counts'])
     return render_template("project.html", **data)
 
+# fixme: Deprecated function
 @app.route("/projects/<slug>/<trial>/topic_label_heatmap")
-def topic_label_heatmap(slug, trial='trial1'):
+def topicdoc_label_heatmap(slug, trial='trial1'):
     cfg = get_project_config(slug)
     els = Elements(cfg, trial)
     data['ini'] = cfg.ini['DEFAULT']
@@ -75,6 +77,18 @@ def topic_label_heatmap(slug, trial='trial1'):
     data['trial'] = trial
     data['page_title'] = '{}, {}: Topic-Label Heatmap'.format(slug, trial)
     data['dtm'] = els.get_topicdoclabel_matrix()
+    return render_template("topic_label_heatmap.html", **data)
+
+@app.route("/projects/<slug>/<trial>/topic_heatmap/<by>")
+def topicdoc_heatmap(slug, trial='trial1', by='label'):
+    cfg = get_project_config(slug)
+    els = Elements(cfg, trial)
+    data['ini'] = cfg.ini['DEFAULT']
+    data['trials'] = cfg.get_trial_names()
+    data['slug'] = slug
+    data['trial'] = trial
+    data['page_title'] = '{}, {}: Topic-{} Heatmap'.format(slug, trial, by)
+    data['dtm'] = els.get_topicdoc_matrix(by = by)
     return render_template("topic_label_heatmap.html", **data)
 
 @app.route("/projects/<slug>/<trial>/topic_pair_heatmap/<sim>")

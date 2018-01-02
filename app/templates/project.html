@@ -9,6 +9,7 @@ table .topic_words { font-weight: bold; font-size: large; }
 table td .topic_alpha_zscore { padding: 0 .5rem; }
 table td .topic_alpha_zscore.neg { color: red; }
 table td .topic_alpha_zscore.pos { color: green; }
+table td .topic_gloss { font-size: 16pt; margin: 0 0 1rem 0; }
 
 {% endblock %}
 
@@ -22,6 +23,7 @@ table td .topic_alpha_zscore.pos { color: green; }
         <p>Topics listed in order of <b>&alpha;</b>. Trend graphs show topic weight <b>averages</b> within the feature {{src_ord_col}}.</p>
         <table class="w3-table">
             {% for topic_id in topics.sort_values('topic_alpha', ascending=False).index %}
+            {% set topic = topics.loc[topic_id] %}
             <tr>
                 <td>
                     <div id="topic_trend_graph_{{topic_id}}" style="width:200px; height:100px;"></div>
@@ -31,6 +33,7 @@ table td .topic_alpha_zscore.pos { color: green; }
                     <div class="topic_alpha_zscore {{topics.loc[topic_id].topic_alpha_zsign}}">{{topics.loc[topic_id].topic_alpha_zscore | round(2) }}</div>
                 </td>
                 <td>
+                    <div class="topic_gloss">{{topic.topic_gloss}}</div>
                     <div class="">
                         <div class="w3-light-green" style="padding-left:.5rem;height:24px; width:{{topics.loc[topic_id].topic_alpha_percent}}%">
                             {{topics.loc[topic_id].topic_alpha}}
