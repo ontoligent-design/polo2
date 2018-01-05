@@ -39,9 +39,6 @@ class PoloShell(cmd.Cmd):
     def logerror(self, msg):
         sys.stderr.write(msg + '\n')
 
-    def emptyline(self):
-        pass
-
     def do_EOF(self, arg):
         return True
 
@@ -111,8 +108,13 @@ class PoloShell(cmd.Cmd):
         print("Importing token")
         corpus.add_table_token()
 
-        print("Importing bigrams")
-        corpus.add_tables_ngram_and_docngram(n = 2)
+        if 'get_bigrams' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['get_bigrams']:
+            print("Importing bigrams")
+            corpus.add_tables_ngram_and_docngram(n = 2)
+
+        if 'get_trigrams' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['get_trigrams']:
+            print("Importing trigrams")
+            corpus.add_tables_ngram_and_docngram(n = 3)
 
         print("Export mallet corpus")
         corpus.export_mallet_corpus()
@@ -226,8 +228,9 @@ class PoloShell(cmd.Cmd):
         if not self.do_check_mallet(None):
             return False
 
-        print("Importing doctopic.")
-        self.mallet.import_table_doctopic()
+        print("Importing doctopic col matrix.")
+        #self.mallet.import_table_doctopic()
+        self.mallet.create_topicdoc_col_matrix('label')
 
     def do_clean_mallet_files(self, arg):
         """Delete mallet's output files."""

@@ -29,7 +29,9 @@ class PoloConfig():
             ("num_top_words", 10),
             ("num_top_docs", 100),
             ("doc_topics_max", 10),
-            ("show_topics_interval", 100)
+            ("show_topics_interval", 100),
+            ('get_bigrams', 1),
+            ('get_trigrams', 0)
         ])),
         ('trial1', OrderedDict([
             ("num_topics", 20),
