@@ -375,8 +375,15 @@ class PoloMallet(PoloDb):
         # Get source doc table
         corpus_db_file = self.config.generate_corpus_db_file_path()
         corpus = PoloDb(corpus_db_file)
-        src_docs = corpus.get_table('doc', set_index=True)
+        src_docs = corpus.get_table('doc')
+        src_docs.rename(columns={'doc_id':'src_doc_id'}, inplace=True)
         del corpus
+
+        # Add the model doc_id to src_doc
+        docs = self.get_table('doc')
+        src_docs = src_docs.merge(docs[['doc_id', 'src_doc_id']], on='src_doc_id', how='right')
+        src_docs.set_index('doc_id', inplace=True) # Change index to align with doctopics
+        del docs
 
         # Get doctopic table
         #thresh = self.get_thresh()
@@ -386,6 +393,7 @@ class PoloMallet(PoloDb):
         dtw = doctopics['topic_weight'].unstack()
         del doctopics
 
+        # todo: Streamline the logic here
         if group_col == 'ord':
             doc_col = self.config.ini['DEFAULT']['src_ord_col']
         elif group_col == 'label':
