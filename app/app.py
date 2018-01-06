@@ -46,6 +46,7 @@ def project(slug, trial='trial1'):
         ("{}".format(path_prefix), "Project"),
         ("{}/topic_heatmap/label".format(path_prefix), "Topic Label Heatmap"),
         ("{}/topic_heatmap/ord".format(path_prefix), "Topic Ordinal Heatmap"),
+        ("{}/topic_pair_net/0.18".format(path_prefix), "Topic Pair Network"),
         ("{}/topic_pair_heatmap/jsd".format(path_prefix), "Topic Pair Similiarity Heatmap"),
         ("{}/topic_pair_heatmap/i_ab".format(path_prefix), "Topic Pair Contiguity Heatmap"),
         ("{}/docs".format(path_prefix), "Documents")
@@ -103,6 +104,19 @@ def topic_pair_heatmap(slug, trial='trial1', sim=None):
     data['page_title'] = '{}, {}: Topic Pair Heatmap by {}'.format(slug, trial, sim)
     data['tpm'] = els.get_topicpair_matrix()
     return render_template("topic_pair_heatmap.html", **data)
+
+@app.route("/projects/<slug>/<trial>/topic_pair_net/<float:thresh>")
+def topic_pair_net(slug, trial='trial1', thresh=0.05):
+    cfg = get_project_config(slug)
+    els = Elements(cfg, trial)
+    data['ini'] = cfg.ini['DEFAULT']
+    data['trials'] = cfg.get_trial_names()
+    data['slug'] = slug
+    data['trial'] = trial
+    data['thresh'] = thresh
+    data['page_title'] = '{}, {}: Topic Pair Network (I(a;b) >= {})'.format(slug, trial, thresh)
+    data['nodes'], data['edges'] = els.get_topicpair_net(thresh)
+    return render_template("topic_pair_net.html", **data)
 
 @app.route('/projects/<slug>/<trial>/docs')
 def doc_list(slug, trial='trial1'):

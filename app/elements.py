@@ -198,6 +198,14 @@ class Elements(object):
         else:
             return tpm
 
+    def get_topicpair_net(self, thresh = 0.05):
+        topics = self.model.get_table('topic')
+        pairs = self.model.get_table('topicpair', set_index=False)
+        pairs = pairs.loc[pairs.i_ab >= thresh, ['topic_a_id', 'topic_b_id', 'i_ab']]
+        nodes = [{'id':t, 'label':topics.loc[t].topic_gloss} for t in pd.concat([pairs.topic_a_id, pairs.topic_b_id], axis=0).unique()]
+        edges = [{'from': int(pairs.loc[i].topic_a_id), 'to': int(pairs.loc[i].topic_b_id)} for i in pairs.index]
+        return nodes, edges
+
     def get_topics_related(self, topic_id):
         sql1 = "SELECT topic_b_id as topic_id, jsd, jscore, p_ab, p_aGb, p_bGa, i_ab " \
                "FROM topicpair WHERE topic_a_id = ?".format(topic_id)

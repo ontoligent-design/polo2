@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+
+{% block styles %}
+#topic_graph {
+  width: 100%;
+  height: 100%;
+  border: 1px solid lightgray;
+}
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" type="text/css" href="http://visjs.org/dist/vis-network.min.css">
+<script src="http://visjs.org/dist/vis.js"></script>
+{% endblock %}
+
+{% block main %}
+<div class="w3-row">
+    <div class="w3-container">
+        <div id="pair_graph"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block code %}
+var nodes = new vis.DataSet({{nodes|safe}})
+var edges = new vis.DataSet({{edges|safe}})
+var container = document.getElementById('pair_graph');
+var data = {
+    nodes: nodes,
+    edges: edges
+};
+var options = {
+    autoResize: true,
+    height: '1000px',
+    width: '100%'
+};
+var network = new vis.Network(container, data, options);
+{% endblock %}
