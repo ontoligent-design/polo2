@@ -136,8 +136,8 @@ class PoloCorpus(PoloDb):
         self.conn.execute(mallet_corpus_sql)
         self.conn.commit()
         mallet_corpus = pd.read_sql_query('SELECT * FROM mallet_corpus', self.conn)
-        rgx = re.compile(r'\s+')
-        mallet_corpus['doc_label'] = mallet_corpus.doc_label.str.replace(rgx, '_')
+        #rgx = re.compile(r'\s+')
+        #mallet_corpus['doc_label'] = mallet_corpus.doc_label.str.replace(rgx, '_')
         mallet_corpus.to_csv(self.corpus_file, index=False, header=False)
 
         """

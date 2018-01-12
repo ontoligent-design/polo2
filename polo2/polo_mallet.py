@@ -72,6 +72,7 @@ class PoloMallet(PoloDb):
         self.mallet['import-file']['output'] = '{}/mallet-corpus.mallet'.format(self.cfg_output_dir) # Put this in corpus?
         self.mallet['import-file']['keep-sequence'] = 'TRUE' # todo: Control this by config
         self.mallet['import-file']['remove-stopwords'] = 'FALSE' # todo: Control this by config
+        self.mallet['import-file']['line-regex'] =   "^([^,]+)\s*,\s*([^,]+)\s*,\s*(.+)$" # This logic is assumed in the corpus creation view
 
         self.mallet['train-topics']['num-topics'] = self.cfg_num_topics
         self.mallet['train-topics']['num-top-words'] = self.cfg_num_top_words
