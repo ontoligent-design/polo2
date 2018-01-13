@@ -371,6 +371,7 @@ class PoloMallet(PoloDb):
         topicpair.set_index(['topic_a_id', 'topic_b_id'], inplace=True)
         self.put_table(topicpair, 'topicpair', index=True)
 
+    # fixme: Remove deprecated function
     def create_topicdoc_col_matrix(self, group_col):
 
         # Get source doc table
@@ -412,6 +413,42 @@ class PoloMallet(PoloDb):
         dtm_counts = dtg[0].count().fillna(0)
         dtm_counts.name = 'doc_count'
         self.put_table(dtm_counts, 'topicdoc{}_matrix_counts'.format(group_col), index=True)
+
+    def create_topicdoc_group_matrix(self, group_field):
+
+        # Get source doc table
+        corpus_db_file = self.config.generate_corpus_db_file_path()
+        corpus = PoloDb(corpus_db_file)
+        src_docs = corpus.get_table('doc')
+        if group_field not in src_docs.columns:
+            raise ValueError('Column `{}` does not exist on corpus doc table.'.format(group_field))
+        src_docs.rename(columns={'doc_id':'src_doc_id'}, inplace=True)
+        del corpus
+
+        # Add the model doc_id to src_doc
+        docs = self.get_table('doc')
+        src_docs = src_docs.merge(docs[['doc_id', 'src_doc_id']], on='src_doc_id', how='right')
+        src_docs.set_index('doc_id', inplace=True) # Change index to align with doctopics
+        del docs
+
+        # Get doctopic table
+        doctopics = self.get_table('doctopic', set_index=True)
+        dtw = doctopics['topic_weight'].unstack()
+        del doctopics
+
+        dtw['doc_group'] = src_docs[group_field]
+        dtg = dtw.groupby('doc_group')
+        dtm = dtg.mean().fillna(0)
+        if dtm.columns.nlevels == 2:
+            dtm.columns = dtm.columns.droplevel(0)
+        self.put_table(dtm, 'topic{}_matrix'.format(group_field), index=True)
+        dtm_counts = dtg[0].count().fillna(0)
+        dtm_counts.name = 'doc_count'
+        self.put_table(dtm_counts, 'topic{}_matrix_counts'.format(group_field), index=True)
+
+    def add_group_field_tables(self):
+        for group_field in self.config.ini['DEFAULT']['group_fields'].split(','):
+            self.create_topicdoc_group_matrix(group_field)
 
     def get_thresh(self):
         config = self.get_table('config')

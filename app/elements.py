@@ -79,6 +79,7 @@ class Elements(object):
             dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_words), axis=1)
         return dtm
 
+    # fixme: Remove deprecated function
     def get_topicdoc_matrix(self, sort_by_alpha = True, by='label'):
 
         if by == 'label':
@@ -88,6 +89,22 @@ class Elements(object):
         else:
             dtm = self.model.get_table('topicdoclabel_matrix', set_index=False)
 
+        col1 = dtm.columns.tolist()[0]
+        dtm.set_index(col1, inplace=True)
+
+        topics = self.model.get_table('topic', set_index=True)
+        if sort_by_alpha:
+            topics = topics.sort_values('topic_alpha', ascending=True)
+        dtm = dtm[topics.index.astype('str').tolist()]
+        if 'topic_gloss' in topics.columns:
+            dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_gloss), axis=1)
+        else:
+            dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_words), axis=1)
+        return dtm
+
+    def get_topicdoc_group_matrix(self, sort_by_alpha = True, group_field='doc_label'):
+        print('GF', group_field)
+        dtm = self.model.get_table('topic{}_matrix'.format(group_field), set_index=False) # todo: Standardize table name access
         col1 = dtm.columns.tolist()[0]
         dtm.set_index(col1, inplace=True)
 
@@ -202,7 +219,7 @@ class Elements(object):
         topics = self.model.get_table('topic')
         pairs = self.model.get_table('topicpair', set_index=False)
         pairs = pairs.loc[pairs.i_ab >= thresh, ['topic_a_id', 'topic_b_id', 'i_ab']]
-        nodes = [{'id':t, 'label':topics.loc[t].topic_gloss} for t in pd.concat([pairs.topic_a_id, pairs.topic_b_id], axis=0).unique()]
+        nodes = [{'id':t, 'label':'T{}: {} '.format(t, topics.loc[t].topic_gloss)} for t in pd.concat([pairs.topic_a_id, pairs.topic_b_id], axis=0).unique()]
         edges = [{'from': int(pairs.loc[i].topic_a_id), 'to': int(pairs.loc[i].topic_b_id)} for i in pairs.index]
         return nodes, edges
 

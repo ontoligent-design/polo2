@@ -40,17 +40,19 @@ def project(slug, trial='trial1'):
     data['trial'] = trial
     data['page_title'] = '{}, {}'.format(slug, trial)
 
-    # todo: Find a better way to do handle menus
+        # todo: Find a better way to do handle menus (copy Drupal?)
     path_prefix =  '/projects/{}/{}'.format(slug, trial)
-    data['sub_menu'] = [
-        ("{}".format(path_prefix), "Project"),
-        ("{}/topic_heatmap/label".format(path_prefix), "Topic Label Heatmap"),
-        ("{}/topic_heatmap/ord".format(path_prefix), "Topic Ordinal Heatmap"),
-        ("{}/topic_pair_net/0.18".format(path_prefix), "Topic Pair Network"),
-        ("{}/topic_pair_heatmap/jsd".format(path_prefix), "Topic Pair Similiarity Heatmap"),
-        ("{}/topic_pair_heatmap/i_ab".format(path_prefix), "Topic Pair Contiguity Heatmap"),
-        ("{}/docs".format(path_prefix), "Documents")
-    ]
+    data['sub_menu'] = [("{}".format(path_prefix), "Project")]
+    for group_field in cfg.ini['DEFAULT']['group_fields'].split(','):
+        data['sub_menu'].append(("{}/topic_heatmap/{}".format(path_prefix, group_field),
+                                    "Topic {} Heatmap".format(group_field)))
+        #("{}/topic_heatmap/label".format(path_prefix), "Topic Label Heatmap"),
+        #("{}/topic_heatmap/ord".format(path_prefix), "Topic Ordinal Heatmap"),
+    data['sub_menu'].append(("{}/topic_pair_net/0.18".format(path_prefix), "Topic Pair Network"))
+    data['sub_menu'].append(("{}/topic_pair_heatmap/jsd".format(path_prefix), "Topic Pair Similiarity Heatmap"))
+    data['sub_menu'].append(("{}/topic_pair_heatmap/i_ab".format(path_prefix), "Topic Pair Contiguity Heatmap"))
+    data['sub_menu'].append(("{}/docs".format(path_prefix), "Documents"))
+
 
     data['ini'] = cfg.ini['DEFAULT'] # Really?
     data['trials'] = cfg.get_trial_names()
@@ -80,16 +82,17 @@ def topicdoc_label_heatmap(slug, trial='trial1'):
     data['dtm'] = els.get_topicdoclabel_matrix()
     return render_template("topic_label_heatmap.html", **data)
 
-@app.route("/projects/<slug>/<trial>/topic_heatmap/<by>")
-def topicdoc_heatmap(slug, trial='trial1', by='label'):
+@app.route("/projects/<slug>/<trial>/topic_heatmap/<group_field>")
+def topicdoc_heatmap(slug, trial='trial1', group_field='label'):
     cfg = get_project_config(slug)
     els = Elements(cfg, trial)
     data['ini'] = cfg.ini['DEFAULT']
     data['trials'] = cfg.get_trial_names()
     data['slug'] = slug
     data['trial'] = trial
-    data['page_title'] = '{}, {}: Topic-{} Heatmap'.format(slug, trial, by)
-    data['dtm'] = els.get_topicdoc_matrix(by = by)
+    data['page_title'] = '{}, {}: Topic-{} Heatmap'.format(slug, trial, group_field)
+    #data['dtm'] = els.get_topicdoc_matrix(by = by)
+    data['dtm'] = els.get_topicdoc_group_matrix(group_field=group_field)
     return render_template("topic_label_heatmap.html", **data)
 
 @app.route("/projects/<slug>/<trial>/topic_pair_heatmap/<sim>")
@@ -114,7 +117,7 @@ def topic_pair_net(slug, trial='trial1', thresh=0.05):
     data['slug'] = slug
     data['trial'] = trial
     data['thresh'] = thresh
-    data['page_title'] = '{}, {}: Topic Pair Network (I(a;b) >= {})'.format(slug, trial, thresh)
+    data['page_title'] = '{}, {}: Topic Pair Network I(a;b) >= {}'.format(slug, trial, thresh)
     data['nodes'], data['edges'] = els.get_topicpair_net(thresh)
     return render_template("topic_pair_net.html", **data)
 

@@ -31,7 +31,8 @@ class PoloConfig():
             ("doc_topics_max", 10),
             ("show_topics_interval", 100),
             ('get_bigrams', 1),
-            ('get_trigrams', 0)
+            ('get_trigrams', 0),
+            ('group_fields', 'doc_label') # todo: Use this to replace src_ord_col?
         ])),
         ('trial1', OrderedDict([
             ("num_topics", 20),

@@ -209,8 +209,7 @@ class PoloShell(cmd.Cmd):
         self.mallet.create_table_topicpair()
 
         print("Adding topicdoc matrices.")
-        self.mallet.create_topicdoc_col_matrix(group_col = 'label')
-        self.mallet.create_topicdoc_col_matrix(group_col = 'ord') # todo: SKIP IF ord == label
+        self.mallet.add_group_field_tables()
 
         print("Adding topic alpha stats.")
         self.mallet.add_topic_alpha_stats()
