@@ -13,8 +13,6 @@ app.config.from_object('config')
 
 projects_dir = app.config['PROJECTS_DIR']
 data = {} # Use to store variables to pass to templates
-
-# todo: Write a Drupal-like menu handler
 data['main_menu'] = {
     '/projects': 'Projects'
 }
@@ -24,6 +22,7 @@ data['main_menu'] = {
 def hello():
     data['page_title'] = 'Project List'
     data['projects'] = [dir for dir in os.listdir(projects_dir) if os.path.isfile(get_project_config_file(dir))]
+    data['main_menu'] = {'/projects': 'Projects'}
     return render_template('home.html', **data)
 
 @app.route('/test')
@@ -35,38 +34,22 @@ def test():
 def project(slug, trial='trial1'):
     cfg = get_project_config(slug)
     els = Elements(cfg, trial)
-
+    set_project_menu(cfg, slug, trial)
     data['slug'] = slug
     data['trial'] = trial
     data['page_title'] = '{}, {}'.format(slug, trial)
-
-        # todo: Find a better way to do handle menus (copy Drupal?)
-    path_prefix =  '/projects/{}/{}'.format(slug, trial)
-    data['sub_menu'] = [("{}".format(path_prefix), "Project")]
-    for group_field in cfg.ini['DEFAULT']['group_fields'].split(','):
-        data['sub_menu'].append(("{}/topic_heatmap/{}".format(path_prefix, group_field),
-                                    "Topic {} Heatmap".format(group_field)))
-        #("{}/topic_heatmap/label".format(path_prefix), "Topic Label Heatmap"),
-        #("{}/topic_heatmap/ord".format(path_prefix), "Topic Ordinal Heatmap"),
-    data['sub_menu'].append(("{}/topic_pair_net/0.18".format(path_prefix), "Topic Pair Network"))
-    data['sub_menu'].append(("{}/topic_pair_heatmap/jsd".format(path_prefix), "Topic Pair Similiarity Heatmap"))
-    data['sub_menu'].append(("{}/topic_pair_heatmap/i_ab".format(path_prefix), "Topic Pair Contiguity Heatmap"))
-    data['sub_menu'].append(("{}/docs".format(path_prefix), "Documents"))
-
-
     data['ini'] = cfg.ini['DEFAULT'] # Really?
     data['trials'] = cfg.get_trial_names()
     data['src_ord_col'] = cfg.ini['DEFAULT']['src_ord_col']
-
     data['doc_count'] = els.get_doc_count()
     data['topic_count'] = els.get_topic_count()
-
     data['topics'] = els.get_topics()
-
     data['bigrams'] = els.get_top_bigrams()
-    data['dtm'] = els.get_topicdocord_matrix()
-    data['doc_ord_counts'] = els.get_topicdocgrooup_counts('topicdocord_matrix_counts')
+    src_ord_col = cfg.ini['DEFAULT']['src_ord_col']
+    data['dtm'] = els.get_topicdoc_group_matrix(group_field=src_ord_col)
+    data['doc_ord_counts'] = els.get_topicdocgrooup_counts('topic{}_matrix_counts'.format(src_ord_col))
     data['dtm_sums'] = els.get_topicdoc_sum_matrix(data['dtm'], data['doc_ord_counts'])
+
     return render_template("project.html", **data)
 
 # fixme: Deprecated function
@@ -86,19 +69,20 @@ def topicdoc_label_heatmap(slug, trial='trial1'):
 def topicdoc_heatmap(slug, trial='trial1', group_field='label'):
     cfg = get_project_config(slug)
     els = Elements(cfg, trial)
+    set_project_menu(cfg, slug, trial)
     data['ini'] = cfg.ini['DEFAULT']
     data['trials'] = cfg.get_trial_names()
     data['slug'] = slug
     data['trial'] = trial
     data['page_title'] = '{}, {}: Topic-{} Heatmap'.format(slug, trial, group_field)
-    #data['dtm'] = els.get_topicdoc_matrix(by = by)
-    data['dtm'] = els.get_topicdoc_group_matrix(group_field=group_field)
+    data['dtm'] = els.get_topicdoc_group_matrix(group_field=group_field, use_glass_label=True)
     return render_template("topic_label_heatmap.html", **data)
 
 @app.route("/projects/<slug>/<trial>/topic_pair_heatmap/<sim>")
 def topic_pair_heatmap(slug, trial='trial1', sim=None):
     cfg = get_project_config(slug)
     els = Elements(cfg, trial)
+    set_project_menu(cfg, slug, trial)
     data['ini'] = cfg.ini['DEFAULT']
     data['trials'] = cfg.get_trial_names()
     data['slug'] = slug
@@ -112,6 +96,7 @@ def topic_pair_heatmap(slug, trial='trial1', sim=None):
 def topic_pair_net(slug, trial='trial1', thresh=0.05):
     cfg = get_project_config(slug)
     els = Elements(cfg, trial)
+    set_project_menu(cfg, slug, trial)
     data['ini'] = cfg.ini['DEFAULT']
     data['trials'] = cfg.get_trial_names()
     data['slug'] = slug
@@ -125,15 +110,9 @@ def topic_pair_net(slug, trial='trial1', thresh=0.05):
 def doc_list(slug, trial='trial1'):
     cfg = get_project_config(slug)
     els = Elements(cfg, trial)
+    set_project_menu(cfg, slug, trial)
     data['slug'] = slug
     data['trial'] = trial
-    path_prefix =  '/projects/{}/{}'.format(slug, trial)
-    data['sub_menu'] = [
-        ("{}".format(path_prefix), "Project"),
-        ("{}/topic_label_heatmap".format(path_prefix), "Topic Label Heatmap"),
-        ("{}/topic_pair_heatmap/jsd".format(path_prefix), "Topic Pair Similiarity Heatmap"),
-        ("{}/topic_pair_heatmap/i_ab".format(path_prefix), "Topic Pair Contiguity Heatmap")
-    ]
     data['page_title'] = '{}, {}'.format(slug, trial)
     data['doc_entropy'] = els.get_doc_entropy()
     data['doc_entropy_avg'] = els.get_doc_entropy_avg()
@@ -145,15 +124,9 @@ def doc_list(slug, trial='trial1'):
 def docs_for_entropy(slug, topic_entropy, trial='trial1'):
     cfg = get_project_config(slug)
     els = Elements(cfg, trial)
+    set_project_menu(cfg, slug, trial)
     data['slug'] = slug
     data['trial'] = trial
-    path_prefix =  '/projects/{}/{}'.format(slug, trial)
-    data['sub_menu'] = [
-        ("{}".format(path_prefix), "Project"),
-        ("{}/topic_label_heatmap".format(path_prefix), "Topic Label Heatmap"),
-        ("{}/topic_pair_heatmap/jsd".format(path_prefix), "Topic Pair Similiarity Heatmap"),
-        ("{}/topic_pair_heatmap/i_ab".format(path_prefix), "Topic Pair Contiguity Heatmap")
-    ]
     data['page_title'] = '{}, {}, Docs with Topic Entropy {}'.format(slug, trial, topic_entropy)
     data['doc_entropy'] = els.get_doc_entropy()
     data['doc_entropy_avg'] = els.get_doc_entropy_avg()
@@ -165,15 +138,9 @@ def docs_for_entropy(slug, topic_entropy, trial='trial1'):
 def docs_for_topic_and_label(slug, topic_id, doc_label, trial='trial1'):
     cfg = get_project_config(slug)
     els = Elements(cfg, trial)
+    set_project_menu(cfg, slug, trial)
     data['slug'] = slug
     data['trial'] = trial
-    path_prefix =  '/projects/{}/{}'.format(slug, trial)
-    data['sub_menu'] = [
-        ("{}".format(path_prefix), "Project"),
-        ("{}/topic_label_heatmap".format(path_prefix), "Topic Label Heatmap"),
-        ("{}/topic_pair_heatmap/jsd".format(path_prefix), "Topic Pair Similiarity Heatmap"),
-        ("{}/topic_pair_heatmap/i_ab".format(path_prefix), "Topic Pair Contiguity Heatmap")
-    ]
     data['page_title'] = '{}, {}: Topic {}, Label {}'.format(slug, trial, topic_id, doc_label)
     data['topic_id'] = topic_id
     data['doc_label'] = doc_label
@@ -218,6 +185,19 @@ def get_model_db(slug, trial):
     model_db_file = pcfg.generate_model_db_file_path(trial)
     model = PoloDb(model_db_file)
     return model
+
+def set_project_menu(cfg, slug, trial):
+    path_prefix =  '/projects/{}/{}'.format(slug, trial)
+    data['sub_menu'] = [("{}".format(path_prefix), "Project")]
+    for group_field in cfg.ini['DEFAULT']['group_fields'].split(','):
+        group_field = group_field.strip()
+        data['sub_menu'].append(("{}/topic_heatmap/{}".format(path_prefix, group_field),
+                                    "Topic {} Heatmap".format(group_field)))
+    data['sub_menu'].append(("{}/topic_pair_net/0.18".format(path_prefix), "Topic Pair Network"))
+    data['sub_menu'].append(("{}/topic_pair_heatmap/jsd".format(path_prefix), "Topic Pair Similiarity Heatmap"))
+    data['sub_menu'].append(("{}/topic_pair_heatmap/i_ab".format(path_prefix), "Topic Pair Contiguity Heatmap"))
+    data['sub_menu'].append(("{}/docs".format(path_prefix), "Documents"))
+
 
 if __name__ == '__main__':
     app.run(debug=True)

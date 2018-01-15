@@ -102,20 +102,22 @@ class Elements(object):
             dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_words), axis=1)
         return dtm
 
-    def get_topicdoc_group_matrix(self, sort_by_alpha = True, group_field='doc_label'):
-        print('GF', group_field)
-        dtm = self.model.get_table('topic{}_matrix'.format(group_field), set_index=False) # todo: Standardize table name access
-        col1 = dtm.columns.tolist()[0]
+    def get_topicdoc_group_matrix(self, sort_by_alpha = True, group_field='doc_label', use_glass_label=False):
+        dtm = self.model.get_table('topic{}_matrix'.format(group_field), set_index=False) # todo: Should be schema driven
+        col1 = dtm.columns.tolist()[0] # todo: Should always be doc_group; should be schema driven
         dtm.set_index(col1, inplace=True)
 
         topics = self.model.get_table('topic', set_index=True)
         if sort_by_alpha:
             topics = topics.sort_values('topic_alpha', ascending=True)
         dtm = dtm[topics.index.astype('str').tolist()]
-        if 'topic_gloss' in topics.columns:
-            dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_gloss), axis=1)
-        else:
-            dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_words), axis=1)
+
+        # Only works
+        if use_glass_label:
+            if 'topic_gloss' in topics.columns:
+                dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_gloss), axis=1)
+            else:
+                dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_words), axis=1)
         return dtm
 
     # fixme: Deprecated function
@@ -137,7 +139,9 @@ class Elements(object):
     def get_topicdoc_ord_for_topic(self, topic_id):
         topic_id = int(topic_id)
         doc_col = self.config.ini['DEFAULT']['src_ord_col']
-        sql = "SELECT  doc_group, `{1}` as topic_weight FROM topicdocord_matrix ORDER BY doc_group".format(doc_col, topic_id)
+        src_ord_col = self.config.ini['DEFAULT']['src_ord_col']
+        table_name = 'topic{}_matrix'.format(src_ord_col)
+        sql = "SELECT  doc_group, `{1}` as topic_weight FROM {0} ORDER BY doc_group".format(table_name, topic_id)
         df = pd.read_sql_query(sql, self.model.conn)
         return df
 
