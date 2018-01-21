@@ -1,0 +1,59 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+<div class="w3-half">
+
+    <div class="w3-container">
+        <table>
+            {% for group in group_matrix.index %}
+            {% set gid = group_matrix.index.get_loc(group) %}
+            <tr>
+                <td>
+                    <div id="topic_trend_graph_{{gid}}" style="width:200px; height:100px;"></div>
+                </td>
+                <td>
+                    <a href="/projects/{{slug}}/{{trial}}/groups/{{group_field}}/{{group}}">{{group}}</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+</div>
+
+<div class="w3-half">
+
+    <div class="w3-container">
+        <div id="group_counts"></div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block code %}
+
+// Group Counts
+var x = {{group_counts.index.values.tolist() | tojson | safe}}
+var y = {{group_counts.doc_count.values.tolist() | tojson | safe}}
+var data = [{x:x, y:y, type:'bar', hoverinfo: 'x+y', showlegend: false}]
+var layout = {title:'Documents Counts per Group'}
+Plotly.newPlot('group_counts', data, layout)
+
+// General config for trend graphs
+var tg_layout = {
+    xaxis: {visible: false, showgrid: false, showline: false, showticklabels: false, type: 'category'},
+    yaxis: {visible: true, showgrid: true, showline: false, showticklabels: false},
+    margin: {l: 10, r: 10, b: 50, t: 0, pad: 0}
+}
+var tg_config = {displaylogo: false, displayModeBar: false, scrollZoom: false, editable: false, staticPlot: false};
+{% for group in group_matrix.index %}
+{% set gid = group_matrix.index.get_loc(group) %}
+var x{{gid}} = {{ group_matrix.columns.tolist() | tojson | safe }}
+var y{{gid}} = {{ group_matrix.loc[group].tolist() | tojson | safe }}
+var data{{gid}} = [{x:x{{gid}}, y:y{{gid}}, type:'bar', hoverinfo: 'x+y', showlegend: false}]
+Plotly.newPlot("topic_trend_graph_{{gid}}", data{{gid}}, tg_layout, tg_config)
+{% endfor %}
+
+{% endblock %}

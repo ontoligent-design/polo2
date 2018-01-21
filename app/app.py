@@ -40,6 +40,7 @@ def project(slug, trial='trial1'):
     data['page_title'] = '{}, {}'.format(slug, trial)
     data['ini'] = cfg.ini['DEFAULT'] # Really?
     data['trials'] = cfg.get_trial_names()
+    data['groups'] = cfg.get_group_fields()
     data['src_ord_col'] = cfg.ini['DEFAULT']['src_ord_col']
     data['doc_count'] = els.get_doc_count()
     data['topic_count'] = els.get_topic_count()
@@ -49,7 +50,6 @@ def project(slug, trial='trial1'):
     data['dtm'] = els.get_topicdoc_group_matrix(group_field=src_ord_col)
     data['doc_ord_counts'] = els.get_topicdocgrooup_counts('topic{}_matrix_counts'.format(src_ord_col))
     data['dtm_sums'] = els.get_topicdoc_sum_matrix(data['dtm'], data['doc_ord_counts'])
-
     return render_template("project.html", **data)
 
 # fixme: Deprecated function
@@ -164,6 +164,34 @@ def topic(slug, topic_id, trial='trial1'):
     data['rels'] = els.get_topics_related(topic_id)
     data['docs'] = els.get_docs_for_topic(topic_id)
     return render_template('topic.html', **data)
+
+@app.route('/projects/<slug>/<trial>/groups/<group>')
+def groups(slug, trial, group):
+    cfg = get_project_config(slug)
+    els = Elements(cfg, trial)
+    data['slug'] = slug
+    data['trial'] = trial
+    data['group_field'] = group
+    data['page_title'] = '{}, {}: Groups'.format(slug, trial)
+    data['group_matrix'] = els.get_group_matrix(group)
+    data['group_pairs'] = els.get_group_pairs(group)
+    data['group_counts'] = els.get_group_counts(group)
+    return render_template('group.html', **data)
+
+@app.route('/projects/<slug>/<trial>/groups/<group>/<item>')
+def group_item(slug, trial, group, item):
+    cfg = get_project_config(slug)
+    els = Elements(cfg, trial)
+    data['slug'] = slug
+    data['trial'] = trial
+    data['group_field'] = group
+    data['page_title'] = '{}, {}: {} = {}'.format(slug, trial, group, item)
+    data['item'] = item
+    data['topics'] = els.get_group_topics(group, item)
+    data['comps'] = els.get_group_comps(group, item)
+    data['docs'] = els.get_group_docs(group, item)
+    data['max_tw'] = els.get_max_topic_weight()
+    return render_template('group_item.html', **data)
 
 # Helpers -- Consider moving to module
 def get_project_config_file(slug):

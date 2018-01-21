@@ -80,6 +80,7 @@ class Elements(object):
         return dtm
 
     # fixme: Remove deprecated function
+    """
     def get_topicdoc_matrix(self, sort_by_alpha = True, by='label'):
 
         if by == 'label':
@@ -101,6 +102,7 @@ class Elements(object):
         else:
             dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_words), axis=1)
         return dtm
+    """
 
     def get_topicdoc_group_matrix(self, sort_by_alpha = True, group_field='doc_label', use_glass_label=False):
         dtm = self.model.get_table('topic{}_matrix'.format(group_field), set_index=False) # todo: Should be schema driven
@@ -112,7 +114,6 @@ class Elements(object):
             topics = topics.sort_values('topic_alpha', ascending=True)
         dtm = dtm[topics.index.astype('str').tolist()]
 
-        # Only works
         if use_glass_label:
             if 'topic_gloss' in topics.columns:
                 dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_gloss), axis=1)
@@ -121,11 +122,13 @@ class Elements(object):
         return dtm
 
     # fixme: Deprecated function
+    """
     def get_topicdocord_matrix(self):
         dtm = self.model.get_table('topicdocord_matrix', set_index=False)
         col1 = dtm.columns.tolist()[0]
         dtm.set_index(col1, inplace=True)
         return dtm
+    """
 
     def get_topicdocgrooup_counts(self, table_name):
         doc_counts = pd.DataFrame(self.model.get_table(table_name))
@@ -239,4 +242,45 @@ class Elements(object):
         df1.set_index('topic_id', inplace=True)
         return df1
 
+    def get_group_matrix(self, group_field):
+        df = self.model.get_table('topic{}_matrix'.format(group_field))
+        return df.set_index('doc_group')
 
+    def get_group_pairs(self, group_field):
+        return self.model.get_table('topic{}_pairs'.format(group_field))
+
+    def get_group_counts(self, group_field):
+        df = self.model.get_table('topic{}_matrix_counts'.format(group_field))
+        return df.set_index('doc_group')
+
+    def get_group_topics(self, group_field, group_name):
+        table_name = 'topic{}_matrix'.format(group_field)
+        sql = 'SELECT * FROM {} WHERE doc_group = ?'.format(table_name)
+        df = pd.read_sql_query(sql, self.model.conn, params=(group_name,))
+        df.set_index('doc_group', inplace=True)
+        df = df.T
+        df.index.name = 'topic_id'
+        df.columns = ['topic_weight']
+        topics = self.model.get_table('topic', set_index=True)
+        df['topic_gloss'] = topics.topic_gloss.tolist()
+        df['label'] = 'T' + df.index + ' ' + df.topic_gloss
+        return df
+
+    def get_group_comps(self, group_field, group_name):
+        table_name = 'topic{}_pairs'.format(group_field)
+        sql1 = "SELECT group_b as 'doc_group', kld, jsd, jscore, euclidean FROM {} WHERE group_a = ?".format(table_name)
+        sql2 = "SELECT group_a as 'doc_group', kld, jsd, jscore, euclidean FROM {} WHERE group_b = ?".format(table_name)
+        df1 = pd.read_sql_query(sql1, self.model.conn, params=(group_name,))
+        df2 = pd.read_sql_query(sql2, self.model.conn, params=(group_name,))
+        return df1.append(df2).sort_values('doc_group').set_index('doc_group')
+
+    def get_group_docs(self, group_field, group_name):
+        """Get a random selection of documents associated with the group name"""
+        # Get a random list of src docs for the group_name
+        # Get doc info for each
+        pass
+
+    def get_max_topic_weight(self):
+        sql = "SELECT value as 'max_tw' FROM config WHERE key = 'doctopic_weight_max'"
+        df = pd.read_sql_query(sql, self.model.conn)
+        return df.max_tw.tolist()[0]
