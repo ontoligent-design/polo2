@@ -126,3 +126,6 @@ class PoloConfig():
         if trial_name not in self.ini:
             raise ValueError("Trial name not found")
 
+    def get_group_fields(self):
+        group_fields = [group_field.strip() for group_field in self.ini['DEFAULT']['group_fields'].split(',')]
+        return group_fields

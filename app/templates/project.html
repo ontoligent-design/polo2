@@ -53,6 +53,7 @@ table td .topic_gloss { font-size: 16pt; margin: 0 0 1rem 0; }
 
     <!-- Corpus Metrics -->
     <div class="w3-container">
+
         <h2>Corpus Metrics</h2>
         <table class="w3-table">
             <tr>
@@ -70,8 +71,20 @@ table td .topic_gloss { font-size: 16pt; margin: 0 0 1rem 0; }
             <tr>
                 <td>Trials</td>
                 <td>
-                    {% for trial in trials %}
-                    <a class="w3-btn w3-green" href="/projects/{{slug}}/{{trial}}">{{trial}}</a>&nbsp;
+                    {% for this_trial in trials %}
+                    {% if trial == this_trial %}
+                    <span class="w3-white" href="/projects/{{slug}}/{{this_trial}}">{{this_trial}}</span>&nbsp;
+                    {% else %}
+                    <a class="w3-btn w3-green" href="/projects/{{slug}}/{{this_trial}}">{{this_trial}}</a>&nbsp;
+                    {% endif %}
+                    {% endfor %}
+                </td>
+            </tr>
+            <tr>
+                <td>Groups</td>
+                <td>
+                    {% for group in groups %}
+                    <a class="w3-btn w3-green" href="/projects/{{slug}}/{{trial}}/groups/{{group}}">{{group}}</a>&nbsp;
                     {% endfor %}
                 </td>
             </tr>

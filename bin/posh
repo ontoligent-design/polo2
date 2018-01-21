@@ -220,6 +220,9 @@ class PoloShell(cmd.Cmd):
         print("Adding doctopic entropy stats.")
         self.mallet.add_doctopic_entropy_stats()
 
+        print("Adding topic glosses.")
+        self.mallet.add_topic_glosses()
+
         print("Done importing", self.mallet.trial_name)
 
     def do_adhoc_mallet(self, arg):
@@ -227,9 +230,8 @@ class PoloShell(cmd.Cmd):
         if not self.do_check_mallet(None):
             return False
 
-        print("Importing doctopic col matrix.")
-        #self.mallet.import_table_doctopic()
-        self.mallet.create_topicdoc_col_matrix('label')
+        print("Testing topic glosses.")
+        self.mallet.add_topic_glosses()
 
     def do_clean_mallet_files(self, arg):
         """Delete mallet's output files."""
