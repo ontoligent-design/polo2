@@ -1,5 +1,6 @@
 import os, time, re
 import pandas as pd
+from itertools import combinations
 from lxml import etree
 from scipy import stats
 from polo2 import PoloDb
@@ -218,6 +219,18 @@ class PoloMallet(PoloDb):
         topicphrase.set_index(['topic_id', 'topic_phrase'], inplace=True)
         self.put_table(topicphrase, 'topicphrase', index=True)
 
+    def add_topic_glosses(self):
+        sql = """SELECT topic_id, GROUP_CONCAT(topic_phrase, '|') as 'topic_gloss'
+        FROM (SELECT * FROM topicphrase ORDER BY phrase_weight DESC)
+        GROUP BY topic_id
+        """
+        topicphrase = pd.read_sql_query(sql, self.conn)
+        topicphrase.set_index('topic_id', inplace=True)
+        topicphrase['topic_gloss'] = topicphrase.apply(lambda x: x.topic_gloss.split('|')[0], 1)
+        topic = self.get_table('topic', set_index=True)
+        topic['topic_gloss'] = topicphrase.topic_gloss
+        self.put_table(topic, 'topic', index=True)
+
     def import_table_config(self):
         # fixme: Make this automatic; find a way to dump all values
         cfg = {}
@@ -302,7 +315,7 @@ class PoloMallet(PoloDb):
     def add_topic_entropy(self):
         doctopic = self.get_table('doctopic')
         doc = self.get_table('doc')
-        topic_entropy = doctopic.groupby('doc_id')['topic_weight'].apply(lambda x: stats.entropy(x))
+        topic_entropy = doctopic.groupby('doc_id')['topic_weight'].apply(lambda x: pm.entropy(x))
         doc['topic_entropy'] = topic_entropy
         doc['topic_entropy_zscore'] = stats.zscore(doc.topic_entropy)
         doc.set_index('doc_id', inplace=True)
@@ -317,6 +330,7 @@ class PoloMallet(PoloDb):
         doc_num = int(r.fetchone()[0])
 
         # Create the doctopic matrix dataframe
+        # todo: Find out if this can pull from an existing table
         doctopic = self.get_table('doctopic', set_index=True)
         dtm = doctopic['topic_weight'].unstack()
         if dtm.columns.nlevels == 2:
@@ -338,7 +352,7 @@ class PoloMallet(PoloDb):
         del topicword
 
         # Create topicpair dataframe
-        from itertools import combinations
+        #from itertools import combinations
         pairs = [pair for pair in combinations(topic.index, 2)]
         topicpair = pd.DataFrame(pairs, columns=['topic_a_id', 'topic_b_id'])
 
@@ -446,9 +460,23 @@ class PoloMallet(PoloDb):
         dtm_counts.name = 'doc_count'
         self.put_table(dtm_counts, 'topic{}_matrix_counts'.format(group_field), index=True)
 
+    def create_topicdoc_group_pairs(self, group_field):
+        thresh = self.get_thresh()
+        gtm = self.get_table('topic{}_matrix'.format(group_field))
+        gtm.set_index('doc_group', inplace=True)
+        pairs = [pair for pair in combinations(gtm.index, 2)]
+        pair = pd.DataFrame(pairs, columns=['group_a', 'group_b'])
+        pair['cosim'] = pair.apply(lambda x: pm.cosine_sim(gtm.loc[x.group_a], gtm.loc[x.group_b]), axis=1)
+        pair['jsd'] = pair.apply(lambda x: pm.js_divergence(gtm.loc[x.group_a], gtm.loc[x.group_b]), axis=1)
+        pair['jscore'] = pair.apply(lambda x: pm.jscore(gtm.loc[x.group_a], gtm.loc[x.group_b], thresh=thresh), axis=1)
+        pair['euclidean'] = pair.apply(lambda x: pm.euclidean(gtm.loc[x.group_a], gtm.loc[x.group_b]), axis=1)
+        pair['kld'] = pair.apply(lambda x: pm.kl_distance(gtm.loc[x.group_a], gtm.loc[x.group_b]), axis=1)
+        self.put_table(pair, 'topic{}_pairs'.format(group_field))
+
     def add_group_field_tables(self):
-        for group_field in self.config.ini['DEFAULT']['group_fields'].split(','):
+        for group_field in self.config.get_group_fields():
             self.create_topicdoc_group_matrix(group_field)
+            self.create_topicdoc_group_pairs(group_field)
 
     def get_thresh(self):
         config = self.get_table('config')
