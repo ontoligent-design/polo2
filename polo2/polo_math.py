@@ -2,8 +2,11 @@ import numpy as np
 import scipy.stats as sps
 import math
 
-
 class PoloMath():
+
+    @staticmethod
+    def entropy(s1):
+        return sps.entropy(s1, base=2)
 
     @staticmethod
     def cosine_sim(x, y):
@@ -23,7 +26,7 @@ class PoloMath():
         P1 = p1 / np.sum(p1)
         P2 = p2 / np.sum(p2)
         M = .5 * (P1 + P2)
-        return .5 * (sps.entropy(P1, M) + sps.entropy(P2, M))
+        return .5 * (sps.entropy(P1, M, 2) + sps.entropy(P2, M, 2))
 
     @staticmethod
     def pwmi(p_a, p_b, p_ab):
@@ -31,7 +34,7 @@ class PoloMath():
         that appear in container vectors of some kind, e.g. items in a shopping
         basket."""
         if p_ab > 0:
-            i_ab = math.log(p_ab / (p_a * p_b))  # Raw
+            i_ab = math.log2(p_ab / (p_a * p_b))  # Raw
             i_ab = i_ab / (math.log2(p_ab) * -1) # Adjusted
         else:
             i_ab = None
@@ -39,9 +42,21 @@ class PoloMath():
 
     @staticmethod
     def jscore(s1, s2, thresh = 0):
-        """Computes teh Jaccard score (aka distance) for two vectors (series). Series passed must
+        """Computes the Jaccard score (aka distance) for two vectors (series). Series passed must
         share an index. This condition will be met for an unstacked matrix of weights or counts,
         where the two series belong to the matrix."""
         A = set(s1[s1 > thresh].index)
         B = set(s2[s2 > thresh].index)
-        return 1 - (len(A & B) / len(A | B))
+        if len(A | B) > 0:
+            return 1 - (len(A & B) / len(A | B))
+        else:
+            return -1 # Is this correct?
+
+    @staticmethod
+    def euclidean(s1, s2):
+        return math.sqrt(((s1 - s2)**2).sum())
+
+    @staticmethod
+    def kl_distance(s1, s2):
+        """Kullback-Leibler distance"""
+        return sps.entropy(s1, s2, 2)
