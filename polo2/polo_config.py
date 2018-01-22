@@ -3,6 +3,8 @@ from collections import OrderedDict
 
 
 class PoloConfig():
+
+    # todo: Replace schemas with XML
     
     ini_schema = OrderedDict([
         ('DEFAULT', OrderedDict([
@@ -13,7 +15,7 @@ class PoloConfig():
             ("src_file_name", "corpus/corpus.csv"),
             ("src_file_sep", '|'),
             ("src_base_url", 'Replace me with URL that can be used to view corpus documents online'),
-            ("src_ord_col", 'doc_label'),
+            ("src_ord_col", 'doc_label'),  # todo: TO BE DEPRECATED
             ("normalize", 1),
             ("use_stopwords", 1),
             ("extra_stops", 'corpus/extra-stopwords.txt'),
@@ -32,7 +34,8 @@ class PoloConfig():
             ("show_topics_interval", 100),
             ('get_bigrams', 1),
             ('get_trigrams', 0),
-            ('group_fields', 'doc_label') # todo: Use this to replace src_ord_col?
+            ('group_fields', 'doc_label'), # todo: TO BE DEPRECATED
+            ('groups_ini_file', 'groups.ini') # todo: Add info in help about this
         ])),
         ('trial1', OrderedDict([
             ("num_topics", 20),
@@ -40,7 +43,18 @@ class PoloConfig():
             ("optimize_interval", 10)
         ]))
     ])
-    # todo: Move num_iterations and optimize_interval out of trial1 and update PoloMallet to refflect this
+
+    group_ini_schema = OrderedDict([
+        ('DEFAULT', OrderedDict([
+            ('default_field', 'doc_label # This field will be displayed with topics')
+        ])),
+        ('doc_label', OrderedDict([
+            ('slug', 'label'),
+            ('title', 'Document Label')
+        ]))
+    ])
+
+    # todo: Move num_iterations and optimize_interval out of trial1 and update PoloMallet to reflect this
 
     def __init__(self, ini_file, create=True, slug=None):
         if not os.path.isfile(ini_file):
@@ -53,6 +67,7 @@ class PoloConfig():
         self.ini._interpolation = configparser.ExtendedInterpolation()
         self.ini.read(ini_file)
         self.validate_ini()
+        self.validate_ini2(self.ini_schema, self.ini, 'trial1')
 
         # Perhaps put into a method
         if self.ini['DEFAULT']['src_file_sep'] == 'TAB':
@@ -62,11 +77,36 @@ class PoloConfig():
 
         self.trials = self.ini.sections()
 
+        # Import groups info
+        self.groups_ini = configparser.ConfigParser()
+        self.groups_ini._interpolation = configparser.ExtendedInterpolation()
+        self.groups_ini.read('{}/{}'.format(self.ini['DEFAULT']['base_path'],
+                                            self.ini['DEFAULT']['groups_ini_file']))
+        self.validate_ini2(self.group_ini_schema, self.groups_ini, 'doc_label')
+
     def get_trial_names(self):
         if len(self.trials) == 0:
             raise ValueError("No trials defined in INI file.")
         return self.trials
 
+    def validate_ini2(self, ini_schema, ini, section):
+        # Well-formed test for [DEFAULT]
+        keys1 = ini_schema['DEFAULT'].keys()
+        keys2 = ini['DEFAULT'].keys()
+        test1 = self.compare_keys(keys1, keys2)
+        if test1:
+            raise ValueError("Missing config DEFAULT keys:", ', '.join(test1))
+        # Well-formed test for [section]
+        # todo: Change this if we decide to put some of these keys into DEFAULT
+        keys3 = ini_schema[section].keys()
+        for trial in ini.sections():
+            keys4 = ini[trial].keys()
+            test2 = self.compare_keys(keys3, keys4)
+            if test2:
+                raise ValueError("Missing config keys for section `{}`.".format(trial), ', '.join(test2))
+        return True
+
+    # todo: To be replaced by validate_ini2()
     def validate_ini(self):
 
         # Well-formed test for [DEFAULT]
