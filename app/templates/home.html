@@ -1,11 +1,32 @@
 {% extends "layout.html" %}
 
 {% block main %}
-
-    <ul class="w3-ul">
-        {% for proj in projects | sort() %}
-        <li><a href="/projects/{{proj}}">{{proj}}</a></li>
-        {% endfor %}
-    </ul>
+<div class="w3-row">
+    <div class="w3-container">
+        <table class="w3-table">
+            <thead>
+                <th>Project</th>
+                <th>Trials</th>
+            </thead>
+            <tbody>
+                {% for slug in projects.keys() | sort() %}
+                <tr>
+                    <td>
+                        <!--
+                        <a href="/projects/{{slug}}">{{projects[slug]['title']}}</a>
+                        -->
+                        <p class="w3-large">{{projects[slug]['title']}}</p>
+                    </td>
+                    <td>
+                    {% for trial in projects[slug]['trials'] %}
+                        <a class="w3-btn w3-green" href="/projects/{{slug}}/{{trial}}">{{trial}}</a>
+                    {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 
 {% endblock %}

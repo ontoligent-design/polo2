@@ -7,7 +7,6 @@ from polo2 import PoloDb
 from polo2 import PoloFile
 from polo2 import PoloMath as pm
 
-
 class PoloMallet(PoloDb):
 
     def __init__(self, config, trial='trial1'):
@@ -18,36 +17,26 @@ class PoloMallet(PoloDb):
         self.config = config
         self.trial = trial
 
-        self.cfg_slug = self.config.ini['DEFAULT']['slug']
-        self.cfg_mallet_path = self.config.ini['DEFAULT']['mallet_path']
-        self.cfg_output_dir = self.config.ini['DEFAULT']['mallet_out_dir']
-        self.cfg_base_path = self.config.ini['DEFAULT']['base_path']
-        self.cfg_verbose = self.config.ini['DEFAULT']['replacements']
-        self.cfg_thresh = float(self.config.ini['DEFAULT']['thresh']) # Maybe just cast when used
-        self.cfg_input_corpus = self.config.ini['DEFAULT']['mallet_corpus_input']
-        self.cfg_num_top_docs = self.config.ini['DEFAULT']['num_top_docs']
-        self.cfg_doc_topics_max = self.config.ini['DEFAULT']['doc_topics_max']
-        self.cfg_show_topics_interval = self.config.ini['DEFAULT']['show_topics_interval']
-        self.cfg_num_top_words = int(self.config.ini['DEFAULT']['num_top_words'])
-        self.cfg_num_threads = int(self.config.ini['DEFAULT']['num_threads'])
-        self.cfg_extra_stops = self.config.ini['DEFAULT']['extra_stops']
-        self.cfg_replacements = self.config.ini['DEFAULT']['replacements']
-        self.cfg_tw_quantile = 0.8 # todo: Put this in config.ini
+        for key in self.config.ini['DEFAULT']:
+            setattr(self, 'cfg_{}'.format(key), self.config.ini['DEFAULT'][key])
 
-        self.cfg_num_topics = int(self.config.ini[trial]['num_topics'])
-        self.cfg_num_iterations = int(self.config.ini[trial]['num_iterations'])
-        self.cfg_optimize_interval = int(self.config.ini[trial]['optimize_interval']) # Put into DEFAULT
+        # Values here will override values in DEFAULT
+        for key in self.config.ini[trial]:
+            setattr(self, 'cfg_{}'.format(key), self.config.ini[trial][key])
 
-        # fixme: Somehow this changes thresh from float to str
-        # Trial overrides
-        #for key in self.config.ini['DEFAULT']:
-        #    if key in self.config.ini[trial]:
-        #        setattr(self, 'cfg_{}'.format(key), self.config.ini[trial][key])
+        # todo: Put this in config.ini
+        self.cfg_tw_quantile = 0.8
+
+        # Temporary hack to handle casting
+        for key in "num_topics num_iterations optimize_interval num_threads num_top_words".split():
+            att = 'cfg_{}'.format(key)
+            setattr(self, att, int(getattr(self, att)))
+        self.cfg_thresh = float(self.cfg_thresh)
 
         #self.generate_trial_name()
-        #self.file_prefix = '{}/{}'.format(self.cfg_output_dir, self.trial_name)
+        #self.file_prefix = '{}/{}'.format(self.cfg_mallet_out_dir, self.trial_name)
         self.trial_name = self.trial # HACK
-        self.file_prefix = '{}/{}'.format(self.cfg_output_dir, self.trial_name)
+        self.file_prefix = '{}/{}'.format(self.cfg_mallet_out_dir, self.trial_name)
         self.mallet = {'import-file': {}, 'train-topics': {}}
         self.mallet_init()
 
@@ -55,25 +44,23 @@ class PoloMallet(PoloDb):
         dbfile = self.config.generate_model_db_file_path(self.trial)
         PoloDb.__init__(self, dbfile)
 
-
     # todo: Remove or replace
     def generate_trial_name(self):
         ts = time.time()
         self.trial_name = '{}-model-t{}-i{}-{}'.format(self.trial, self.cfg_num_topics,
                                                               self.cfg_num_iterations, int(ts))
-    
     def mallet_init(self):
-        # todo: Consider putting this in the init for the object itself
+        # todo: Consider putting trunhis in the init for the object itself
         if not os.path.exists(self.cfg_mallet_path):
             raise ValueError('Mallet cannot be found.')
 
         if os.path.exists(self.cfg_replacements): # todo: Consider moving this step out of MALLET and into corpus prep
             self.mallet['import-file']['replacement-files'] = self.cfg_replacements
-        self.mallet['import-file']['input'] = self.cfg_input_corpus
-        self.mallet['import-file']['output'] = '{}/mallet-corpus.mallet'.format(self.cfg_output_dir) # Put this in corpus?
+        self.mallet['import-file']['input'] = self.cfg_mallet_corpus_input
+        self.mallet['import-file']['output'] = '{}/mallet-corpus.mallet'.format(self.cfg_mallet_out_dir) # Put this in corpus?
         self.mallet['import-file']['keep-sequence'] = 'TRUE' # todo: Control this by config
         self.mallet['import-file']['remove-stopwords'] = 'FALSE' # todo: Control this by config
-        self.mallet['import-file']['line-regex'] =   "^([^,]+)\s*,\s*([^,]+)\s*,\s*(.+)$" # This logic is assumed in the corpus creation view
+        #self.mallet['import-file']['line-regex'] = "'([^,]+)\s*,\s*([^,]+)\s*,\s*(.+)'" # This logic is assumed in the corpus creation view
 
         self.mallet['train-topics']['num-topics'] = self.cfg_num_topics
         self.mallet['train-topics']['num-top-words'] = self.cfg_num_top_words
@@ -93,11 +80,12 @@ class PoloMallet(PoloDb):
         self.mallet['train-topics']['num-top-docs'] = self.cfg_num_topics
         self.mallet['train-topics']['doc-topics-max'] = self.cfg_doc_topics_max
         self.mallet['train-topics']['show-topics-interval'] = self.cfg_show_topics_interval
-        self.mallet['trial_name'] = self.trial_name
+        #self.mallet['trial_name'] = self.trial_name
 
     def mallet_run_command(self, op):
         my_args = ['--{} {}'.format(arg,self.mallet[op][arg]) for arg in self.mallet[op]]
         my_cmd = '{} {} {}'.format(self.cfg_mallet_path, op, ' '.join(my_args))
+        print(my_cmd)
         try:
             os.system(my_cmd)
         except:
@@ -199,7 +187,7 @@ class PoloMallet(PoloDb):
             self.computed_thresh = round(doctopic_narrow.topic_weight.quantile(self.cfg_tw_quantile), 3)
             self.put_table(doctopic_narrow, 'doctopic', index=True)
 
-        # todo: Revisit this; in the best place?
+        # todo: Revisit this; in the best place to do this?
         self.set_config_item('computed_thresh', self.computed_thresh)
 
     def import_table_topicphrase(self, src_file=None):

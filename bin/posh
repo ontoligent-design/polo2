@@ -227,11 +227,22 @@ class PoloShell(cmd.Cmd):
 
     def do_adhoc_mallet(self, arg):
         """Do some ad hoc stuff"""
+
+        print("Initializing corpus")
+        corpus = PoloCorpus(self.config)
+        corpus.cache_mode = True
+
+        print("Export mallet corpus")
+        corpus.export_mallet_corpus()
+
         if not self.do_check_mallet(None):
             return False
 
-        print("Testing topic glosses.")
-        self.mallet.add_topic_glosses()
+        print('Initializing mallet')
+        mallet = PoloMallet(self.config)
+
+        print('Converting corpus for mallet')
+        mallet.mallet_import()
 
     def do_clean_mallet_files(self, arg):
         """Delete mallet's output files."""

@@ -1,0 +1,44 @@
+{% extends "layout.html" %}
+
+
+{% block main %}
+
+<div class="w3-row">
+    <div class="w3-container">
+        <h2>
+            <a class="w3-tag w3-blue" href="/projects/{{slug}}/{{trial}}/groups/doc_label/{{doc.doc_label.tolist()[0]}}">
+                {{doc.doc_label.tolist()[0]}}
+            </a>
+            {{doc.doc_title.tolist()[0]}}
+        </h2>
+    </div>
+</div>
+
+<div class="w3-half">
+    <div class="w3-container">
+        <h2>Description</h2>
+        <div class="w3-large">{{doc.doc_original.tolist()[0] | safe}}</div>
+    </div>
+</div>
+
+<div class="w3-rest">
+    <div class="w3-container">
+        <h2>Top Topics</h2>
+        <tt>H = {{doc.topic_entropy.tolist()[0]}}</tt>
+        {% for topic_id in doctopics[doctopics.topic_weight >= 0.01].sort_values('topic_weight', ascending=False).index %}
+        {% set topic = doctopics.loc[topic_id] %}
+        {% set gloss = topics.loc[topic_id].topic_gloss %}
+        <h4><a href="/projects/{{slug}}/{{trial}}/topic/{{topic_id}}">T{{topic_id}} {{gloss}}</a></h4>
+        <div class="w3-light-gray">
+            <div class="w3-light-green" style="padding-left:.5rem;height:24px; width:{{topic.topic_weight * 100}}%">
+                {{topic.topic_weight}}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block code %}
+
+{% endblock %}

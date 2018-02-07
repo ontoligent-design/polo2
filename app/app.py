@@ -1,33 +1,53 @@
+# Import installed modules
 import os, sys
 from flask import Flask, render_template
 #from flask_caching import Cache
 from polo2 import PoloDb, PoloConfig
 
+# Import local modules
 base_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(base_dir)
-from elements import Elements
+from elements import Elements, Corpus
 
+# Create application object
 app = Flask(__name__)
 app.config.from_object('config')
 #cache = Cache(app,config={'CACHE_TYPE': 'simple'})
 
+# Define some things used in the handlers
 projects_dir = app.config['PROJECTS_DIR']
 data = {} # Use to store variables to pass to templates
 data['main_menu'] = {
     '/projects': 'Projects'
 }
 
+# URL Handlers
+
 @app.route("/")
 @app.route("/projects")
 def hello():
     data['page_title'] = 'Project List'
-    data['projects'] = [dir for dir in os.listdir(projects_dir) if os.path.isfile(get_project_config_file(dir))]
     data['main_menu'] = {'/projects': 'Projects'}
+    data['projects'] = {}
+    for dir in os.listdir(projects_dir):
+        if os.path.isfile(get_project_config_file(dir)):
+            my_config_ini = '{}/{}/config.ini'.format(projects_dir, dir)
+            my_cfg = PoloConfig(my_config_ini)
+            data['projects'][dir] = {
+                'title': my_cfg.ini['DEFAULT']['title'],
+                'trials': my_cfg.get_trial_names()
+            }
     return render_template('home.html', **data)
 
 @app.route('/test')
 def test():
     return render_template('test.html')
+
+@app.route('/projects/<slug>/corpus')
+def corpus(slug):
+    cfg = get_project_config_file(slug)
+    cps = Corpus(cfg)
+
 
 @app.route("/projects/<slug>")
 @app.route("/projects/<slug>/<trial>")
@@ -120,6 +140,20 @@ def doc_list(slug, trial='trial1'):
     data['docs'] = els.get_docs_for_topic_entropy(data['doc_entropy_avg'])
     return render_template('doc_list.html', **data)
 
+@app.route('/projects/<slug>/<trial>/doc/<int:src_doc_id>')
+def doc_item(slug, src_doc_id, trial='trial1'):
+    cfg = get_project_config(slug)
+    els = Elements(cfg, trial)
+    set_project_menu(cfg, slug, trial)
+    data['slug'] = slug
+    data['trial'] = trial
+    data['page_title'] = '{}, {} src_doc_id = {}'.format(slug, trial, src_doc_id)
+    data['doc'] = els.get_doc(src_doc_id)
+    data['doc_id'] = els.get_doc_id_for_src_doc_id(src_doc_id)
+    data['doctopics'] = els.get_topics_for_doc_id(data['doc_id'])
+    data['topics'] = els.get_topics()
+    return render_template('doc_item.html', **data)
+
 @app.route('/projects/<slug>/<trial>/docs/h/<topic_entropy>')
 def docs_for_entropy(slug, topic_entropy, trial='trial1'):
     cfg = get_project_config(slug)
@@ -189,7 +223,7 @@ def group_item(slug, trial, group, item):
     data['item'] = item
     data['topics'] = els.get_group_topics(group, item)
     data['comps'] = els.get_group_comps(group, item)
-    data['docs'] = els.get_group_docs(group, item)
+    data['docs'] = els.get_docs_for_group(item, group)
     data['max_tw'] = els.get_max_topic_weight()
     return render_template('group_item.html', **data)
 

@@ -13,45 +13,52 @@ table td:first-child { text-align: right; color: gray; }
     </div>
 </div>
 
-<div class="w3-half">
+<div class="w3-third">
     <div class="w3-container">
-        <h2>Related Topics</h2>
-        <h3>Top 10 Topics</h3>
-        <div id="topic-trend-pie"></div>
 
-        <!--
-        {# set tw_max = topics.topic_weight.max() #}
-        {# for topic_id in topics.sort_values('topic_weight', ascending=False).index #}
-        {# set topic = topics.loc[topic_id] #}
-        {# set tw_percent = (topic.topic_weight / topics.topic_weight.max()) * 100 #}
-        <b>T-{#topic_id#} {#topic.topic_gloss#}</b>
-        <div class="w3-light-green" style="padding-left:.5rem;height:24px; width:{#tw_percent#}#">
-            {#topic.topic_weight | round(2) #}
-        </div>
-        {# endfor #}
-        -->
-        
+        <h2>Documents</h2>
+        {% for doc_id in docs.index %}
+        {% set doc = docs.loc[doc_id] %}
+        <h4><a href="/projects/{{slug}}/{{trial}}/doc/{{doc_id}}">{{doc.doc_title}}</a></h4>
+        <div>{{doc.doc_original}}</div>
+        {% endfor %}
+
     </div>
 
 </div>
 
-<div class="w3-rest">
+<div class="w3-third">
+    <div class="w3-container">
+        <h2>Top Topics</h2>
+        {% for topic_id in topics.sort_values('topic_weight', ascending=False).index %}
+        {% set topic = topics.loc[topic_id] %}
+        <h4><a href="/projects/{{slug}}/{{trial}}/topic/{{topic_id}}">{{topic.label}}</a></h4>
+        <div class="w3-light-gray">
+            <div class="w3-light-green" style="padding-left:.5rem;height:24px; width:{{topic.topic_weight * 100}}%">
+                {{topic.topic_weight}}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="w3-third">
     <h2>Related Groups</h2>
     <table id="comps_table" data-order='[[1, "asc"]]' data-page-length='10'>
         <thead>
             <tr>
                 <th>Group</th>
-                <th>Kullback-Leibler</th>
                 <th>Jensen-Shannon</th>
-                <th>Jaccard</th>
+                <th>Kullback-Leibler</th>
                 <th>Euclidean</th>
+                <th>Jaccard</th>
             </tr>
         </thead>
         <tbody>
             {% for group in comps.index %}
             <tr>
                 <td><a href="/projects/{{slug}}/{{trial}}/groups/{{group_field}}/{{group}}">{{group}}</a></td>
-                {% for col in ['kld', 'jsd', 'jscore', 'euclidean'] %}
+                {% for col in ['jsd', 'kld', 'euclidean', 'jscore'] %}
                     {% set max_val = comps[col].max() %} <!-- Inefficient -->
                     {% set min_val = comps[col].min() %} <!-- Inefficient -->
                     {% set cur_val = comps.loc[group][col] %}
@@ -75,11 +82,11 @@ table td:first-child { text-align: right; color: gray; }
 <div class="w3-row">
     <div class="w3-container">
 
-        <h3>Topic Weight Trend</h3>
-        <div id="topic-trend-graph"></div>
-
         <h3>All Topics, Sorted by Weight</h3>
         <div id="topic-trend-graph-sorted"></div>
+
+        <h3>Topic Weight Trend</h3>
+        <div id="topic-trend-graph"></div>
 
     </div>
 </div>
@@ -112,8 +119,8 @@ Plotly.newPlot("topic-trend-graph", data, layout, config)
 // Topic Trend Graph Sorted
 {% set s_topics = topics.sort_values('topic_weight', ascending=False) %}
 var s_layout = {
-    xaxis: {title: 'topic ID', tickangle: 45, visible: true, showgrid: false, showline: true, showticklabels: true, autotick: false},
-    yaxis: {title: 'topic weight', visible: true, showgrid: true, showline: true, showticklabels: true},
+    xaxis: {title: '', tickangle: 45, visible: true, showgrid: false, showline: true, showticklabels: true, autotick: false},
+    yaxis: {title: '', visible: true, showgrid: true, showline: true, showticklabels: true},
     margin: {l: 50, r: 50, b: 200, t: 30, pad: 10}
 }
 var s_config = {displaylogo: false, displayModeBar: false, scrollZoom: false, editable: false, staticPlot: false}
@@ -121,6 +128,15 @@ var s_x = {{ s_topics.label.tolist() | tojson | safe }}
 var s_y = {{ s_topics.topic_weight.tolist()| tojson | safe }}
 var s_data = [{x:s_x, y:s_y, type:'bar', hoverinfo: 'x+y', showlegend: false}]
 Plotly.newPlot("topic-trend-graph-sorted", s_data, s_layout, s_config)
+
+plot = document.getElementById("topic-trend-graph-sorted")
+//var s_tid = {{ s_topics.index.tolist() }}
+plot.on('plotly_click', function(data) {
+    tid = data.points[0].x.match(/T(\d+)/)[1]
+    url = '/projects/{{slug}}/{{trial}}/topic/' + tid
+    window.open(url, '_self')
+})
+
 
 // Topic Trend Pie
 {# set topics_light = topics[topics.topic_weight >= 0.05] #}

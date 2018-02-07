@@ -22,7 +22,7 @@ class PoloMath():
 
     @staticmethod
     def js_divergence(p1, p2):
-        """Computes the Jensen=Shannon Divergence between two vectors (series)."""
+        """Computes the Jensen-Shannon Divergence between two vectors (series)."""
         P1 = p1 / np.sum(p1)
         P2 = p2 / np.sum(p2)
         M = .5 * (P1 + P2)
@@ -54,6 +54,7 @@ class PoloMath():
 
     @staticmethod
     def euclidean(s1, s2):
+        """Simple Euclidean distance"""
         return math.sqrt(((s1 - s2)**2).sum())
 
     @staticmethod

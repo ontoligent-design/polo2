@@ -1,6 +1,11 @@
 from polo2 import PoloDb
 import pandas as pd
 
+class Corpus(object):
+
+    def __init__(self, config):
+        corpus_db_file = self.config.generate_corpus_db_file_path()
+        self.corpus = PoloDb(corpus_db_file)
 
 class Elements(object):
 
@@ -148,6 +153,31 @@ class Elements(object):
         df = pd.read_sql_query(sql, self.model.conn)
         return df
 
+    def get_doc(self, src_doc_id):
+
+        sql = "SELECT * FROM doc WHERE src_doc_id = ?"
+        df = pd.read_sql_query(sql, self.model.conn, params=(src_doc_id,))
+        df.set_index('src_doc_id', inplace=True)
+
+        sql2 = "SELECT * FROM doc WHERE doc_id = ?"
+        df2 = pd.read_sql_query(sql2, self.corpus.conn, params=(src_doc_id,))
+        df2.set_index('doc_id', inplace=True)
+        #df2.index.name = 'src_doc_id' # todo: Fix this madness
+
+        df = df.join(df2, lsuffix='_SRC')
+        return df
+
+    def get_doc_id_for_src_doc_id(self, src_doc_id):
+        sql = "SELECT doc_id FROM doc WHERE src_doc_id = ?"
+        df = pd.read_sql_query(sql, self.model.conn, params=(src_doc_id,))
+        doc_id = df.doc_id.tolist()[0]
+        return doc_id
+
+    def get_topics_for_doc_id(self, doc_id):
+        sql = "SELECT * FROM doctopic WHERE doc_id = ?"
+        df = pd.read_sql_query(sql, self.model.conn, params=(doc_id,))
+        return df
+
     def get_docs_for_topic(self, topic_id, limit=10):
         sql = "SELECT src_doc_id, topic_weight, topic_weight_zscore FROM doctopic " \
               "JOIN doc USING(doc_id) WHERE topic_id = ? " \
@@ -155,7 +185,7 @@ class Elements(object):
         df = pd.read_sql_query(sql, self.model.conn, params=(topic_id,))
         df.set_index('src_doc_id', inplace=True)
         doc_ids = ','.join(df.index.astype('str').tolist())
-        sql2 = "SELECT doc_id, doc_title, doc_content, doc_key FROM doc WHERE doc_id IN ({})".format(doc_ids)
+        sql2 = "SELECT doc_id, doc_label, doc_title, doc_original, doc_content, doc_key FROM doc WHERE doc_id IN ({})".format(doc_ids)
         df2 = pd.read_sql_query(sql2, self.corpus.conn,)
         df2.set_index('doc_id', inplace=True)
         df = df.join(df2)
@@ -177,6 +207,17 @@ class Elements(object):
         df = df.join(df2)
         return df.sort_values('topic_weight', ascending=False)
 
+    def get_docs_for_group(self, group_field_value, group_field = 'doc_label'):
+        sql1 = "SELECT * FROM doc WHERE {} = ? LIMIT 500".format(group_field)
+        df = pd.read_sql_query(sql1, self.corpus.conn, params=(group_field_value,))
+        df.set_index('doc_id', inplace=True)
+        src_doc_ids = ','.join(df.index.astype('str').tolist())
+        sql2 = "SELECT * FROM doc WHERE src_doc_id IN ({})".format(src_doc_ids)
+        df2 = pd.read_sql_query(sql2, self.model.conn)
+        df2.set_index('src_doc_id', inplace=True)
+        df = df.join(df2, rsuffix='_SRC')
+        return df
+
     def get_docs_for_topic_entropy(self, topic_entropy, limit = 100):
         topic_entropy_min = float(topic_entropy) - .05
         topic_entropy_max = float(topic_entropy) + .05
@@ -195,7 +236,8 @@ class Elements(object):
 
     # todo: Put this in database?
     def get_doc_entropy(self):
-        sql = "SELECT ROUND(topic_entropy, 1) as h, count() as n FROM doc GROUP BY h ORDER BY h"
+        sql = "SELECT ROUND(topic_entropy, 1) as h, count() as n " \
+              "FROM doc GROUP BY h ORDER BY h"
         df = pd.read_sql_query(sql, self.model.conn)
         return df
 
@@ -273,12 +315,6 @@ class Elements(object):
         df1 = pd.read_sql_query(sql1, self.model.conn, params=(group_name,))
         df2 = pd.read_sql_query(sql2, self.model.conn, params=(group_name,))
         return df1.append(df2).sort_values('doc_group').set_index('doc_group')
-
-    def get_group_docs(self, group_field, group_name):
-        """Get a random selection of documents associated with the group name"""
-        # Get a random list of src docs for the group_name
-        # Get doc info for each
-        pass
 
     def get_max_topic_weight(self):
         sql = "SELECT value as 'max_tw' FROM config WHERE key = 'doctopic_weight_max'"

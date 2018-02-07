@@ -13,11 +13,13 @@ table td:first-child { text-align: right; color: gray; }
 
     <!-- Topic Info -->
     <div class="w3-container">
+
         <div class="w3-light-gray">
             <div class="w3-light-green" style="padding-left:.5rem;height:24px;width:{{topics.loc[topic_id].topic_alpha_percent}}%">
                 &alpha;&nbsp;=&nbsp;{{topic.topic_alpha.tolist()[0] | round(5)}}
             </div>
         </div>
+
         <table>
             <tr>
                 <td class="w3-xlarge">gloss</td>
@@ -38,13 +40,18 @@ table td:first-child { text-align: right; color: gray; }
     <div class="w3-container">
         <h2>Related Documents</h2>
         {% for doc_id in docs.index %}
+        {% set doc = docs.loc[doc_id] %}
         <div class="doc">
-            <h3><a href="/projecgs/{{slug}}/{{trial}}/doc/{{doc_id}}">{{docs.loc[doc_id].doc_title}}</a></h3>
-            <p>{{docs.loc[doc_id].doc_content}}s</p>
+            <h3>{{doc.doc_label}}: <a href="/projects/{{slug}}/{{trial}}/doc/{{doc_id}}">{{doc.doc_title}}</a></h3>
+            <div class="w3-light-gray">
+                <div class="w3-light-green" style="padding-left:.5rem;height:24px; width:{{doc.topic_weight * 100 }}%">
+                    {{doc.topic_weight}}
+                </div>
+            </div>
+            <p>{{doc.doc_original | safe}}</p>
         </div>
         {% endfor %}
     </div>
-
 
 </div>
 
@@ -114,14 +121,20 @@ $(document).ready(function() {
 // Topic Trend Graph
 var layout = {
     title: "Average Topic Weight Trend",
-    xaxis: {title: 'doc group', tickangle: 45, visible: true, showgrid: false, showline: true, showticklabels: true},
-    yaxis: {title: 'topic weight', visible: true, showgrid: true, showline: true, showticklabels: true},
+    xaxis: {title: '', tickangle: 45, visible: true, showgrid: false, showline: true, showticklabels: true},
+    yaxis: {title: '', visible: true, showgrid: true, showline: true, showticklabels: true},
     margin: {l: 50, r: 50, b: 100, t: 30, pad: 10}
 }
 var config = {displaylogo: false, displayModeBar: false, scrollZoom: false, editable: false, staticPlot: false}
-var x = {{ trend.doc_group.tolist() | tojson | safe }}
-var y = {{ trend.topic_weight.values.tolist() | tojson | safe }}
+var x = {{ trend.sort_values('topic_weight', ascending=False).doc_group.tolist() | tojson | safe }}
+var y = {{ trend.sort_values('topic_weight', ascending=False).topic_weight.values.tolist() | tojson | safe }}
 var data = [{x:x, y:y, type:'bar', hoverinfo: 'x+y', showlegend: false}]
 Plotly.newPlot("topic-trend-graph", data, layout, config)
+
+plot = document.getElementById("topic-trend-graph")
+plot.on('plotly_click', function(data) {
+    url = '/projects/{{slug}}/{{trial}}/groups/doc_label/' + data.points[0].x
+    window.open(url, '_self')
+})
 
 {% endblock %}

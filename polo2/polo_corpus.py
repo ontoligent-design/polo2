@@ -41,7 +41,7 @@ class PoloCorpus(PoloDb):
         # All of this stuff should be in a schema as you did before
         if not src_file_name:
             src_file_name = self.src_file_name
-        doc = pd.read_csv(src_file_name, header=0, sep=self.src_file_sep)
+        doc = pd.read_csv(src_file_name, header=0, sep=self.src_file_sep, engine='python')
         doc.index.name = 'doc_id'
         # fixme: Put this in a separate and configurable function for general text normalization.
         if int(self.normalize) == 1:
@@ -138,7 +138,7 @@ class PoloCorpus(PoloDb):
         mallet_corpus = pd.read_sql_query('SELECT * FROM mallet_corpus', self.conn)
         #rgx = re.compile(r'\s+')
         #mallet_corpus['doc_label'] = mallet_corpus.doc_label.str.replace(rgx, '_')
-        mallet_corpus.to_csv(self.corpus_file, index=False, header=False)
+        mallet_corpus.to_csv(self.corpus_file, index=False, header=False, sep=',')
 
         """
         # This does not work like it does in Jupyter. It does not concatenate the texts but instead

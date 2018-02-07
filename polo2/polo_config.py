@@ -67,7 +67,6 @@ class PoloConfig():
         self.ini._interpolation = configparser.ExtendedInterpolation()
         self.ini.read(ini_file)
         self.validate_ini()
-        self.validate_ini2(self.ini_schema, self.ini, 'trial1')
 
         # Perhaps put into a method
         if self.ini['DEFAULT']['src_file_sep'] == 'TAB':
@@ -82,7 +81,7 @@ class PoloConfig():
         self.groups_ini._interpolation = configparser.ExtendedInterpolation()
         self.groups_ini.read('{}/{}'.format(self.ini['DEFAULT']['base_path'],
                                             self.ini['DEFAULT']['groups_ini_file']))
-        self.validate_ini2(self.group_ini_schema, self.groups_ini, 'doc_label')
+        #self.validate_ini2(self.group_ini_schema, self.groups_ini, 'DEFAULT')
 
     def get_trial_names(self):
         if len(self.trials) == 0:
@@ -90,20 +89,11 @@ class PoloConfig():
         return self.trials
 
     def validate_ini2(self, ini_schema, ini, section):
-        # Well-formed test for [DEFAULT]
-        keys1 = ini_schema['DEFAULT'].keys()
-        keys2 = ini['DEFAULT'].keys()
+        keys1 = ini_schema[section].keys()
+        keys2 = ini[section].keys()
         test1 = self.compare_keys(keys1, keys2)
         if test1:
-            raise ValueError("Missing config DEFAULT keys:", ', '.join(test1))
-        # Well-formed test for [section]
-        # todo: Change this if we decide to put some of these keys into DEFAULT
-        keys3 = ini_schema[section].keys()
-        for trial in ini.sections():
-            keys4 = ini[trial].keys()
-            test2 = self.compare_keys(keys3, keys4)
-            if test2:
-                raise ValueError("Missing config keys for section `{}`.".format(trial), ', '.join(test2))
+            raise ValueError("Missing config {} keys:".format(section), ', '.join(test1))
         return True
 
     # todo: To be replaced by validate_ini2()
