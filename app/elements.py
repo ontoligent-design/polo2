@@ -84,31 +84,6 @@ class Elements(object):
             dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_words), axis=1)
         return dtm
 
-    # fixme: Remove deprecated function
-    """
-    def get_topicdoc_matrix(self, sort_by_alpha = True, by='label'):
-
-        if by == 'label':
-            dtm = self.model.get_table('topicdoclabel_matrix', set_index=False)
-        elif by == 'ord':
-            dtm = self.model.get_table('topicdocord_matrix', set_index=False)
-        else:
-            dtm = self.model.get_table('topicdoclabel_matrix', set_index=False)
-
-        col1 = dtm.columns.tolist()[0]
-        dtm.set_index(col1, inplace=True)
-
-        topics = self.model.get_table('topic', set_index=True)
-        if sort_by_alpha:
-            topics = topics.sort_values('topic_alpha', ascending=True)
-        dtm = dtm[topics.index.astype('str').tolist()]
-        if 'topic_gloss' in topics.columns:
-            dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_gloss), axis=1)
-        else:
-            dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_words), axis=1)
-        return dtm
-    """
-
     def get_topicdoc_group_matrix(self, sort_by_alpha = True, group_field='doc_label', use_glass_label=False):
         dtm = self.model.get_table('topic{}_matrix'.format(group_field), set_index=False) # todo: Should be schema driven
         col1 = dtm.columns.tolist()[0] # todo: Should always be doc_group; should be schema driven
@@ -125,15 +100,6 @@ class Elements(object):
             else:
                 dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_words), axis=1)
         return dtm
-
-    # fixme: Deprecated function
-    """
-    def get_topicdocord_matrix(self):
-        dtm = self.model.get_table('topicdocord_matrix', set_index=False)
-        col1 = dtm.columns.tolist()[0]
-        dtm.set_index(col1, inplace=True)
-        return dtm
-    """
 
     def get_topicdocgrooup_counts(self, table_name):
         doc_counts = pd.DataFrame(self.model.get_table(table_name))
@@ -185,7 +151,7 @@ class Elements(object):
         df = pd.read_sql_query(sql, self.model.conn, params=(topic_id,))
         df.set_index('src_doc_id', inplace=True)
         doc_ids = ','.join(df.index.astype('str').tolist())
-        sql2 = "SELECT doc_id, doc_label, doc_title, doc_original, doc_content, doc_key FROM doc WHERE doc_id IN ({})".format(doc_ids)
+        sql2 = "SELECT doc_id, doc_label, doc_title, doc_content as doc_original, doc_content, doc_key FROM doc WHERE doc_id IN ({})".format(doc_ids)
         df2 = pd.read_sql_query(sql2, self.corpus.conn,)
         df2.set_index('doc_id', inplace=True)
         df = df.join(df2)
