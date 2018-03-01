@@ -86,6 +86,19 @@ class PoloShell(cmd.Cmd):
         except ImportError:
             print("No Scraper found. Proceeding with existing source data.")
 
+    def do_import_doc(self, arg):
+        "Just import the doc data from the corpus file"
+        print("Initializing corpus")
+        try:
+            corpus = PoloCorpus(self.config)
+        except ValueError as e:
+            print("Can't create corpus.", e)
+            return False
+        corpus.cache_mode = True
+
+        print("Importing doc")
+        corpus.import_table_doc()
+
     def do_create_corpus(self, arg):
         "Create the corpus database from the source data"
         print("Initializing corpus")
@@ -108,6 +121,10 @@ class PoloShell(cmd.Cmd):
         print("Importing token")
         corpus.add_table_token()
 
+        if 'sentiment' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['sentiment']:
+            print("Adding sentiment to doc")
+            corpus.add_sentimant_to_doc()
+
         if 'get_bigrams' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['get_bigrams']:
             print("Importing bigrams")
             corpus.add_tables_ngram_and_docngram(n = 2)
@@ -126,6 +143,21 @@ class PoloShell(cmd.Cmd):
         mallet.mallet_import()
 
         self.corpus = corpus
+
+    """
+    def do_sentences(self, arg):
+        "Just import the doc data from the corpus file"
+        print("Initializing corpus")
+        try:
+            corpus = PoloCorpus(self.config)
+        except ValueError as e:
+            print("Can't create corpus.", e)
+            return False
+        corpus.cache_mode = True
+        
+        print("Creating sentences")
+        corpus.add_table_sentence()
+    """
 
     def do_retro(self, arg):
 
