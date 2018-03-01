@@ -17,6 +17,7 @@ class PoloConfig():
             ("src_base_url", 'Replace me with URL that can be used to view corpus documents online'),
             ("src_ord_col", 'doc_label'),  # todo: TO BE DEPRECATED
             ("normalize", 1),
+            ("sentiment", 1),
             ("use_stopwords", 1),
             ("extra_stops", 'corpus/extra-stopwords.txt'),
             ("use_nltk", 1),
