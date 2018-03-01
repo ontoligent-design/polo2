@@ -1,5 +1,6 @@
 import os, sys, re
-import nltk
+import nltk, nltk.data
+from textblob import TextBlob
 import pandas as pd
 
 from polo2 import PoloDb
@@ -13,11 +14,16 @@ class PoloCorpus(PoloDb):
 
     def __init__(self, config):
 
+        # todo: Have general way of ingesting config or just create a corpus config
         self.slug = config.ini['DEFAULT']['slug']
         self.corpus_file = config.ini['DEFAULT']['mallet_corpus_input']
         self.nltk_data_path = config.ini['DEFAULT']['nltk_data_path']
         self.extra_stops = config.ini['DEFAULT']['extra_stops']
         self.normalize = config.ini['DEFAULT']['normalize']
+        if 'normalize' in config.ini['DEFAULT'].keys():
+            self.sentiment = config.ini['DEFAULT']['sentiment'] # todo: Add sentiment to config template
+        else:
+            self.sentiment = 0
 
         # Source file stuff
         self.src_file_name = config.ini['DEFAULT']['src_file_name']
@@ -36,14 +42,26 @@ class PoloCorpus(PoloDb):
         PoloDb.__init__(self, self.dbfile)
         if self.nltk_data_path: nltk.data.path.append(self.nltk_data_path)
 
+        # For tokenizing into sentences
+        # fixme: TOKENIZER ASSUMES ENGLISH
+        nltk.download('punkt')
+        self.tokenizer = nltk.data.load('nltk:tokenizers/punkt/english.pickle')
+
     def import_table_doc(self, src_file_name=None, normalize=True):
         # todo: Clarify requirements for doc -- delimitter, columns, header, etc.
         # All of this stuff should be in a schema as you did before
         if not src_file_name:
             src_file_name = self.src_file_name
-        doc = pd.read_csv(src_file_name, header=0, sep=self.src_file_sep, engine='python')
+        doc = pd.read_csv(src_file_name, header=0, sep=self.src_file_sep)
         doc.index.name = 'doc_id'
+
+        # todo: Find a more efficient way of handling this
+        # todo: Get rid of doc_original throughout
+        if 'doc_original' not in doc.columns:
+            doc['doc_original'] = doc.doc_content
+
         # fixme: Put this in a separate and configurable function for general text normalization.
+        """
         if int(self.normalize) == 1:
             doc['doc_content'] = doc.doc_content.str.lower()
             doc['doc_content'] = doc.doc_content.str.replace(r'_+', ' ')  # Remove underscores
@@ -53,7 +71,20 @@ class PoloCorpus(PoloDb):
             doc['doc_content'] = doc.doc_content.str.replace(r'\d+', ' ') # Remove numbers
             doc['doc_content'] = doc.doc_content.str.replace(r'\s+', ' ') # Collapse spaces
             doc['doc_content'] = doc.doc_content.str.replace(r'(^\s+|\s+$)', '') # Remove leading and trailing spaces
+        """
+        """
+        if int(self.sentiment) == 1:
+            doc['doc_sentiment'] = doc.doc_content.apply(self._get_sentiment)
+            doc['doc_sentiment_polarity'] = doc.doc_sentiment.apply(lambda x: round(x[0], 1))
+            doc['doc_sentiment_subjectivity'] = doc.doc_sentiment.apply(lambda x: round(x[1], 2))
+            del(doc['doc_sentiment'])
+        """
+        doc = doc[~doc.doc_content.isnull()]
         self.put_table(doc, 'doc', index=True)
+
+    def _get_sentiment(self, doc):
+        doc2 = TextBlob(doc)
+        return doc2.sentiment
 
     def import_table_stopword(self, use_nltk=False):
         swset = set()
@@ -68,19 +99,26 @@ class PoloCorpus(PoloDb):
         self.put_table(swdf, 'stopword')
 
     def add_table_doctoken(self):
-        # todo: Add token_ord column
-        doc = self.get_table('doc')
-        doc = doc[~doc.doc_content.isnull()]
-        doctoken = pd.concat([pd.Series(row.doc_id, row.doc_content.split()) for _, row in doc.iterrows()]).reset_index()
-        doctoken.columns = ['token_str', 'doc_id']
-        doctoken = doctoken[['doc_id', 'token_str']]
-        if self.use_stopwords:
-            stopwords = self.get_table('stopword')
-            doctoken = doctoken[~doctoken.token_str.isin(stopwords.token_str.tolist())]
-        doctokenbow = pd.DataFrame(doctoken.groupby('doc_id').token_str.value_counts())
+        docs = self.get_table('doc')
+        stopwords = self.get_table('stopword').token_str.tolist()
+        tokenizer = nltk.data.load('nltk:tokenizers/punkt/english.pickle')
+        sentence_id = 0
+        doctoken = dict(doc_id=[], sentence_id=[], token_str=[])
+        for doc_id in docs.index:
+            doc = docs.loc[doc_id].doc_content
+            for sentence_raw in tokenizer.tokenize(doc):
+                sentence = re.sub(r'[^\w\s]','', sentence_raw).lower()
+                sentence_id += 1
+                for token_str in sentence.split():
+                    if token_str not in stopwords:
+                        doctoken['doc_id'].append(doc_id)
+                        doctoken['sentence_id'].append(sentence_id)
+                        doctoken['token_str'].append(token_str)
+        doctoken_df = pd.DataFrame(doctoken)
+        self.put_table(doctoken_df, 'doctoken', if_exists='replace', index=False)
+        doctokenbow = pd.DataFrame(doctoken_df.groupby('doc_id').token_str.value_counts())
         doctokenbow.columns = ['token_count']
         self.put_table(doctokenbow, 'doctokenbow', index=True)
-        self.put_table(doctoken, 'doctoken')
 
     def add_table_token(self):
         doctoken = self.get_table('doctoken')
@@ -98,6 +136,14 @@ class PoloCorpus(PoloDb):
         doctokenbow.sort_values('doc_id', inplace=True)
         doctokenbow.set_index(['doc_id', 'token_id'], inplace=True)
         self.put_table(doctokenbow, 'doctokenbow', if_exists='replace', index=True)
+        
+    def add_sentimant_to_doc(self):
+        doc = self.get_table('doc', set_index=True)
+        doc['doc_sentiment'] = doc.doc_content.apply(self._get_sentiment)
+        doc['doc_sentiment_polarity'] = doc.doc_sentiment.apply(lambda x: round(x[0], 1))
+        doc['doc_sentiment_subjectivity'] = doc.doc_sentiment.apply(lambda x: round(x[1], 2))
+        del(doc['doc_sentiment'])
+        self.put_table(doc, 'doc', index=True)
 
     def add_tables_ngram_and_docngram(self, n = 2):
         if n not in range(2, 5):
