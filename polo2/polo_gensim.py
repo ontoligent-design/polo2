@@ -54,3 +54,5 @@ class PoloGensim:
 
         thresh = 0.005 # Note this is different from what's in config.ini
         #hdp_dfn = hpd_dfn[htp_dfn.topic_freq >= thresh]
+
+
