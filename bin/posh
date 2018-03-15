@@ -1,81 +1,207 @@
 #! /usr/bin/env python3
 
-import cmd, sys, readline, os
-
+import cmd, sys, os, shlex
 from polo2 import PoloConfig
 from polo2 import PoloMallet
 from polo2 import PoloCorpus
+
 
 class PoloShell(cmd.Cmd):
 
     intro = "Welcome to Polo Shell. Run set_ini to get started."
     prompt = 'posh: '
 
+    ready = 1
+
     default_ini = 'config.ini'
+    config = None
+    trial = 'trial1'
+    corpus = None
+    mallet = None
+
+    completions = ['corpus', 'mallet']
 
     def preloop(self):
         if not os.path.isfile(self.default_ini):
             print('No config file! Run `polo setup` to get started.')
             sys.exit(1)
         else:
-            try:
-                self.config = PoloConfig(self.default_ini)
-            except ValueError as e:
-                print("Can't create config object.", e)
-                sys.exit(1)
+            self.do_ini_load(None)
             print("Using config.ini")
             self.trials = self.config.get_trial_names()
             self.slug = self.config.ini['DEFAULT']['slug']
             self.base_path = self.config.ini['DEFAULT']['base_path']
+            print("Project slug:", self.slug)
             print("Available trials:", ', '.join(self.trials))
+            print("Base path:", self.base_path)
 
     def onerror(self):
         """Called if an exception is raised in any of precmd(), onecmd(),
         or postcmd(). If true is returned, the exception is deemed to have
-        been dealt with.
-        """
+        been dealt with."""
         pass
 
     def logerror(self, msg):
         sys.stderr.write(msg + '\n')
 
-    def do_EOF(self, arg):
+    # def do_EOF(self, arg):
+    #     return True
+    #
+    # def do_shell(self, arg):
+    #     args = shlex.split(arg)
+    #     print(args)
+
+    def do_bye(self, arg):
+        print('Thank you for using the Polo Shell.')
         return True
 
-    def do_shell(self, arg):
-        pass
+    def do_quit(self, arg):
+        print('Thank you for using the Polo Shell.')
+        return True
 
-    def do_set_ini(self, arg):
-        "Set the config file (usually to something other than config.ini)."
-        if arg:
-            try:
-                self.config = PoloConfig(arg)
-            except ValueError as e:
-                print("Can't create new config object with {}".format(arg), e)
-                return False
-            self.default_ini = arg
+    # GENERAL / HIGH LEVEL
 
-    def do_show_ini(self, arg):
-        "Show the file being used for the config"
-        print('INI file:', self.default_ini)
+    def do_guide(self, arg):
+        msg = """
+Here's what you do:
+    corpus_make_source (optional)
+    corpus_load
+    corpus_create_tables
+    mallet_load <trial>
+    mallet_run
+    mallet_import_tables
 
-    def do_test(self, arg):
-        "Just a test"
-        print("Testing mallet.create_table_topicpair()")
-        if not self.do_check_mallet(None):
-            return False
-        self.mallet.create_table_topicpair()
+Or to run all of these:
+    make_all
+
+Or to run a single command:
+    run_func (corpus|mallet) <function>
+        """
+        print(msg)
 
     def do_make_all(self, arg):
-        'Generate and import corpus then run mallet. Optionally pass a trial name.'
-        self.do_make_corpus_source(None)
-        self.do_create_corpus(None)
-        self.do_load_mallet(arg)
-        self.do_run_mallet(None)
-        self.do_import_mallet(None)
+        """Generate and import corpus then run mallet. Optionally pass a trial name."""
+        self.do_corpus_check(None)
+        if self.ready:
+            self.do_corpus_make_source(None)
+            self.do_corpus_load(None)
+            self.do_corpus_create_tables(None)
+            self.do_mallet_load(arg)
+            self.do_mallet_run(None)
+            self.do_mallet_import_tables(None)
 
-    def do_make_corpus_source(self, arg):
-        "Generate the source corpus file using the project's Scraper"
+    # Experimental
+    def do_func_list(self, arg):
+        """List functions in object (corpus or mallet)."""
+        if arg == 'corpus':
+            funcs = dir(PoloCorpus)
+        elif arg == 'mallet':
+            funcs = dir(PoloMallet)
+        else:
+            print('{} not a valid class. Use `corpus` or `mallet` only.'.format(arg))
+            return False
+        for func in funcs:
+            if func.find('__') == -1:
+                print('\t', func)
+
+    def complete_func_list(self, text, line, begidx, endidx):
+        mline = line.partition(' ')[2]
+        offs = len(mline) - len(text)
+        return [s[offs:] for s in self.completions if s.startswith(mline)]
+
+    # Experimental
+    def do_func_run(self, arg):
+        """Run a method of the corpus or mallet object."""
+        if arg:
+            parts = arg.split()
+            if len(parts) >= 2:
+                obj_name = parts[0]
+                mtd = parts[1]
+                try:
+                    obj = getattr(self, obj_name)
+                    try:
+                        func = getattr(obj, mtd)
+                        func()
+                    except AttributeError as e:
+                        print(e)
+                        print("Try running `list_funcs`")
+                except AttributeError as e:
+                    print(e)
+                    print("Try `corpus` or `mallet`.")
+            else:
+                print("Not enough arguments.")
+        else:
+            print("No argument given. Need <object> and <method>.")
+            print("Try running `list_funcs` and use one with `corpus` or `mallet`.")
+
+    # CONFIG.INI STUFF
+
+    def do_ini_set(self, arg):
+        """Set the config file to something other than config.ini)."""
+        print("Setting config INI file to {}.".format(arg))
+        if arg:
+            self.do_ini_check(arg)
+            self.default_ini = arg
+        else:
+            print("No INI file specified.")
+
+    def do_ini_show(self, arg):
+        """Show the INI file being used for the config."""
+        print('INI file:', self.default_ini)
+
+    def do_ini_create(self, arg):
+        """Create an INI file."""
+        if arg:
+            self.config.create_ini(arg)
+        else:
+            self.config.create_ini()
+
+    def do_ini_check(self, arg):
+        """Check if the INI file is valid."""
+        if self.config.validate_ini():
+            print(":-) {} is a valid INI file.".format(self.default_ini))
+        else:
+            print(":-( {} is NOT a valid INI file.".format(self.default_ini))
+
+    def do_ini_show_trials(self, arg):
+        """Show all the mallet trial names in the config."""
+        trials = self.config.get_trial_names()
+        print('Trials: ', ', '.join(trials))
+
+    def do_ini_load(self, arg):
+        """Load the config object from the INI file."""
+        print("Loading config.")
+        print("If you want to change the config, run `ini_set` and then `ini_load`.")
+        try:
+            self.config = PoloConfig(self.default_ini)
+        except ValueError as e:
+            print("Can't create new config object with {}".format(self.default_ini), e)
+            return False
+
+    # CORPUS STUFF
+
+    def do_corpus_load(self, arg):
+        """Load the corpus database."""
+        print("Loading corpus")
+        try:
+            self.corpus = PoloCorpus(self.config)
+        except ValueError as e:
+            print("Can't create corpus.", e)
+            self.corpus = None
+            self.ready = 0
+        self.corpus.cache_mode = False
+
+    def do_corpus_check(self, arg):
+        """Check if corpus object has been created."""
+        if not hasattr(self, 'corpus') or self.corpus == None:
+            print("No corpus object found. Run `corpus_load` first.")
+            self.ready = 0
+        else:
+            print("Corpus object loaded")
+            self.ready = 1
+
+    def do_corpus_make_source(self, arg):
+        """Generate the source corpus file using the project's Scraper."""
         print("Locating local Scraper.")
         sys.path.append(self.config.ini['DEFAULT']['base_path'])
         try:
@@ -86,89 +212,143 @@ class PoloShell(cmd.Cmd):
         except ImportError:
             print("No Scraper found. Proceeding with existing source data.")
 
-    def do_import_doc(self, arg):
-        "Just import the doc data from the corpus file"
+    def do_corpus_create_tables(self, arg):
+        """Create the corpus database from the source data."""
         print("Initializing corpus")
+        self.do_corpus_check(None)
+        if self.ready:
+
+            print("Importing stopwords")
+            self.corpus.import_table_stopword(use_nltk = True)
+
+            print("Importing doc")
+            self.corpus.import_table_doc()
+
+            print("Importing doctoken and doctokenbow")
+            self.corpus.add_table_doctoken()
+
+            print("Importing token and updated doctokenbow")
+            self.corpus.add_table_token()
+
+            print('Adding stems to token')
+            self.corpus.add_stems_to_token()
+
+            print('Adding TFIDFs to doctokenbow')
+            self.corpus.add_tfidf_to_doctokenbow()
+
+            if 'sentiment' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['sentiment']:
+                print("Adding sentiment to doc")
+                self.corpus.add_sentimant_to_doc()
+
+            if 'get_bigrams' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['get_bigrams']:
+                print("Importing bigrams")
+                self.corpus.add_tables_ngram_and_docngram(n = 2)
+
+            if 'get_trigrams' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['get_trigrams']:
+                print("Importing trigrams")
+                self.corpus.add_tables_ngram_and_docngram(n = 3)
+
+            print("Export mallet corpus")
+            self.corpus.export_mallet_corpus()
+
+            # Run this here since it does not need to be run
+            # for each trial. We use the default trail since it
+            # does not matter.
+            mallet = PoloMallet(self.config)
+            print('Converting corpus for mallet')
+            mallet.mallet_import()
+
+            print("Finished creating corpus tables and setting table for mallet.")
+
+    # MALLET STUFF
+
+    def do_mallet_load(self, arg):
+        """Create a mallet object for given trial."""
+        if arg:
+            self.trial = arg
+        print("Loading mallet object for trial `{}`.".format(self.trial))
         try:
-            corpus = PoloCorpus(self.config)
+            self.mallet = PoloMallet(self.config, self.trial)
         except ValueError as e:
-            print("Can't create corpus.", e)
+            print("Can't create mallet object.", e)
             return False
-        corpus.cache_mode = True
+        self.mallet.cache_mode = False #todo: Put in config or argument
 
-        print("Importing doc")
-        corpus.import_table_doc()
+    def do_mallet_check(self, arg):
+        """Check if mallet object has been created."""
+        if not hasattr(self, 'mallet') or self.mallet == None:
+            print("No mallet object found. Run `mallet_load <trial_name>` first.")
+            self.ready = 0
+        else:
+            print("Using mallet object with trial `{}`.".format(self.trial))
+            print(self.mallet)
+            self.ready = 1
 
-    def do_create_corpus(self, arg):
-        "Create the corpus database from the source data"
-        print("Initializing corpus")
-        try:
-            corpus = PoloCorpus(self.config)
-        except ValueError as e:
-            print("Can't create corpus.", e)
-            return False
-        corpus.cache_mode = True
+    def do_mallet_run(self, arg):
+        """Create topic model from from the source data using Mallet. Pass a trial name as an argument.
+        Otherwise defaults to 'trial1'. Use `show_trials` to see available trial names."""
+        self.do_mallet_check(None)
+        if self.ready:
 
-        print("Importing stopwords")
-        corpus.import_table_stopword(use_nltk = True)
+            print('Training the model. This may take a while.')
+            self.mallet.mallet_train()
 
-        print("Importing doc")
-        corpus.import_table_doc()
+            print("Done training. Don't forget to run `mallet_import <trial_name>`.")
 
-        print("Importing doctoken and doctokenbow")
-        corpus.add_table_doctoken()
+    def do_mallet_import_tables(self, arg):
+        """Import files generated by mallet into the model database."""
+        self.do_mallet_check(None)
+        if self.ready:
 
-        print("Importing token and updated doctokenbow")
-        corpus.add_table_token()
+            # fixme: Make sure that files exist before running this!
 
-        print('Adding stems to token')
-        corpus.add_stems_to_token()
+            print("Importing data into database.")
+            self.mallet.tables_to_db()
 
-        print('Adding TFIDFs to doctokenbow')
-        corpus.add_tfidf_to_doctokenbow()
+            print("Adding diagnostics tables.")
+            self.mallet.add_diagnostics()
 
-        if 'sentiment' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['sentiment']:
-            print("Adding sentiment to doc")
-            corpus.add_sentimant_to_doc()
+            print("Adding doc table with topic entropy.")
+            self.mallet.add_topic_entropy()
 
-        if 'get_bigrams' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['get_bigrams']:
-            print("Importing bigrams")
-            corpus.add_tables_ngram_and_docngram(n = 2)
+            print("Adding topicpair table.")
+            self.mallet.create_table_topicpair()
 
-        if 'get_trigrams' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['get_trigrams']:
-            print("Importing trigrams")
-            corpus.add_tables_ngram_and_docngram(n = 3)
+            print("Adding topicdoc matrices.")
+            self.mallet.add_group_field_tables()
 
-        print("Export mallet corpus")
-        corpus.export_mallet_corpus()
+            print("Adding topic alpha stats.")
+            self.mallet.add_topic_alpha_stats()
 
-        # Run this here since it does not need to be run
-        # for each trial
-        mallet = PoloMallet(self.config)
-        print('Converting corpus for mallet')
-        mallet.mallet_import()
+            print("Adding doctopic weight stats.")
+            self.mallet.add_doctopic_weight_stats()
 
-        self.corpus = corpus
+            print("Adding doctopic entropy stats.")
+            self.mallet.add_doctopic_entropy_stats()
 
-    def do_export_mallet_corpus(self, arg):
-        "Just import the doc data from the corpus file"
-        print("Initializing corpus")
-        try:
-            corpus = PoloCorpus(self.config)
-        except ValueError as e:
-            print("Can't create corpus.", e)
-            return False
-        corpus.cache_mode = True
-        
-        print("Exporting MALLET corpus")
-        corpus.export_mallet_corpus()
+            print("Adding topic glosses.")
+            self.mallet.add_topic_glosses()
 
-    def do_retro(self, arg):
+            print("Done importing", self.mallet.trial_name)
 
-        trial = 'trial1'
-        if arg: trial = arg
+    def do_mallet_clean_files(self, arg):
+        """Delete mallet's output files."""
+        self.do_mallet_check(None)
+        if self.ready:
+
+            print("Cleaning up after mallet.")
+            self.mallet.del_mallet_files()
+
+            print("Done cleaning mallet files.")
+
+    def do_mallet_retro(self, arg):
+        """Create database for older version of Polo."""
+        if arg:
+            trial = arg
+        else:
+            trial = self.trial
         corpus_dbfile = '{}/{}-corpus.db'.format(self.base_path, self.slug)
-        model_dbfile =  '{}/{}-mallet-{}.db'.format(self.base_path, self.slug, trial)
+        model_dbfile = '{}/{}-mallet-{}.db'.format(self.base_path, self.slug, trial)
         if not os.path.isfile(model_dbfile):
             print(model_dbfile, 'not found')
         elif not os.path.isfile(corpus_dbfile):
@@ -181,121 +361,6 @@ class PoloShell(cmd.Cmd):
             retro = PoloRetro(self.config)
             retro.retro_combine(corpus_dbfile, model_dbfile)
             retro.create_all_tables()
-
-    def do_show_trials(self, arg):
-        "Show all the trial names in the config"
-        trials = self.config.get_trial_names()
-        print('Trials: ', ', '.join(trials))
-
-    def do_load_mallet(self, arg):
-        """Creates a mallet object for use by other mallet commands."""
-        self.trial = ''
-        if arg:
-            self.trial = arg
-        else:
-            self.trial = 'trial1' # todo: Make sure this assumption is stable
-
-        print("Loading mallet object for trial `{}`.".format(self.trial))
-        try:
-            self.mallet = PoloMallet(self.config, self.trial)
-        except ValueError as e:
-            print("Can't create mallet object.", e)
-            return False
-        self.mallet.cache_mode = False# todo: Put in config or argument
-
-    def do_check_mallet(self, arg):
-        """Check if mallet object has been created."""
-        #print("Checking to see of mallet object exists ...")
-        if not hasattr(self, 'mallet'):
-            print("No mallet object found. Run `load_mallet <trial_name>` first.")
-            return False
-        else:
-            print("Using mallet object with trial `{}`.".format(self.mallet.trial_name))
-            return True
-
-    def do_run_mallet(self, arg):
-        """Create topic model from from the source data using Mallet. Pass a trial name as an argument.
-        Otherwise defaults to 'trial1'. Use `show_trials` to see available trial names.
-        """
-        if not self.do_check_mallet(None):
-            return False
-
-        print('Training the model. This may take a while.')
-        self.mallet.mallet_train()
-
-        print("Done training. Don't forget to run `import_mallet <trial_name>`.")
-
-    def do_import_mallet(self, arg):
-        """Import files generated by mallet into the model database."""
-        # fixme: Make sure that files exist before running this!
-
-        if not self.do_check_mallet(None):
-            return False
-
-        print("Importing data into database.")
-        self.mallet.tables_to_db()
-
-        print("Adding diagnostics tables.")
-        self.mallet.add_diagnostics()
-
-        print("Adding doc table with topic entropy.")
-        self.mallet.add_topic_entropy()
-
-        print("Adding topicpair table.")
-        self.mallet.create_table_topicpair()
-
-        print("Adding topicdoc matrices.")
-        self.mallet.add_group_field_tables()
-
-        print("Adding topic alpha stats.")
-        self.mallet.add_topic_alpha_stats()
-
-        print("Adding doctopic weight stats.")
-        self.mallet.add_doctopic_weight_stats()
-
-        print("Adding doctopic entropy stats.")
-        self.mallet.add_doctopic_entropy_stats()
-
-        print("Adding topic glosses.")
-        self.mallet.add_topic_glosses()
-
-        print("Done importing", self.mallet.trial_name)
-
-    def do_adhoc_mallet(self, arg):
-        """Do some ad hoc stuff"""
-        print("Adding tfidf")
-        self.corpus.add_tfidf_to_doctokenbow()
-
-    def do_clean_mallet_files(self, arg):
-        """Delete mallet's output files."""
-
-        if not self.do_check_mallet(None):
-            return False
-
-        print("Cleaning up after mallet.")
-        self.mallet.del_mallet_files()
-
-        print("Done cleaning mallet files.")
-
-    def do_create_ini(self, arg):
-        if arg:
-            self.config.create_ini(arg)
-        else:
-            self.config.create_ini()
-
-    def do_validate_ini(self, arg):
-        self.config.validate_ini()
-
-    def do_print_ini(self, arg):
-        print(self.config)
-
-    def do_bye(self, arg):
-        print('Thank you for using the Polo Shell.')
-        return True
-
-    def do_quit(self, arg):
-        print('Thank you for using the Polo Shell.')
-        return True
 
 
 if __name__ == '__main__':
