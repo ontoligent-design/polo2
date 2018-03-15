@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.stats as sps
+from scipy.spatial.distance import cosine
 import math
 
 class PoloMath():
@@ -11,14 +12,16 @@ class PoloMath():
     @staticmethod
     def cosine_sim(x, y):
         """ x and y are two comparable distribution vectors, e.g. words for a topic"""
-        c1 = math.sqrt(sum([m * m for m in x]))
-        c2 = math.sqrt(sum([m * m for m in y]))
-        c3 = math.sqrt(sum([m * n for m, n in zip(x, y)]))
-        try:
-            c4 = c3 / (c1 * c2)
-        except:
-            c4 = None
-        return c4
+        return 1 - cosine(x, y)
+        # Not valid
+        #c1 = math.sqrt(sum([m * m for m in x]))
+        #c2 = math.sqrt(sum([m * m for m in y]))
+        #c3 = math.sqrt(sum([m * n for m, n in zip(x, y)]))
+        #try:
+        #    c4 = c3 / (c1 * c2)
+        #except:
+        #    c4 = None
+        #return c4
 
     @staticmethod
     def js_divergence(p1, p2):
@@ -61,3 +64,9 @@ class PoloMath():
     def kl_distance(s1, s2):
         """Kullback-Leibler distance"""
         return sps.entropy(s1, s2, 2)
+
+    @staticmethod
+    def softmax(x):
+        """Computes softmax values for each sets of scores in x."""
+        e_x = np.exp(x - np.max(x))
+        return e_x / e_x.sum(axis=0)
