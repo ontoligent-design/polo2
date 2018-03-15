@@ -49,6 +49,7 @@ class PoloDb():
                 sql = 'select * from {}'.format(table_name)
                 df = pd.read_sql_query(sql, self.conn)
                 if set_index:
+                    # fixme: This call fails when cache_mode = True
                     df = self._set_index(df)
                 if self.cache_mode:
                     self.tables[table_name] = df

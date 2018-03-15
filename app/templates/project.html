@@ -181,8 +181,9 @@ var layout = {
 }
 var config = {displaylogo: false, displayModeBar: false, scrollZoom: false, editable: false, staticPlot: false};
 {% for topic_id in topics.sort_values('topic_alpha', ascending=False).index %}
-var x{{topic_id}} = {{ dtm[topic_id.astype('str')].index.astype('str').tolist() | tojson | safe }}
-var y{{topic_id}} = {{ dtm[topic_id.astype('str')].values.tolist() | tojson | safe }}
+{% set topic_col = '{}'.format(topic_id) %}
+var x{{topic_id}} = {{ dtm[topic_col].index.astype('str').tolist() | tojson | safe }}
+var y{{topic_id}} = {{ dtm[topic_col].values.tolist() | tojson | safe }}
 var data{{topic_id}} = [{x:x{{topic_id}}, y:y{{topic_id}}, type:'bar', hoverinfo: 'x+y', showlegend: false}]
 Plotly.newPlot("topic_trend_graph_{{topic_id}}", data{{topic_id}}, layout, config)
 {% endfor %}
