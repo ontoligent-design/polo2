@@ -5,8 +5,95 @@ import argparse, sys, os
 from polo2 import PoloConfig
 from polo2 import PoloMallet
 from polo2 import PoloCorpus
-from polo2 import PoloGensim
 from polo2 import PoloRetro
+
+
+def load_config(ini_file):
+    try:
+        config = PoloConfig(ini_file)
+    except ValueError as e:
+        print("Can't create config.", e)
+        sys.exit(1)
+    return config
+
+
+def load_scraper(config):
+    sys.path.append(config.ini['DEFAULT']['base_path'])
+    try:
+        from corpus.scraper import Scraper
+        scraper = Scraper(config)
+        print("Generating corpus file")
+        scraper.make_corpus()
+    except ImportError:
+        print("No Scraper found. Proceeding with existing source data.")
+
+
+def load_corpus(config, cache_mode = False):
+    try:
+        corpus = PoloCorpus(config)
+    except ValueError as e:
+        print("Can't create corpus object.", e)
+        sys.exit(1)
+    corpus.cache_mode = cache_mode
+    return corpus
+
+
+def load_mallet(config, this_trial = 'trial1'):
+    try:
+        mallet = PoloMallet(config, this_trial)
+    except ValueError:
+        print("Can't create mallet object. Most likely due to bad trial name.")
+        sys.exit(1)
+    mallet.cache_mode = False
+    return mallet
+
+
+def get_trials(config):
+    try:
+        trials = config.get_trial_names()
+    except ValueError as e:
+        print("Can't get trials.", e)
+        sys.exit(1)
+    return trials
+
+
+def run_funcs(obj, funcs):
+    for func_name in funcs:
+        try:
+            func = getattr(obj, func_name)
+            print('FUNC:', func.__doc__)
+            func()
+        except ValueError as e:
+            print("Unable to run func {}".format(func_name))
+
+
+# Sequences
+sequences = dict(corpus={}, mallet={})
+sequences['corpus']['import'] = """
+import_table_stopword
+import_table_doc
+add_table_doctoken
+add_table_token
+add_stems_to_token
+add_tfidf_to_doctokenbow
+export_mallet_corpus
+""".split()
+sequences['mallet']['run'] = """
+mallet_train
+""".split()
+sequences['mallet']['import'] = """
+tables_to_db
+add_diagnostics
+add_topic_entropy
+create_table_topicpair
+add_group_field_tables
+add_topic_alpha_stats
+add_doctopic_weight_stats
+add_doctopic_entropy_stats
+add_topic_glosses
+del_mallet_files
+""".split()
+
 
 if __name__ == '__main__':
 
@@ -44,113 +131,81 @@ if __name__ == '__main__':
     parser.retro.add_argument('-c', '--corpus_dbfile', help="Corpus database name", action="store", type=str, default=None)
     parser.retro.add_argument('-m', '--model_dbfile', help="Mallet model database name", action="store", type=str, default=None)
 
+    # SEQUENCE
+    parser.sequence = subparsers.add_parser('sequence', help='Run a sequence of commands')
+    parser.sequence.add_argument('obj', choices=sequences.keys())
+    parser.sequence.add_argument('seq')
+
     # Run the app
     args = parser.parse_args()
 
     if args.cmd == 'corpus':
 
-        print("Import config")
-        try:
-            config = PoloConfig(args.ini)
-        except ValueError as e:
-            print("Can't create config.", e)
-            sys.exit(1)
+        print("Importing config")
+        config = load_config(args.ini)
 
-        print("Initialize corpus")
-        try:
-            corpus = PoloCorpus(config)
-        except ValueError as e:
-            print("Can't create corpus object.", e)
-            sys.exit(1)
-        corpus.cache_mode = False
-        print("Corpus cache mode:", corpus.cache_mode)
+        print("Initializing corpus")
+        corpus = load_corpus(config)
 
-        print("Importing stopwords")
-        corpus.import_table_stopword(use_nltk=True)
+        funcs = """
+        import_table_stopword
+        import_table_doc
+        add_table_doctoken
+        add_table_token
+        add_stems_to_token
+        add_tfidf_to_doctokenbow
+        export_mallet_corpus
+        """.split()
+        run_funcs(corpus, funcs)
 
-        print("Importing doc")
-        corpus.import_table_doc()
+        if 'sentiment' in config.ini['DEFAULT'] and config.ini['DEFAULT']['sentiment']:
+            print("Adding sentiment to doc")
+            corpus.add_sentimant_to_doc()
 
-        print("Importing doctoken")
-        corpus.add_table_doctoken()
-        #corpus.add_table_doctokenbow()
+        if 'get_bigrams' in config.ini['DEFAULT'] and config.ini['DEFAULT']['get_bigrams']:
+            print("Importing bigrams")
+            corpus.add_tables_ngram_and_docngram(n=2)
 
-        print("Importing token")
-        corpus.add_table_token()
+        if 'get_trigrams' in config.ini['DEFAULT'] and config.ini['DEFAULT']['get_trigrams']:
+            print("Importing trigrams")
+            corpus.add_tables_ngram_and_docngram(n=3)
 
-        print("Importing bigrams")
-        corpus.add_tables_ngram_and_docngram(n=2)
-
-        print("Exporting corpus file for mallet")
-        corpus.export_mallet_corpus()
-
-        # Run this here since it does not need to be run
-        # for each trial
         mallet = PoloMallet(config)
         print('Converting corpus for mallet')
         mallet.mallet_import()
 
-        #print("Running Gensim HDP (experimental)")
-        #gs = PoloGensim(config, corpus.dbfile)
-        #gs.make_gs_corpus()
-        #gs.make_gs_dict()
-        #gs.get_hdp()
-
     elif args.cmd == 'mallet':
 
         print("Import config")
-        try:
-            config = PoloConfig(args.ini)
-        except ValueError as e:
-            print("Can't create config.", e)
-            sys.exit(1)
-        try:
-            trials = config.get_trial_names()
-        except ValueError as e:
-            print("Can't get trials.", e)
-            sys.exit(1)
+        config = load_config(args.ini)
+        trials = get_trials(config)
 
-        this_trial = ''
+        this_trial = trials[0]  # Or just default to 'trial1'?
         if args.trial:
+            #fixme: Check for valid trial name
             this_trial = args.trial
-        else:
-            this_trial = trials[0]
 
         print("Initializing mallet for {}".format(this_trial))
-        try:
-            mallet = PoloMallet(config, this_trial)
-        except ValueError:
-            print("Can't create mallet object. Most likely due to bad trial name.")
-            sys.exit(1)
+        mallet = load_mallet(config, this_trial)
+        if args.topics:
+            #fixme: Check for valid topic num
+            print("Overriding num topics to", args.topics)
+            mallet.cfg_num_topics = args.topics  #fixme: NOT WORKING
 
-        mallet.cache_mode = False
-        print('Mallet cache mode:', mallet.cache_mode)
-
-        #print('Importing corpus')
-        #mallet.mallet_import()
-
-        print('Training model')
-        mallet.mallet_train()
-
-        print("Putting data into database")
-        mallet.tables_to_db()
-
-        print("Adding diagnostics tables")
-        mallet.add_diagnostics()
-
-        print("Adding doc table with topic entropy")
-        mallet.add_topic_entropy()
-
-        print("Adding topicpair table")
-        mallet.create_table_topicpair()
-
-        print("Adding topicdoc matrices") # fixme: Do something about redundant case
-        mallet.create_topicdoc_col_matrix()
-        mallet.create_topicdoc_col_matrix(doc_col='doc_label')
-
-        print("Cleaning up")
-        mallet.del_mallet_files()
-
+        funcs = """
+        mallet_train
+        tables_to_db
+        add_diagnostics
+        add_topic_entropy
+        create_table_topicpair
+        add_group_field_tables
+        add_topic_alpha_stats
+        add_doctopic_weight_stats
+        add_doctopic_entropy_stats
+        add_topic_glosses
+        del_mallet_files
+        """.split()
+        run_funcs(mallet, funcs)
         print("Done with", mallet.trial_name)
 
     elif args.cmd == 'info':
@@ -195,14 +250,8 @@ if __name__ == '__main__':
                 print("Subdirectory `{}` exists.".format(subdir))
 
     elif args.cmd == 'retro':
-
         print("Import config")
-        try:
-            config = PoloConfig(args.ini)
-        except ValueError as e:
-            print("Can't create config.", e)
-            sys.exit(1)
-
+        config = load_config(args.ini)
         retro = PoloRetro(config)
         retro.retro_combine(args.corpus_dbfile, args.model_dbfile)
         retro.create_all_tables()
@@ -216,6 +265,19 @@ if __name__ == '__main__':
             config = PoloConfig(ini_file, create=True)
         else:
             print("INI file `{}` already exists.".format(ini_file))
+
+    elif args.cmd == 'sequence':
+        config = load_config(args.ini)
+        obj = None
+        if args.obj == 'mallet':
+            obj = load_mallet(config)
+        elif args.obj == 'corpus':
+            obj = load_corpus(config)
+        try:
+            sequence = sequences[args.obj][args.seq]
+            run_funcs(obj, sequence)
+        except KeyError as e:
+            print('Bad key:', e)
 
     else:
         parser.print_help()
