@@ -10,6 +10,7 @@ from polo2 import PoloMath as pm
 class PoloMallet(PoloDb):
 
     def __init__(self, config, trial='trial1'):
+        """Initialize MALLET with trial name"""
 
         if trial not in config.trials:
             raise ValueError("Invalid trail name `{}`.format(trial)")
@@ -46,10 +47,12 @@ class PoloMallet(PoloDb):
 
     # todo: Remove or replace
     def generate_trial_name(self):
+        """Generate trial name based on metadata"""
         ts = time.time()
         self.trial_name = '{}-model-t{}-i{}-{}'.format(self.trial, self.cfg_num_topics,
                                                               self.cfg_num_iterations, int(ts))
     def mallet_init(self):
+        """Initialize command line arguments for MALLET"""
         # todo: Consider putting trunhis in the init for the object itself
         if not os.path.exists(self.cfg_mallet_path):
             raise ValueError('Mallet cannot be found.')
@@ -83,6 +86,7 @@ class PoloMallet(PoloDb):
         #self.mallet['trial_name'] = self.trial_name
 
     def mallet_run_command(self, op):
+        """Run a MALLET command (e.g. import-file or train-topics)"""
         my_args = ['--{} {}'.format(arg,self.mallet[op][arg]) for arg in self.mallet[op]]
         my_cmd = '{} {} {}'.format(self.cfg_mallet_path, op, ' '.join(my_args))
         print(my_cmd)
@@ -92,12 +96,15 @@ class PoloMallet(PoloDb):
             raise ValueError('Command would not execute:', my_cmd)
 
     def mallet_import(self):
+        """Import contents of MALLET output files into Polo DB"""
         self.mallet_run_command('import-file')
 
     def mallet_train(self):
+        """Train MALLET by running train-topics"""
         self.mallet_run_command('train-topics')
 
     def clean_up(self):
+        """Clean up files created by MALLET"""
         file_mask = '{}-*.*'.format(self.file_prefix)
         my_cmd = 'rm {}'.format(file_mask)
         try:
@@ -108,6 +115,7 @@ class PoloMallet(PoloDb):
     # TABLE IMPORT METHODS
 
     def tables_to_db(self):
+        """Import core tables from MALLET files into Polo DB"""
         self.import_table_config()
         self.import_table_topic()
         self.import_tables_topicword_and_word()
@@ -115,6 +123,7 @@ class PoloMallet(PoloDb):
         self.import_table_topicphrase()
 
     def import_table_topic(self, src_file=None):
+        """Import data into topic table"""
         if not src_file: src_file = self.mallet['train-topics']['output-topic-keys']
         topic = pd.read_csv(src_file, sep='\t', header=None, index_col=False,
                             names=['topic_id', 'topic_alpha', 'topic_words'])
@@ -124,6 +133,7 @@ class PoloMallet(PoloDb):
         self.put_table(topic, 'topic', index=True)
 
     def import_tables_topicword_and_word(self, src_file=None):
+        """Import data into topicword and word tables"""
         if not src_file: src_file = self.mallet['train-topics']['word-topic-counts-file']
         WORD = []
         TOPICWORD = []
@@ -143,6 +153,7 @@ class PoloMallet(PoloDb):
         self.put_table(topicword, 'topicword', index=True)
 
     def import_table_doctopic(self, src_file=None):
+        """Import data into doctopic table"""
         if not src_file: src_file = self.mallet['train-topics']['output-doc-topics']
         if 'doc-topics-threshold' in self.mallet['train-topics']:
             DOC = []
@@ -191,6 +202,7 @@ class PoloMallet(PoloDb):
         self.set_config_item('computed_thresh', self.computed_thresh)
 
     def import_table_topicphrase(self, src_file=None):
+        """Import data into topicphrase table"""
         if not src_file: src_file = self.mallet['train-topics']['xml-topic-phrase-report']
         TOPICPHRASE = []
         src = PoloFile(src_file)
@@ -208,6 +220,7 @@ class PoloMallet(PoloDb):
         self.put_table(topicphrase, 'topicphrase', index=True)
 
     def add_topic_glosses(self):
+        """Add glosses to topic table"""
         sql = """SELECT topic_id, GROUP_CONCAT(topic_phrase, '|') as 'topic_gloss'
         FROM (SELECT * FROM topicphrase ORDER BY phrase_weight DESC)
         GROUP BY topic_id
@@ -220,6 +233,7 @@ class PoloMallet(PoloDb):
         self.put_table(topic, 'topic', index=True)
 
     def import_table_config(self):
+        """Import data into config table"""
         # fixme: Make this automatic; find a way to dump all values
         cfg = {}
         cfg['trial'] = self.trial
@@ -233,6 +247,7 @@ class PoloMallet(PoloDb):
         self.put_table(config, 'config')
 
     def add_diagnostics(self, src_file=None):
+        """Add diagnostics data to topics and topicword_diags tables"""
         if not src_file: src_file = self.mallet['train-topics']['diagnostics-file']
         TOPIC = []
         TOPICWORD = []
@@ -289,6 +304,7 @@ class PoloMallet(PoloDb):
 
     # fixme: Deleting mallet files seems not to be working
     def del_mallet_files(self):
+        """Delete MALLET files"""
         file_keys = ['output-topic-keys', 'output-doc-topics',
                      'word-topic-counts-file', 'xml-topic-report', 'xml-topic-phrase-report',
                      'diagnostics-file', 'topic-word-weights-file']
@@ -301,6 +317,7 @@ class PoloMallet(PoloDb):
 
     # todo: Consider moving into method that creates doc and doctopic tables
     def add_topic_entropy(self):
+        """Add entropy to topic table"""
         doctopic = self.get_table('doctopic')
         doc = self.get_table('doc')
         topic_entropy = doctopic.groupby('doc_id')['topic_weight'].apply(lambda x: pm.entropy(x))
@@ -310,7 +327,7 @@ class PoloMallet(PoloDb):
         self.put_table(doc, 'doc', index=True)
 
     def create_table_topicpair(self):
-
+        """Create topicpair table"""
         thresh = self.get_thresh()
 
         # Get doc count to calculate topic frequencies
@@ -375,6 +392,7 @@ class PoloMallet(PoloDb):
 
     # fixme: Remove deprecated function
     def create_topicdoc_col_matrix(self, group_col):
+        """Create topicdoc matrix table for a group column"""
 
         # Get source doc table
         corpus_db_file = self.config.generate_corpus_db_file_path()
@@ -417,6 +435,7 @@ class PoloMallet(PoloDb):
         self.put_table(dtm_counts, 'topicdoc{}_matrix_counts'.format(group_col), index=True)
 
     def create_topicdoc_group_matrix(self, group_field):
+        """Create topicdoc group matrix table"""
 
         # Get source doc table
         corpus_db_file = self.config.generate_corpus_db_file_path()
@@ -449,6 +468,7 @@ class PoloMallet(PoloDb):
         self.put_table(dtm_counts, 'topic{}_matrix_counts'.format(group_field), index=True)
 
     def create_topicdoc_group_pairs(self, group_field):
+        """Create topicdoc group pairs table"""
         thresh = self.get_thresh()
         gtm = self.get_table('topic{}_matrix'.format(group_field))
         gtm.set_index('doc_group', inplace=True)
@@ -462,11 +482,13 @@ class PoloMallet(PoloDb):
         self.put_table(pair, 'topic{}_pairs'.format(group_field))
 
     def add_group_field_tables(self):
+        """Create topicdoc group matrix tables for group fields in INI"""
         for group_field in self.config.get_group_fields():
             self.create_topicdoc_group_matrix(group_field)
             self.create_topicdoc_group_pairs(group_field)
 
     def get_thresh(self):
+        """Compute the topic weight threshold"""
         config = self.get_table('config')
         if len(config[config.key == 'computed_thresh'].values):
             thresh = config[config.key == 'computed_thresh']['value'].astype('float').tolist()[0]
@@ -475,6 +497,7 @@ class PoloMallet(PoloDb):
         return thresh
 
     def add_topic_alpha_stats(self):
+        """Add topic alpha stats to config table"""
         topic = self.get_table('topic')
         items = dict(
             topic_alpha_max = topic.topic_alpha.max(),
@@ -484,6 +507,7 @@ class PoloMallet(PoloDb):
         self.set_config_items(items)
 
     def add_doctopic_weight_stats(self):
+        """Add doctopic weight stats to config table"""
         doctopic = self.get_table('doctopic')
         items = dict(
             doctopic_weight_min = doctopic.topic_weight.min(),
@@ -493,6 +517,7 @@ class PoloMallet(PoloDb):
         self.set_config_items(items)
 
     def add_doctopic_entropy_stats(self):
+        """Add doctopic entropy stats to config table"""
         doc = self.get_table('doc')
         items = dict(
             doctopic_entropy_min = doc.topic_entropy.min(),
@@ -502,18 +527,23 @@ class PoloMallet(PoloDb):
         self.set_config_items(items)
 
     def set_config_items(self, items = dict()):
+        """Add config items to config table"""
         for key in items.keys():
             self.set_config_item(key, items[key])
 
     sql_config_delete = "DELETE FROM config WHERE key = ?"
     sql_config_insert = "INSERT INTO config (key, value) VALUES (?,?)"
+
     def set_config_item(self, key, val):
+        """Insert an item in the config table"""
         self.conn.execute(self.sql_config_delete, (key,))
         self.conn.execute(self.sql_config_insert, (key, val))
         self.conn.commit()
 
     sql_config_select = "SELECT FROM config WHERE key = ?"
+
     def get_config_item(self, key):
+        """Get an item from the config table"""
         cur = self.conn.cursor()
         cur.execute(self.sql_config_select, (key,))
         val = cur.fetchone()[0]
