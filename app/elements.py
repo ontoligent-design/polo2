@@ -99,6 +99,8 @@ class Elements(object):
                 dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_gloss), axis=1)
             else:
                 dtm.columns = topics.reset_index().apply(lambda x: 'T{} {}'.format(x.topic_id, x.topic_words), axis=1)
+
+        dtm.index = dtm.index.map(str) # This is to prevent templates from crashing
         return dtm
 
     def get_topicdocgrooup_counts(self, table_name):
