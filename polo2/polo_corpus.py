@@ -209,6 +209,14 @@ class PoloCorpus(PoloDb):
         self.put_table(docngram, 'ngram{}doc'.format(self.ngram_prefixes[n]))
         self.put_table(ngram, 'ngram{}'.format(self.ngram_prefixes[n]), index=True)
 
+    def add_bigram_tables(self):
+        """Convenience function to add ngram tables for n = 2"""
+        self.add_tables_ngram_and_docngram(n=2)
+
+    def add_trigram_tables(self):
+        """Convenience function to add ngram tables for n = 3"""
+        self.add_tables_ngram_and_docngram(n=3)
+
     def export_mallet_corpus(self):
         """Create a MALLET corpus file"""
         # We export the doctoken table as the input corpus to MALLET. This preserves our normalization
