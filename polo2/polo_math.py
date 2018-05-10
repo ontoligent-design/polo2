@@ -38,7 +38,10 @@ class PoloMath():
         basket."""
         if p_ab > 0:
             i_ab = math.log2(p_ab / (p_a * p_b))  # Raw
-            i_ab = i_ab / (math.log2(p_ab) * -1) # Adjusted
+            try:
+                i_ab = i_ab / (math.log2(p_ab) * -1) # Adjusted
+            except ZeroDivisionError:
+                i_ab = 0 #i_ab / (math.log2(p_ab) * -1)  # Adjusted
         else:
             i_ab = None
         return i_ab
