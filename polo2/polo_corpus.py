@@ -6,6 +6,19 @@ import pandas as pd
 from polo2 import PoloDb
 from polo2 import PoloFile
 
+"""
+NOTES:
+
+Follow sequence:
+1. Tokenize
+2. Normalize -- e.g. stemming, standardize spelling
+3. Create n-grams
+4. Remove stopwords and lo/hi frequency words (so-called controlled vocabulary) 
+
+Make code applicable to MapReduce
+
+"""
+
 
 class PoloCorpus(PoloDb):
 
@@ -52,6 +65,7 @@ class PoloCorpus(PoloDb):
 
     def import_table_doc(self, src_file_name=None, normalize=True):
         """Import source file into doc table"""
+
         # todo: Clarify requirements for doc -- delimitter, columns, header, etc.
         # All of this stuff should be in a schema as you did before
         if not src_file_name:
@@ -161,7 +175,7 @@ class PoloCorpus(PoloDb):
         docs = pd.read_sql_query("SELECT doc_id, token_count FROM doc", self.conn, index_col='doc_id')
         num_docs = docs.index.size
         doctokenbow['tf'] = doctokenbow.token_count.divide(docs.token_count)
-        doctokenbow['tfidf'] = doctokenbow.tf.multiply(log(num_docs / tokens.doc_count))
+        doctokenbow['tfidf'] = doctokenbow.tf.multiply(1 + log(num_docs / tokens.doc_count))
         self.put_table(doctokenbow, 'doctokenbow', if_exists='replace', index=True)
         tokens['tfidf_sum'] = doctokenbow.groupby('token_id').tfidf.sum()
         self.put_table(tokens, 'token', if_exists='replace', index=True)
