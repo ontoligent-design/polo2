@@ -64,9 +64,9 @@ class PoloShell(cmd.Cmd):
     def do_guide(self, arg):
         msg = """
 Here's what you do:
-    corpus_make_source (optional)
-    corpus_load
-    corpus_create_tables
+    corpus_source_make (optional)
+    corpus_source_load
+    corpus_tables_create
     mallet_load <trial>
     mallet_run
     mallet_import_tables
@@ -83,12 +83,12 @@ Or to run a single command:
         """Generate and import corpus then run mallet. Optionally pass a trial name."""
         self.do_corpus_check(None)
         if self.ready:
-            self.do_corpus_make_source(None)
-            self.do_corpus_load(None)
-            self.do_corpus_create_tables(None)
-            self.do_mallet_load(arg)
-            self.do_mallet_run(None)
-            self.do_mallet_import_tables(None)
+            self.do_corpus_source_make(None)
+            self.do_corpus_source_load(None)
+            self.do_corpus_tables_create(None)
+            self.do_mallet_corpus_load(arg)
+            self.do_mallet_model_create(None)
+            self.do_mallet_model_import(None)
 
     # Experimental
     def do_func_list(self, arg):
@@ -180,7 +180,7 @@ Or to run a single command:
 
     # CORPUS STUFF
 
-    def do_corpus_load(self, arg):
+    def do_corpus_source_load(self, arg):
         """Load the corpus database."""
         print("Loading corpus")
         try:
@@ -193,14 +193,14 @@ Or to run a single command:
 
     def do_corpus_check(self, arg):
         """Check if corpus object has been created."""
-        if not hasattr(self, 'corpus') or self.corpus == None:
+        if not hasattr(self, 'corpus') or self.corpus is None:
             print("No corpus object found. Run `corpus_load` first.")
             self.ready = 0
         else:
             print("Corpus object loaded")
             self.ready = 1
 
-    def do_corpus_make_source(self, arg):
+    def do_corpus_source_make(self, arg):
         """Generate the source corpus file using the project's Scraper."""
         print("Locating local Scraper.")
         sys.path.append(self.config.ini['DEFAULT']['base_path'])
@@ -212,14 +212,14 @@ Or to run a single command:
         except ImportError:
             print("No Scraper found. Proceeding with existing source data.")
 
-    def do_corpus_create_tables(self, arg):
+    def do_corpus_tables_create(self, arg):
         """Create the corpus database from the source data."""
         print("Initializing corpus")
         self.do_corpus_check(None)
         if self.ready:
 
             print("Importing stopwords")
-            self.corpus.import_table_stopword(use_nltk = True)
+            self.corpus.import_table_stopword(use_nltk=True)
 
             print("Importing doc")
             self.corpus.import_table_doc()
@@ -236,17 +236,17 @@ Or to run a single command:
             print('Adding TFIDFs to doctokenbow')
             self.corpus.add_tfidf_to_doctokenbow()
 
-            if 'sentiment' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['sentiment']:
+            if 'sentiment' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['sentiment'] == 1:
                 print("Adding sentiment to doc")
                 self.corpus.add_sentimant_to_doc()
 
-            if 'get_bigrams' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['get_bigrams']:
+            if 'get_bigrams' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['get_bigrams'] == 1:
                 print("Importing bigrams")
-                self.corpus.add_tables_ngram_and_docngram(n = 2)
+                self.corpus.add_tables_ngram_and_docngram(n=2)
 
-            if 'get_trigrams' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['get_trigrams']:
+            if 'get_trigrams' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['get_trigrams'] == 1:
                 print("Importing trigrams")
-                self.corpus.add_tables_ngram_and_docngram(n = 3)
+                self.corpus.add_tables_ngram_and_docngram(n=3)
 
             print("Export mallet corpus")
             self.corpus.export_mallet_corpus()
@@ -262,7 +262,7 @@ Or to run a single command:
 
     # MALLET STUFF
 
-    def do_mallet_load(self, arg):
+    def do_mallet_corpus_load(self, arg):
         """Create a mallet object for given trial."""
         if arg:
             self.trial = arg
@@ -276,7 +276,7 @@ Or to run a single command:
 
     def do_mallet_check(self, arg):
         """Check if mallet object has been created."""
-        if not hasattr(self, 'mallet') or self.mallet == None:
+        if not hasattr(self, 'mallet') or self.mallet is None:
             print("No mallet object found. Run `mallet_load <trial_name>` first.")
             self.ready = 0
         else:
@@ -284,7 +284,7 @@ Or to run a single command:
             print(self.mallet)
             self.ready = 1
 
-    def do_mallet_run(self, arg):
+    def do_mallet_model_create(self, arg):
         """Create topic model from from the source data using Mallet. Pass a trial name as an argument.
         Otherwise defaults to 'trial1'. Use `show_trials` to see available trial names."""
         self.do_mallet_check(None)
@@ -295,7 +295,7 @@ Or to run a single command:
 
             print("Done training. Don't forget to run `mallet_import <trial_name>`.")
 
-    def do_mallet_import_tables(self, arg):
+    def do_mallet_model_import(self, arg):
         """Import files generated by mallet into the model database."""
         self.do_mallet_check(None)
         if self.ready:
