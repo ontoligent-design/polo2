@@ -13,15 +13,6 @@ class PoloMath():
     def cosine_sim(x, y):
         """ x and y are two comparable distribution vectors, e.g. words for a topic"""
         return 1 - cosine(x, y)
-        # Not valid
-        #c1 = math.sqrt(sum([m * m for m in x]))
-        #c2 = math.sqrt(sum([m * m for m in y]))
-        #c3 = math.sqrt(sum([m * n for m, n in zip(x, y)]))
-        #try:
-        #    c4 = c3 / (c1 * c2)
-        #except:
-        #    c4 = None
-        #return c4
 
     @staticmethod
     def js_divergence(p1, p2):
@@ -32,18 +23,17 @@ class PoloMath():
         return .5 * (sps.entropy(P1, M, 2) + sps.entropy(P2, M, 2))
 
     @staticmethod
-    def pwmi(p_a, p_b, p_ab):
+    def pwmi(p_a, p_b, p_ab, norm=.000001):
         """Computes the adjusted point-wise mutual information of two items (a and b)
         that appear in container vectors of some kind, e.g. items in a shopping
         basket."""
-        if p_ab > 0:
-            i_ab = math.log2(p_ab / (p_a * p_b))  # Raw
-            try:
-                i_ab = i_ab / (math.log2(p_ab) * -1) # Adjusted
-            except ZeroDivisionError:
-                i_ab = 0 #i_ab / (math.log2(p_ab) * -1)  # Adjusted
-        else:
-            i_ab = None
+        #if p_ab == 0: p_ab = .000001  # To prevent craziness in prob calcs
+        p_ab += norm
+        i_ab = math.log2(p_ab / (p_a * p_b))  # Raw
+        try:
+            i_ab = i_ab / (math.log2(p_ab) * -1) # Adjusted
+        except ZeroDivisionError:
+            i_ab = 0
         return i_ab
 
     @staticmethod

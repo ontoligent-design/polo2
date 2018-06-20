@@ -65,7 +65,6 @@ class PoloCorpus(PoloDb):
 
     def import_table_doc(self, src_file_name=None, normalize=True):
         """Import source file into doc table"""
-
         # todo: Clarify requirements for doc -- delimitter, columns, header, etc.
         # All of this stuff should be in a schema as you did before
         if not src_file_name:
@@ -90,7 +89,7 @@ class PoloCorpus(PoloDb):
     def import_table_stopword(self, use_nltk=False):
         """Import stopwords"""
         swset = set()
-        if use_nltk: # todo: Change this from binary to language id
+        if use_nltk == 1: # todo: Change this from binary to language id
             from nltk.corpus import stopwords
             nltk_stopwords = set(stopwords.words('english'))
             swset.update(nltk_stopwords)
@@ -99,7 +98,7 @@ class PoloCorpus(PoloDb):
             swset.update([word for word in src.read_bigline().split()])
         swdf = pd.DataFrame({'token_str': list(swset)})
         self.put_table(swdf, 'stopword')
-
+        
     def add_table_doctoken(self):
         """Create doctoken and doctokenbow tables; update doc table"""
         docs = self.get_table('doc', set_index=True)
@@ -235,14 +234,24 @@ class PoloCorpus(PoloDb):
         """Create a MALLET corpus file"""
         # We export the doctoken table as the input corpus to MALLET. This preserves our normalization
         # between the corpus and trial model databases.
-        mallet_corpus_sql = """
+        token_type = 'token_str' # token_stem_porter token_stem_snowball
+        
+        _mallet_corpus_sql = """
         CREATE VIEW mallet_corpus AS
-        SELECT dt.doc_id, d.doc_label, GROUP_CONCAT(token_str, ' ') AS doc_content
-        FROM doctoken dt JOIN doc d USING (doc_id)
-        WHERE dt.token_pos LIKE 'NN%' OR dt.token_pos LIKE 'VB%' OR dt.token_pos LIKE 'JJ%'
+        SELECT dt.doc_id, d.doc_label, GROUP_CONCAT(ngram, ' ') AS doc_content
+        FROM ngrambidoc dt JOIN doc d USING (doc_id) JOIN ngrambi t USING (ngram)
         GROUP BY dt.doc_id
         ORDER BY dt.doc_id
         """
+
+        mallet_corpus_sql = """
+        CREATE VIEW mallet_corpus AS
+        SELECT dt.doc_id, d.doc_label, GROUP_CONCAT({}, ' ') AS doc_content
+        FROM doctoken dt JOIN doc d USING (doc_id) JOIN token t USING (token_str)
+        WHERE dt.token_pos LIKE 'NN%' OR dt.token_pos LIKE 'VB%' OR dt.token_pos LIKE 'JJ%'
+        GROUP BY dt.doc_id
+        ORDER BY dt.doc_id
+        """.format(token_type)
         self.conn.execute("DROP VIEW IF EXISTS mallet_corpus")
         self.conn.execute(mallet_corpus_sql)
         self.conn.commit()

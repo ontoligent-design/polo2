@@ -1,7 +1,6 @@
 #! /usr/bin/env python3
 
 import argparse, sys, os
-
 from polo2 import PoloConfig
 from polo2 import PoloMallet
 from polo2 import PoloCorpus
@@ -57,18 +56,19 @@ def get_trials(config):
     return trials
 
 
-def run_funcs(obj, funcs):
+def run_funcs(obj, funcs, arg_dict = {}):
     for func_name in funcs:
         try:
             func = getattr(obj, func_name)
-            print('FUNC:', func.__doc__)
-            func()
+            print('FUNC:', func.__doc__, arg_dict)
+            func(**arg_dict)
         except ValueError as e:
             print("Unable to run func {}".format(func_name))
+            print('ERROR:', e)
 
 
-# Sequences
 sequences = dict(corpus={}, mallet={})
+
 sequences['corpus']['import'] = """
 import_table_stopword
 import_table_doc
@@ -78,9 +78,11 @@ add_stems_to_token
 add_tfidf_to_doctokenbow
 export_mallet_corpus
 """.split()
+
 sequences['mallet']['run'] = """
 mallet_train
 """.split()
+
 sequences['mallet']['import'] = """
 tables_to_db
 add_diagnostics
@@ -136,9 +138,13 @@ if __name__ == '__main__':
     parser.sequence.add_argument('obj', choices=sequences.keys())
     parser.sequence.add_argument('seq')
 
+    # ALL
+    parser.sequence = subparsers.add_parser('all', help='Run corpus and mallet with default settings')
+
     # Run the app
     args = parser.parse_args()
 
+    # Run actions
     if args.cmd == 'corpus':
 
         print("Importing config")
@@ -147,28 +153,28 @@ if __name__ == '__main__':
         print("Initializing corpus")
         corpus = load_corpus(config)
 
+        if 'use_stopwords' in config.ini['DEFAULT'] and int(config.ini['DEFAULT']['use_stopwords']) == 1:
+            run_funcs(corpus, ['import_table_stopword'], arg_dict=dict(use_nltk=True))
+
         funcs = """
-        import_table_stopword
         import_table_doc
         add_table_doctoken
         add_table_token
         add_stems_to_token
         add_tfidf_to_doctokenbow
-        export_mallet_corpus
         """.split()
         run_funcs(corpus, funcs)
 
-        if 'sentiment' in config.ini['DEFAULT'] and config.ini['DEFAULT']['sentiment']:
-            print("Adding sentiment to doc")
-            corpus.add_sentimant_to_doc()
+        if 'sentiment' in config.ini['DEFAULT'] and int(config.ini['DEFAULT']['sentiment']) == 1:
+            run_funcs(corpus, ['add_sentimant_to_doc'])
 
-        if 'get_bigrams' in config.ini['DEFAULT'] and config.ini['DEFAULT']['get_bigrams']:
-            print("Importing bigrams")
-            corpus.add_tables_ngram_and_docngram(n=2)
+        if 'get_bigrams' in config.ini['DEFAULT'] and int(config.ini['DEFAULT']['get_bigrams']) == 1:
+            run_funcs(corpus, ['add_tables_ngram_and_docngram'], arg_dict=dict(n=2))
 
-        if 'get_trigrams' in config.ini['DEFAULT'] and config.ini['DEFAULT']['get_trigrams']:
-            print("Importing trigrams")
-            corpus.add_tables_ngram_and_docngram(n=3)
+        if 'get_trigrams' in config.ini['DEFAULT'] and int(config.ini['DEFAULT']['get_trigrams']) == 1:
+            run_funcs(corpus, ['add_tables_ngram_and_docngram'], arg_dict=dict(n=3))
+
+        run_funcs(corpus, ['export_mallet_corpus'])
 
         mallet = PoloMallet(config)
         print('Converting corpus for mallet')
@@ -192,6 +198,7 @@ if __name__ == '__main__':
             print("Overriding num topics to", args.topics)
             mallet.cfg_num_topics = args.topics  #fixme: NOT WORKING
 
+        # del_mallet_files
         funcs = """
         mallet_train
         tables_to_db
@@ -203,7 +210,6 @@ if __name__ == '__main__':
         add_doctopic_weight_stats
         add_doctopic_entropy_stats
         add_topic_glosses
-        del_mallet_files
         """.split()
         run_funcs(mallet, funcs)
         print("Done with", mallet.trial_name)

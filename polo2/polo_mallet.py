@@ -80,6 +80,7 @@ class PoloMallet(PoloDb):
         self.mallet['train-topics']['diagnostics-file'] = '{}-diagnostics.xml'.format(self.file_prefix)
         # self.mallet['train-topics']['output-topic-docs'] = '{}-topic-docs.txt'.format(self.file_prefix)
         # self.mallet['train-topics']['doc-topics-threshold'] = self.config.thresh
+        self.mallet['train-topics']['output-state'] = '{}-state.gz'.format(self.file_prefix)
         self.mallet['train-topics']['num-top-docs'] = self.cfg_num_topics
         self.mallet['train-topics']['doc-topics-max'] = self.cfg_doc_topics_max
         self.mallet['train-topics']['show-topics-interval'] = self.cfg_show_topics_interval
@@ -117,10 +118,22 @@ class PoloMallet(PoloDb):
     def tables_to_db(self):
         """Import core tables from MALLET files into Polo DB"""
         self.import_table_config()
+        self.import_table_state()
         self.import_table_topic()
         self.import_tables_topicword_and_word()
         self.import_table_doctopic()
         self.import_table_topicphrase()
+
+    def import_table_state(self, src_file=None):
+        """Import the state file into docword table"""
+        if not src_file: src_file = self.mallet['train-topics']['output-state']
+        import gzip
+        with gzip.open(src_file, 'rb') as f:
+            docword = pd.DataFrame([line.split() for line in f.readlines()[3:]],
+                                   columns=['doc_id', 'src', 'word_pos', 'word_id', 'word_str', 'topic_id'])
+            docword = docword[['doc_id', 'word_pos', 'word_id', 'topic_id']]
+            docword.set_index(['doc_id', 'word_id'], inplace=True)
+            self.put_table(docword, 'docword', index=True)
 
     def import_table_topic(self, src_file=None):
         """Import data into topic table"""
@@ -379,7 +392,6 @@ class PoloMallet(PoloDb):
         topicpair['p_aGb'] = topicpair.apply(lambda x: x.p_ab / topic.loc[x.topic_b_id, 'topic_rel_freq'], axis=1)
         topicpair['p_bGa'] = topicpair.apply(lambda x: x.p_ab / topic.loc[x.topic_a_id, 'topic_rel_freq'], axis=1)
         def get_pwmi(a, b, p_ab):
-            if p_ab == 0: p_ab = .000001  # To prevent craziness in prob calcs
             p_a = topic.loc[a, 'topic_rel_freq']
             p_b = topic.loc[b, 'topic_rel_freq']
             i_ab = pm.pwmi(p_a, p_b, p_ab)

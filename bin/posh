@@ -236,15 +236,15 @@ Or to run a single command:
             print('Adding TFIDFs to doctokenbow')
             self.corpus.add_tfidf_to_doctokenbow()
 
-            if 'sentiment' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['sentiment'] == 1:
+            if 'sentiment' in self.config.ini['DEFAULT'] and int(self.config.ini['DEFAULT']['sentiment']) == 1:
                 print("Adding sentiment to doc")
                 self.corpus.add_sentimant_to_doc()
 
-            if 'get_bigrams' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['get_bigrams'] == 1:
+            if 'get_bigrams' in self.config.ini['DEFAULT'] and int(self.config.ini['DEFAULT']['get_bigrams']) == 1:
                 print("Importing bigrams")
                 self.corpus.add_tables_ngram_and_docngram(n=2)
 
-            if 'get_trigrams' in self.config.ini['DEFAULT'] and self.config.ini['DEFAULT']['get_trigrams'] == 1:
+            if 'get_trigrams' in self.config.ini['DEFAULT'] and int(self.config.ini['DEFAULT']['get_trigrams']) == 1:
                 print("Importing trigrams")
                 self.corpus.add_tables_ngram_and_docngram(n=3)
 

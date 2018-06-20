@@ -16,13 +16,17 @@
         {% for doc_id in docs.index %}
         {% set doc = docs.loc[doc_id] %}
         <h3>
-            {{doc.doc_title}}
+            <a href="/projects/{{slug}}/{{trial}}/doc/{{doc_id}}">{{doc.doc_title}}</a>
         </h3>
         <div>{{doc.doc_content}}</div>
         <div class="w3-margin-top">
-            <span class="w3-tag w3-green">h {{doc.topic_entropy | round(2) }}</span>
-            <span class="w3-tag w3-green">{{doc.doc_label}}</span>
-            <span class="w3-tag w3-green">{{doc.topic_weight}}</span>
+            {% set h = doc.topic_entropy | round(2) %}
+            <a href="/projects/{{slug}}/{{trial}}/docs/h/{{h}}">
+                <span class="w3-tag w3-green">h: {{h}}</span>
+            </a>
+            <a href="/projects/{{slug}}/{{trial}}/groups/doc_label/{{doc.doc_label}}">
+                <span class="w3-tag w3-green">Label: {{doc.doc_label}}</span>
+            </a>   
         </div>
         {% endfor %}
     </div>

@@ -18,6 +18,16 @@
     <div class="w3-container">
         <h2>Description</h2>
         <div class="w3-large">{{doc.doc_original.tolist()[0] | safe}}</div>
+        <div class="w3-margin-top">
+            {% set h = doc.topic_entropy.tolist()[0] | round(2) %}
+            {% set label = doc.doc_label.tolist()[0] %}            
+            <a href="/projects/{{slug}}/{{trial}}/docs/h/{{h}}">
+                <span class="w3-tag w3-green">h: {{h}}</span>
+            </a>
+            <a href="/projects/{{slug}}/{{trial}}/groups/doc_label/{{label}}">
+                <span class="w3-tag w3-green">Label: {{label}}</span>
+            </a>   
+        </div>        
     </div>
 </div>
 
