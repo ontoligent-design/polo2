@@ -10,8 +10,30 @@
     </div>
 </div>
 
-<div class="w3-half">
+<div class="w3-rest">
     <div class="w3-container">
+        <table id="doc-table">
+            <thead>
+                <th>id</th>
+                <th>label</th>
+                <th>title</th>
+            </thead>
+            <tbody>
+            {% for doc_id in docs.index %}
+            {% set doc = docs.loc[doc_id] %}
+            <tr>
+                <td>{{doc_id}}</td>
+                <td>{{doc.doc_label}}</td>
+                <td>
+                    <a href="/projects/{{slug}}/{{trial}}/doc/{{doc_id}}">{{doc.doc_title}}</a>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+
+        </table>
+
+
         <h2>Documents</h2>
         {% for doc_id in docs.index %}
         {% set doc = docs.loc[doc_id] %}
@@ -35,6 +57,16 @@
 {% endblock %}
 
 {% block code %}
+
+// Document table
+$(document).ready(function() {
+    $('#doc-table').DataTable({
+        paging: false,
+        searching: true
+    });
+});
+
+
 
 // Doc Topic Entropy Graph
 layout = {}

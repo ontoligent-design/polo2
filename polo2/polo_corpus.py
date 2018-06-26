@@ -22,39 +22,20 @@ Make code applicable to MapReduce
 
 class PoloCorpus(PoloDb):
 
-    use_stopwords = True
-    use_nltk = True
     ngram_prefixes = ['no', 'uni', 'bi', 'tri', 'quadri']
 
     def __init__(self, config):
         """Initialize corpus object"""
-        # todo: Have general way of ingesting config or just create a corpus config
-        self.slug = config.ini['DEFAULT']['slug']
-        self.corpus_file = config.ini['DEFAULT']['mallet_corpus_input']
-        self.nltk_data_path = config.ini['DEFAULT']['nltk_data_path']
-        self.extra_stops = config.ini['DEFAULT']['extra_stops']
-        self.normalize = config.ini['DEFAULT']['normalize']
-        if 'normalize' in config.ini['DEFAULT'].keys():
-            self.sentiment = config.ini['DEFAULT']['sentiment'] # todo: Add sentiment to config template
-        else:
-            self.sentiment = 0
 
-        # Source file stuff
-        self.src_file_name = config.ini['DEFAULT']['src_file_name']
-        if not os.path.isfile(self.src_file_name):
+        self.config = config
+        self.config.set_config_attributes(self) # Seems weird
+
+        if not os.path.isfile(self.cfg_src_file_name):
             raise ValueError("Missing source file. Check value of `src_file_name` in INI file.")
-        self.src_file_sep = config.ini['DEFAULT']['src_file_sep']
-        self.src_base_url = config.ini['DEFAULT']['src_base_url']
-        self.src_ord_col = config.ini['DEFAULT']['src_ord_col']
-
-        # Local overrides of defaults
-        for key in ['use_nltk', 'use_stopwords']:
-            if key in config.ini['DEFAULT']:
-                setattr(self, 'use_nltk', config.ini['DEFAULT'][key])
 
         self.dbfile = config.generate_corpus_db_file_path()
         PoloDb.__init__(self, self.dbfile)
-        if self.nltk_data_path: nltk.data.path.append(self.nltk_data_path)
+        if self.cfg_nltk_data_path: nltk.data.path.append(self.cfg_nltk_data_path)
 
         # For tokenizing into sentences
         # fixme: TOKENIZER ASSUMES ENGLISH
@@ -65,11 +46,9 @@ class PoloCorpus(PoloDb):
 
     def import_table_doc(self, src_file_name=None, normalize=True):
         """Import source file into doc table"""
-        # todo: Clarify requirements for doc -- delimitter, columns, header, etc.
-        # All of this stuff should be in a schema as you did before
         if not src_file_name:
-            src_file_name = self.src_file_name
-        doc = pd.read_csv(src_file_name, header=0, sep=self.src_file_sep)
+            src_file_name = self.cfg_src_file_name
+        doc = pd.read_csv(src_file_name, header=0, sep=self.cfg_src_file_sep)
         doc.index.name = 'doc_id'
 
         # todo: Find a more efficient way of handling this -- such as not duplicating!
@@ -89,12 +68,14 @@ class PoloCorpus(PoloDb):
     def import_table_stopword(self, use_nltk=False):
         """Import stopwords"""
         swset = set()
-        if use_nltk == 1: # todo: Change this from binary to language id
+        # fixme: Cast integers in config object
+        # fixme: Parametize language
+        if int(self.cfg_use_nltk) == 1:
             from nltk.corpus import stopwords
             nltk_stopwords = set(stopwords.words('english'))
             swset.update(nltk_stopwords)
-        if self.extra_stops and os.path.isfile(self.extra_stops):
-            src = PoloFile(self.extra_stops)
+        if self.cfg_extra_stops and os.path.isfile(self.cfg_extra_stops):
+            src = PoloFile(self.cfg_extra_stops)
             swset.update([word for word in src.read_bigline().split()])
         swdf = pd.DataFrame({'token_str': list(swset)})
         self.put_table(swdf, 'stopword')
@@ -111,9 +92,21 @@ class PoloCorpus(PoloDb):
         for doc_id in docs.index:
             doc = docs.loc[doc_id].doc_content
             for sentence_raw in tokenizer.tokenize(doc):
-                # todo: Put normalization stuff here
+
+                # Normalize
                 sentence = sentence_raw.lower()
                 sentence = re.sub(r'[^\w\s]','', sentence)
+
+                # Do replacements
+                rfile_name = self.cfg_base_path + '/' + self.cfg_replacements
+                if os.path.exists(rfile_name):
+                    rfile = PoloFile(rfile_name)
+                    for line in rfile.read_lines():
+                        src, dst = line.strip().split('|')
+                        sentence = re.sub(src, dst, sentence)
+                else:
+                    print(rfile_name, 'not found')
+
                 sentence_id += 1
                 # todo: Parametize using pos, stopwords, removing numbers
                 for token_str, token_pos in nltk.pos_tag(nltk.word_tokenize(sentence)):
@@ -122,6 +115,7 @@ class PoloCorpus(PoloDb):
                         doctoken['sentence_id'].append(sentence_id)
                         doctoken['token_str'].append(token_str)
                         doctoken['token_pos'].append(token_pos)
+
         doctoken_df = pd.DataFrame(doctoken)
         self.put_table(doctoken_df, 'doctoken', if_exists='replace', index=False)
 
@@ -256,4 +250,4 @@ class PoloCorpus(PoloDb):
         self.conn.execute(mallet_corpus_sql)
         self.conn.commit()
         mallet_corpus = pd.read_sql_query('SELECT * FROM mallet_corpus', self.conn)
-        mallet_corpus.to_csv(self.corpus_file, index=False, header=False, sep=',')
+        mallet_corpus.to_csv(self.cfg_mallet_corpus_input, index=False, header=False, sep=',')

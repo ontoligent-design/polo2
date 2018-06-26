@@ -29,14 +29,12 @@ def hello():
     data['page_title'] = 'Project List'
     data['main_menu'] = {'/projects': 'Projects'}
     data['projects'] = {}
-    for dir in os.listdir(projects_dir):
-        if os.path.isfile(get_project_config_file(dir)):
-            my_config_ini = '{}/{}/config.ini'.format(projects_dir, dir)
+    for dirname in os.listdir(projects_dir):
+        if os.path.isfile(get_project_config_file(dirname)):
+            my_config_ini = '{}/{}/config.ini'.format(projects_dir, dirname)
             my_cfg = PoloConfig(my_config_ini)
-            data['projects'][dir] = {
-                'title': my_cfg.ini['DEFAULT']['title'],
-                'trials': my_cfg.get_trial_names()
-            }
+            data['projects'][dirname] = dict(title=my_cfg.ini['DEFAULT']['title'],
+                                             trials=my_cfg.get_trial_names())
     return render_template('home.html', **data)
 
 @app.route('/test')
@@ -94,7 +92,7 @@ def topicdoc_heatmap(slug, trial='trial1', group_field='label'):
     data['slug'] = slug
     data['trial'] = trial
     data['page_title'] = '{}, {}: Topic-{} Heatmap'.format(slug, trial, group_field)
-    data['dtm'] = els.get_topicdoc_group_matrix(group_field=group_field, use_glass_label=True)
+    data['dtm'] = els.get_topicdoc_group_matrix(group_field=group_field, use_gloss_label=True)
     return render_template("topic_label_heatmap.html", **data)
 
 @app.route("/projects/<slug>/<trial>/topic_pair_heatmap/<sim>")

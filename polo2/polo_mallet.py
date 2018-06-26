@@ -17,13 +17,8 @@ class PoloMallet(PoloDb):
 
         self.config = config
         self.trial = trial
-
-        for key in self.config.ini['DEFAULT']:
-            setattr(self, 'cfg_{}'.format(key), self.config.ini['DEFAULT'][key])
-
-        # Values here will override values in DEFAULT
-        for key in self.config.ini[trial]:
-            setattr(self, 'cfg_{}'.format(key), self.config.ini[trial][key])
+        self.config.set_config_attributes(self)
+        self.config.set_config_attributes(self, trial)
 
         # todo: Put this in config.ini
         self.cfg_tw_quantile = 0.8
@@ -57,8 +52,8 @@ class PoloMallet(PoloDb):
         if not os.path.exists(self.cfg_mallet_path):
             raise ValueError('Mallet cannot be found.')
 
-        if os.path.exists(self.cfg_replacements): # todo: Consider moving this step out of MALLET and into corpus prep
-            self.mallet['import-file']['replacement-files'] = self.cfg_replacements
+        #if os.path.exists(self.cfg_replacements): # todo: Consider moving this step out of MALLET and into corpus prep
+        #    self.mallet['import-file']['replacement-files'] = self.cfg_replacements
         self.mallet['import-file']['input'] = self.cfg_mallet_corpus_input
         self.mallet['import-file']['output'] = '{}/mallet-corpus.mallet'.format(self.cfg_mallet_out_dir) # Put this in corpus?
         self.mallet['import-file']['keep-sequence'] = 'TRUE' # todo: Control this by config
@@ -131,7 +126,8 @@ class PoloMallet(PoloDb):
         with gzip.open(src_file, 'rb') as f:
             docword = pd.DataFrame([line.split() for line in f.readlines()[3:]],
                                    columns=['doc_id', 'src', 'word_pos', 'word_id', 'word_str', 'topic_id'])
-            docword = docword[['doc_id', 'word_pos', 'word_id', 'topic_id']]
+            docword = docword[['doc_id', 'word_id', 'word_pos', 'topic_id']]
+            docword = docword.astype('int')
             docword.set_index(['doc_id', 'word_id'], inplace=True)
             self.put_table(docword, 'docword', index=True)
 
@@ -152,7 +148,7 @@ class PoloMallet(PoloDb):
         TOPICWORD = []
         src = PoloFile(src_file)
         for line in src.read_lines():
-            row = line.strip().split(' ')
+            row = line.strip().split()
             (word_id, word_str) = row[0:2]
             WORD.append((int(word_id), word_str))
             for item in row[2:]:
@@ -512,9 +508,9 @@ class PoloMallet(PoloDb):
         """Add topic alpha stats to config table"""
         topic = self.get_table('topic')
         items = dict(
-            topic_alpha_max = topic.topic_alpha.max(),
-            topic_alpha_min = topic.topic_alpha.min(),
-            topic_alpha_avg = topic.topic_alpha.mean()
+            topic_alpha_max=topic.topic_alpha.max(),
+            topic_alpha_min=topic.topic_alpha.min(),
+            topic_alpha_avg=topic.topic_alpha.mean()
         )
         self.set_config_items(items)
 
@@ -522,9 +518,9 @@ class PoloMallet(PoloDb):
         """Add doctopic weight stats to config table"""
         doctopic = self.get_table('doctopic')
         items = dict(
-            doctopic_weight_min = doctopic.topic_weight.min(),
-            doctopic_weight_max = doctopic.topic_weight.max(),
-            doctopic_weight_avg = doctopic.topic_weight.mean()
+            doctopic_weight_min=doctopic.topic_weight.min(),
+            doctopic_weight_max=doctopic.topic_weight.max(),
+            doctopic_weight_avg=doctopic.topic_weight.mean()
         )
         self.set_config_items(items)
 
@@ -532,9 +528,9 @@ class PoloMallet(PoloDb):
         """Add doctopic entropy stats to config table"""
         doc = self.get_table('doc')
         items = dict(
-            doctopic_entropy_min = doc.topic_entropy.min(),
-            doctopic_entropy_max = doc.topic_entropy.max(),
-            doctopic_entropy_avg = doc.topic_entropy.mean()
+            doctopic_entropy_min=doc.topic_entropy.min(),
+            doctopic_entropy_max=doc.topic_entropy.max(),
+            doctopic_entropy_avg=doc.topic_entropy.mean()
         )
         self.set_config_items(items)
 
@@ -545,7 +541,6 @@ class PoloMallet(PoloDb):
 
     sql_config_delete = "DELETE FROM config WHERE key = ?"
     sql_config_insert = "INSERT INTO config (key, value) VALUES (?,?)"
-
     def set_config_item(self, key, val):
         """Insert an item in the config table"""
         self.conn.execute(self.sql_config_delete, (key,))
@@ -553,7 +548,6 @@ class PoloMallet(PoloDb):
         self.conn.commit()
 
     sql_config_select = "SELECT FROM config WHERE key = ?"
-
     def get_config_item(self, key):
         """Get an item from the config table"""
         cur = self.conn.cursor()

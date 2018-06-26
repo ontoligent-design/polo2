@@ -28,7 +28,6 @@ class PoloDb():
     def put_table(self, df, table_name='test', if_exists='replace', index=False, index_label=None):
         if not self.read_only:
             df.to_sql(table_name, self.conn, if_exists=if_exists, index=index, index_label=index_label)
-
             if self.cache_mode:
                 self.tables[table_name] = df.reset_index() # Index reset is crucial
         else:
@@ -39,7 +38,7 @@ class PoloDb():
         if self.cache_mode and table_name in self.tables:
             df = self.tables[table_name]
             if set_index:
-                df = self._set_index(df) # fixme: Find index fields to set
+                df = self._set_index(df)  # fixme: Find index fields to set
             return df
         else:
             cur = self.conn.cursor()

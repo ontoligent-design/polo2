@@ -82,12 +82,16 @@ class PoloConfig():
         self.groups_ini._interpolation = configparser.ExtendedInterpolation()
         self.groups_ini.read('{}/{}'.format(self.ini['DEFAULT']['base_path'],
                                             self.ini['DEFAULT']['groups_ini_file']))
-        #self.validate_ini2(self.group_ini_schema, self.groups_ini, 'DEFAULT')
 
     def get_trial_names(self):
         if len(self.trials) == 0:
             raise ValueError("No trials defined in INI file.")
         return self.trials
+
+    def set_config_attributes(self, obj, section='DEFAULT'):
+        """Puts config keys and values into object as cfg_X"""
+        for key in self.ini[section]:
+            setattr(obj, 'cfg_{}'.format(key), self.ini[section][key])
 
     def validate_ini2(self, ini_schema, ini, section):
         keys1 = ini_schema[section].keys()
