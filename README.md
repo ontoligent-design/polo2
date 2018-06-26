@@ -193,6 +193,19 @@ doc_topics_max = 10
 # The number of iterations after wich MALLET will print out the current set of topics. 
 show_topics_interval = 100
 
+# Whether to generate a list of bigrams and their frequencies
+get_bigrams = 1
+
+# Whether to generate a list of trigrams and their frequencies
+get_trigrams = 0
+
+# A comma-delimited list of fields from the src_doc table to use for grouping topic weights
+group_fields = doc_label
+
+# The file that contains information about the group fields listed in group_fields
+groups_ini_file = groups.ini
+
+
 # This is an example "trial," that is, a set of topic model hyperparameters with which to 
 # run MALLET. You can create as many trial entries in the config file as you want. Each entry
 # should have a unique name. The name in the header can then be passed to polo 
