@@ -87,6 +87,16 @@ class PoloCorpus(PoloDb):
         tokenizer = nltk.data.load('nltk:tokenizers/punkt/english.pickle')
         sentence_id = 0
 
+        # Get replacements
+        reps = None
+        rfile_name = self.cfg_base_path + '/' + self.cfg_replacements
+        if os.path.exists(rfile_name):
+            rfile = PoloFile(rfile_name)
+            reps = [tuple(line.strip().split('|')) for line in rfile.read_lines()]
+        else:
+            reps = []
+            print(rfile_name, 'not found')
+
         # Not efficient but intelligible
         doctoken = dict(doc_id=[], sentence_id=[], token_str=[], token_pos=[])
         for doc_id in docs.index:
@@ -98,14 +108,8 @@ class PoloCorpus(PoloDb):
                 sentence = re.sub(r'[^\w\s]','', sentence)
 
                 # Do replacements
-                rfile_name = self.cfg_base_path + '/' + self.cfg_replacements
-                if os.path.exists(rfile_name):
-                    rfile = PoloFile(rfile_name)
-                    for line in rfile.read_lines():
-                        src, dst = line.strip().split('|')
-                        sentence = re.sub(src, dst, sentence)
-                else:
-                    print(rfile_name, 'not found')
+                for rep in reps:
+                    sentence = re.sub(rep[0], rep[1], sentence)
 
                 sentence_id += 1
                 # todo: Parametize using pos, stopwords, removing numbers

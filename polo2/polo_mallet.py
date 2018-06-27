@@ -52,7 +52,7 @@ class PoloMallet(PoloDb):
         if not os.path.exists(self.cfg_mallet_path):
             raise ValueError('Mallet cannot be found.')
 
-        #if os.path.exists(self.cfg_replacements): # todo: Consider moving this step out of MALLET and into corpus prep
+        #if os.path.exists(self.cfg_replacements): # This has been moved into PoloCorpus
         #    self.mallet['import-file']['replacement-files'] = self.cfg_replacements
         self.mallet['import-file']['input'] = self.cfg_mallet_corpus_input
         self.mallet['import-file']['output'] = '{}/mallet-corpus.mallet'.format(self.cfg_mallet_out_dir) # Put this in corpus?
