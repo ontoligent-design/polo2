@@ -1,5 +1,4 @@
 from abc import ABCMeta, abstractmethod
-from polo2 import PoloConfig
 
 class PoloScraper:
 
@@ -9,6 +8,10 @@ class PoloScraper:
         self.config = config
         self.corpus_file = self.config.ini['DEFAULT']['src_file_name']
         self.corpus_file_sep = self.config.ini['DEFAULT']['src_file_sep']
+
+        # The following replaces the preceding lines.
+        # For now, we keep the preceding for backward compatibility.
+        self.config.set_config_attributes(self)
 
     @abstractmethod
     def make_corpus(self):
