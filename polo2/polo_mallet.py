@@ -30,14 +30,11 @@ class PoloMallet(PoloDb):
             setattr(self, att, int(getattr(self, att)))
         self.cfg_thresh = float(self.cfg_thresh)
 
-        #self.generate_trial_name()
-        #self.file_prefix = '{}/{}'.format(self.cfg_mallet_out_dir, self.trial_name)
         self.trial_name = self.trial # HACK
         self.file_prefix = '{}/{}'.format(self.cfg_mallet_out_dir, self.trial_name)
         self.mallet = {'import-file': {}, 'train-topics': {}}
         self.mallet_init()
 
-        #dbfile = "{}/{}-mallet-{}.db".format(self.cfg_base_path, self.cfg_slug, self.trial)
         dbfile = self.config.generate_model_db_file_path(self.trial)
         PoloDb.__init__(self, dbfile)
 
@@ -53,13 +50,10 @@ class PoloMallet(PoloDb):
         if not os.path.exists(self.cfg_mallet_path):
             raise ValueError('Mallet cannot be found.')
 
-        #if os.path.exists(self.cfg_replacements): # This has been moved into PoloCorpus
-        #    self.mallet['import-file']['replacement-files'] = self.cfg_replacements
         self.mallet['import-file']['input'] = self.cfg_mallet_corpus_input
         self.mallet['import-file']['output'] = '{}/mallet-corpus.mallet'.format(self.cfg_mallet_out_dir) # Put this in corpus?
         self.mallet['import-file']['keep-sequence'] = 'TRUE' # todo: Control this by config
         self.mallet['import-file']['remove-stopwords'] = 'FALSE' # todo: Control this by config
-        #self.mallet['import-file']['line-regex'] = "'([^,]+)\s*,\s*([^,]+)\s*,\s*(.+)'" # This logic is assumed in the corpus creation view
 
         self.mallet['train-topics']['num-topics'] = self.cfg_num_topics
         self.mallet['train-topics']['num-top-words'] = self.cfg_num_top_words
@@ -80,7 +74,6 @@ class PoloMallet(PoloDb):
         self.mallet['train-topics']['num-top-docs'] = self.cfg_num_topics
         self.mallet['train-topics']['doc-topics-max'] = self.cfg_doc_topics_max
         self.mallet['train-topics']['show-topics-interval'] = self.cfg_show_topics_interval
-        #self.mallet['trial_name'] = self.trial_name
 
     def mallet_run_command(self, op):
         """Run a MALLET command (e.g. import-file or train-topics)"""
@@ -231,10 +224,11 @@ class PoloMallet(PoloDb):
 
     def add_topic_glosses(self):
         """Add glosses to topic table"""
-        sql = """SELECT topic_id, GROUP_CONCAT(topic_phrase, '|') as 'topic_gloss'
+        sql = """
+        SELECT topic_id, GROUP_CONCAT(topic_phrase, '|') as 'topic_gloss'
         FROM (SELECT * FROM topicphrase ORDER BY phrase_weight DESC)
         GROUP BY topic_id
-        """
+        """.strip()
         topicphrase = pd.read_sql_query(sql, self.conn)
         topicphrase.set_index('topic_id', inplace=True)
         topicphrase['topic_gloss'] = topicphrase.apply(lambda x: x.topic_gloss.split('|')[0], 1)
@@ -330,8 +324,9 @@ class PoloMallet(PoloDb):
         """Add entropy to topic table"""
         doctopic = self.get_table('doctopic')
         doc = self.get_table('doc')
-        topic_entropy = doctopic.groupby('doc_id')['topic_weight'].apply(lambda x: pm.entropy(x))
-        doc['topic_entropy'] = topic_entropy
+        #topic_entropy = doctopic.groupby('doc_id')['topic_weight'].apply(lambda x: pm.entropy(x))
+        #doc['topic_entropy'] = topic_entropy
+        doc['topic_entropy'] = doctopic.groupby('doc_id')['topic_weight'].apply(pm.entropy)
         doc['topic_entropy_zscore'] = stats.zscore(doc.topic_entropy)
         doc.set_index('doc_id', inplace=True)
         self.put_table(doc, 'doc', index=True)
