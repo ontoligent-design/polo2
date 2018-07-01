@@ -1,0 +1,1 @@
+This directory contains to binary files to run Polo. `polo` is a command line tool to create the corpus and model databases. `posh` is an experimental shell -- Polo Shell. It is not recommended to use it.
