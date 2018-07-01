@@ -1,7 +1,6 @@
 # Import installed modules
 import os, sys
 from flask import Flask, render_template
-#from flask_caching import Cache
 from polo2 import PoloDb, PoloConfig
 
 # Import local modules
@@ -12,7 +11,6 @@ from elements import Elements, Corpus
 # Create application object
 app = Flask(__name__)
 app.config.from_object('config')
-#cache = Cache(app,config={'CACHE_TYPE': 'simple'})
 
 # Define some things used in the handlers
 projects_dir = app.config['PROJECTS_DIR']
@@ -33,8 +31,9 @@ def hello():
         if os.path.isfile(get_project_config_file(dirname)):
             my_config_ini = '{}/{}/config.ini'.format(projects_dir, dirname)
             my_cfg = PoloConfig(my_config_ini)
-            data['projects'][dirname] = dict(title=my_cfg.ini['DEFAULT']['title'],
-                                             trials=my_cfg.get_trial_names())
+            title = my_cfg.ini['DEFAULT']['title']
+            trials = my_cfg.get_trial_names()
+            data['projects'][dirname] = {'title': title, 'trials': trials}
     return render_template('home.html', **data)
 
 @app.route('/test')
@@ -69,6 +68,7 @@ def project(slug, trial='trial1'):
     data['dtm_sums'] = els.get_topicdoc_sum_matrix(data['dtm'], data['doc_ord_counts'])
     return render_template("project.html", **data)
 
+"""
 # fixme: Deprecated function
 @app.route("/projects/<slug>/<trial>/topic_label_heatmap")
 def topicdoc_label_heatmap(slug, trial='trial1'):
@@ -81,6 +81,7 @@ def topicdoc_label_heatmap(slug, trial='trial1'):
     data['page_title'] = '{}, {}: Topic-Label Heatmap'.format(slug, trial)
     data['dtm'] = els.get_topicdoclabel_matrix()
     return render_template("topic_label_heatmap.html", **data)
+"""
 
 @app.route("/projects/<slug>/<trial>/topic_heatmap/<group_field>")
 def topicdoc_heatmap(slug, trial='trial1', group_field='label'):
