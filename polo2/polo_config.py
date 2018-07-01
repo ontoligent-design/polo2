@@ -4,8 +4,7 @@ from collections import OrderedDict
 
 class PoloConfig():
 
-    # todo: Replace schemas with XML
-    
+    # todo: Replace schemas with XML so you can have validation.
     ini_schema = OrderedDict([
         ('DEFAULT', OrderedDict([
             ("title", 'Replace me with a descriptive title of the project, like "My Project" (without the quotes)'),
@@ -44,7 +43,6 @@ class PoloConfig():
             ("optimize_interval", 10)
         ]))
     ])
-
     group_ini_schema = OrderedDict([
         ('DEFAULT', OrderedDict([
             ('default_field', 'doc_label # This field will be displayed with topics')
@@ -55,8 +53,8 @@ class PoloConfig():
         ]))
     ])
 
-    # todo: Move num_iterations and optimize_interval out of trial1 and update PoloMallet to reflect this
-
+    # todo: Move num_iterations and optimize_interval out of trial1
+    # todo: Update PoloMallet to reflect preceding
     def __init__(self, ini_file, create=True, slug=None):
         if not os.path.isfile(ini_file):
             if create:
@@ -69,7 +67,7 @@ class PoloConfig():
         self.ini.read(ini_file)
         self.validate_ini()
 
-        # Perhaps put into a method
+        # Perhaps put into a method?
         if self.ini['DEFAULT']['src_file_sep'] == 'TAB':
             self.ini['DEFAULT']['src_file_sep'] = '\t'
         elif self.ini['DEFAULT']['src_file_sep'] == '':
@@ -103,14 +101,12 @@ class PoloConfig():
 
     # todo: To be replaced by validate_ini2()
     def validate_ini(self):
-
         # Well-formed test for [DEFAULT]
         keys1 = self.ini_schema['DEFAULT'].keys()
         keys2 = self.ini['DEFAULT'].keys()
         test1 = self.compare_keys(keys1, keys2)
         if test1:
             raise ValueError("Missing config DEFAULT keys:", ', '.join(test1))
-
         # Well-formed test for [trial1]
         # todo: Change this if we decide to put some of these keys into DEFAULT
         keys3 = self.ini_schema['trial1'].keys()
@@ -119,9 +115,7 @@ class PoloConfig():
             test2 = self.compare_keys(keys3, keys4)
             if test2:
                 raise ValueError("Missing config keys for trial `{}`.".format(trial), ', '.join(test2))
-
         # todo: Create interactive validation of ALL keys here
-
         return True
 
     def compare_keys(self, keys1, keys2):
