@@ -1,23 +1,11 @@
-import os, sys, re
-import nltk, nltk.data
+import os
+import re
+import nltk
+import nltk.data
 from textblob import TextBlob
 import pandas as pd
-
 from polo2 import PoloDb
 from polo2 import PoloFile
-
-"""
-NOTES:
-
-Follow sequence:
-1. Tokenize
-2. Normalize -- e.g. stemming, standardize spelling
-3. Create n-grams
-4. Remove stopwords and lo/hi frequency words (so-called controlled vocabulary) 
-
-Make code applicable to MapReduce
-
-"""
 
 
 class PoloCorpus(PoloDb):
@@ -28,17 +16,15 @@ class PoloCorpus(PoloDb):
         """Initialize corpus object"""
 
         self.config = config
-        self.config.set_config_attributes(self) # Seems weird
-
+        self.config.set_config_attributes(self)
         if not os.path.isfile(self.cfg_src_file_name):
             raise ValueError("Missing source file. Check value of `src_file_name` in INI file.")
-
         self.dbfile = config.generate_corpus_db_file_path()
         PoloDb.__init__(self, self.dbfile)
         if self.cfg_nltk_data_path: nltk.data.path.append(self.cfg_nltk_data_path)
 
         # For tokenizing into sentences
-        # fixme: TOKENIZER ASSUMES ENGLISH
+        # fixme: TOKENIZER ASSUMES ENGLISH -- PARAMETIZE THIS
         nltk.download('punkt')
         nltk.download('tagsets')
         nltk.download('averaged_perceptron_tagger')
@@ -52,6 +38,7 @@ class PoloCorpus(PoloDb):
         doc.index.name = 'doc_id'
 
         # todo: Find a more efficient way of handling this -- such as not duplicating!
+        # This is a legacy of an older procedure which now has performance implications.
         if 'doc_original' not in doc.columns:
             doc['doc_original'] = doc.doc_content
 
@@ -87,14 +74,13 @@ class PoloCorpus(PoloDb):
         tokenizer = nltk.data.load('nltk:tokenizers/punkt/english.pickle')
         sentence_id = 0
 
-        # Get replacements
-        reps = None
-        rfile_name = self.cfg_base_path + '/' + self.cfg_replacements
+        # Handle replacements -- EXPERIMENTAL
+        reps = []
+        rfile_name = '{}/{}'.format(self.cfg_base_path, self.cfg_replacements)
         if os.path.exists(rfile_name):
             rfile = PoloFile(rfile_name)
             reps = [tuple(line.strip().split('|')) for line in rfile.read_lines()]
         else:
-            reps = []
             print(rfile_name, 'not found')
 
         # Not efficient but intelligible
@@ -179,13 +165,11 @@ class PoloCorpus(PoloDb):
 
     def add_stems_to_token(self):
         """Add stems to token table"""
+        # We only use one stemmer since stemmers suck anyway :-)
         from nltk.stem.porter import PorterStemmer
         porter_stemmer = PorterStemmer()
-        from nltk.stem.snowball import EnglishStemmer
-        snowball_stemmer = EnglishStemmer()
         tokens = self.get_table('token', set_index=True)
         tokens['token_stem_porter'] = tokens.token_str.apply(porter_stemmer.stem)
-        tokens['token_stem_snowball'] = tokens.token_str.apply(snowball_stemmer.stem)
         self.put_table(tokens, 'token', if_exists='replace', index=True)
 
     def add_sentimant_to_doc(self):
@@ -199,25 +183,30 @@ class PoloCorpus(PoloDb):
 
     def add_tables_ngram_and_docngram(self, n = 2):
         """Create ngram and docngram tables for n"""
+        """This may seem slow, but it doesn't hang like Gensim's version"""
         if n not in range(2, 5):
             raise ValueError("n not in range. Must be between 2 and 4 inclusive.")
         doctoken = self.get_table('doctoken')
-        cols = {}
+        docngram_cols = {}
         for i in range(n):
             pad = [None] * i
-            cols[str(i)] = doctoken.token_str[i:].tolist() + pad
-            cols[str(n+i)] = doctoken.doc_id[i:].tolist() + pad
-        docngram = pd.DataFrame(cols)
+            docngram_cols[str(i)] = doctoken.token_str[i:].tolist() + pad
+            docngram_cols[str(n+i)] = doctoken.doc_id[i:].tolist() + pad
+            docngram_cols[str(n*2 + i)] = doctoken.sentence_id[i:].tolist() + pad
+        docngram = pd.DataFrame(docngram_cols)
         c1 = str(n)
-        c2 = str((2 * n) - 1)
-        docngram = docngram[docngram[c1] == docngram[c2]]
+        c2 = str(2*n - 1)
+        c3 = str(2*n)
+        c4 = str(3*n - 1)
+        docngram = docngram[(docngram[c1] == docngram[c2]) & (docngram[c3] == docngram[c4])]
         docngram['ngram'] = docngram.apply(lambda row: '_'.join(row[:n]), axis=1)
-        docngram = docngram[[c1, 'ngram']]
-        docngram.columns = ['doc_id', 'ngram']
+        docngram = docngram[[c1, c3, 'ngram']]
+        docngram.columns = ['doc_id', 'sentence_id', 'ngram']
+        self.put_table(docngram, 'ngram{}doc'.format(self.ngram_prefixes[n]))
+
         ngram = pd.DataFrame(docngram.ngram.value_counts())
         ngram.index.name = 'ngram'
         ngram.columns = ['ngram_count']
-        self.put_table(docngram, 'ngram{}doc'.format(self.ngram_prefixes[n]))
         self.put_table(ngram, 'ngram{}'.format(self.ngram_prefixes[n]), index=True)
 
     def add_bigram_tables(self):
