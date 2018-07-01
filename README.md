@@ -1,5 +1,15 @@
 # Polo2
 
+## Introduction
+
+Polo was written to allow me to explore the logic of topic models in a practical way. 
+
+* Converts a raw corpus into a relational database with a normalized model
+* Provides a wrapper to MALLET
+* Compiles resutls into a relational database with a normalized model
+* Provides a web interface to the topic model
+
+
 ## Requirements
 * Python 3
     * Polo is written in Python 3.6, but earlier versions of 3 should work. If you don't 

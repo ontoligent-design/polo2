@@ -7,6 +7,7 @@ from polo2 import PoloDb
 from polo2 import PoloFile
 from polo2 import PoloMath as pm
 
+
 class PoloMallet(PoloDb):
 
     def __init__(self, config, trial='trial1'):
