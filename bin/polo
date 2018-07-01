@@ -138,6 +138,11 @@ if __name__ == '__main__':
     parser.sequence.add_argument('obj', choices=sequences.keys())
     parser.sequence.add_argument('seq')
 
+    # FUNCTION
+    parser.sequence = subparsers.add_parser('function', help='Run a function')
+    parser.sequence.add_argument('obj', choices=['corpus','mallet'])
+    parser.sequence.add_argument('func')
+
     # ALL
     parser.sequence = subparsers.add_parser('all', help='Run corpus and mallet with default settings')
 
@@ -284,6 +289,19 @@ if __name__ == '__main__':
             run_funcs(obj, sequence)
         except KeyError as e:
             print('Bad key:', e)
+            
+    elif args.cmd == 'function':
+        config = load_config(args.ini)
+        obj = None
+        if args.obj == 'mallet':
+            obj = load_mallet(config)
+        elif args.obj == 'corpus':
+            obj = load_corpus(config)
+        try:
+            run_funcs(obj, [args.func])
+        except KeyError as e:
+            print('Bad key:', e)
+        
 
     else:
         parser.print_help()
