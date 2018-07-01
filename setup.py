@@ -21,7 +21,7 @@ setup(
     license = 'MIT',
     keywords = 'natural language processing, text mining, digital humanities',
     packages = ['polo2'], # packages=find_packages(exclude=['contrib', 'docs', 'tests']),
-    install_requires = ['pandas', 'lxml', 'scipy', 'numpy'],
+    install_requires = ['pandas', 'lxml', 'scipy', 'numpy', 'textblob', 'nltk'],
     scripts = ['bin/polo', 'bin/posh'],
 
     # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
