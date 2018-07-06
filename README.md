@@ -2,13 +2,12 @@
 
 ## Introduction
 
-Polo was written to allow me to explore the logic of topic models in a practical way. 
-
-* Converts a raw corpus into a relational database with a normalized model
-* Provides a wrapper to MALLET
-* Compiles resutls into a relational database with a normalized model
-* Provides a web interface to the topic model
-
+Polo was written to allow me to explore the logic of topic models in a practical way. In meeting this goal, it
+provides the following functions:
+* It converts a raw corpus into a relational database with a normalized model.
+* It provides a wrapper to MALLET which runs its against the corpus.
+* It compiles the results of the topic model into a relational database with a normalized model.
+* It provides a web interface to the topic model so that it can be explored as a website.
 
 ## Requirements
 * Python 3
