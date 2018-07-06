@@ -187,21 +187,29 @@ class PoloCorpus(PoloDb):
         if n not in range(2, 5):
             raise ValueError("n not in range. Must be between 2 and 4 inclusive.")
         doctoken = self.get_table('doctoken')
-        docngram_cols = {}
+
+        dfs = []
+        dummy = pd.DataFrame(dict(doc_id=[None], sentence_id=[None], token_str=[None]))
         for i in range(n):
-            pad = [None] * i
-            docngram_cols[str(i)] = doctoken.token_str[i:].tolist() + pad
-            docngram_cols[str(n+i)] = doctoken.doc_id[i:].tolist() + pad
-            docngram_cols[str(n*2 + i)] = doctoken.sentence_id[i:].tolist() + pad
-        docngram = pd.DataFrame(docngram_cols)
-        c1 = str(n)
-        c2 = str(2*n - 1)
-        c3 = str(2*n)
-        c4 = str(3*n - 1)
-        docngram = docngram[(docngram[c1] == docngram[c2]) & (docngram[c3] == docngram[c4])]
-        docngram['ngram'] = docngram.apply(lambda row: '_'.join(row[:n]), axis=1)
-        docngram = docngram[[c1, c3, 'ngram']]
-        docngram.columns = ['doc_id', 'sentence_id', 'ngram']
+            dt = doctoken[['doc_id', 'sentence_id', 'token_str']]
+            for x in range(n - 1 - i):
+                dt = pd.concat([dummy, dt], ignore_index=True)
+            for x in range(i):
+                dt = pd.concat([dt, dummy], ignore_index=True)
+            dt = dt.add_suffix('_{}'.format(i))
+            dfs.append(dt)
+        docngram = pd.concat(dfs, axis=1)
+        docngram = docngram[(docngram.doc_id_0 == docngram['doc_id_{}'.format(n - 1)])
+                        & (docngram.sentence_id_0 == docngram['sentence_id_{}'.format(n - 1)])]
+        cols1 = ['doc_id_0', 'sentence_id_0']
+        cols2 = ['doc_id', 'sentence_id']
+        for i in range(n):
+            cols1.append('token_str_{}'.format(i))
+            cols2.append('token_str_{}'.format(i))
+        docngram = docngram[cols1]
+        docngram.columns = cols2
+        docngram['ngram'] = docngram.apply(lambda x: '_'.join(x[2:2 + n]), 1)
+        docngram = docngram[['doc_id', 'sentence_id', 'ngram']]
         self.put_table(docngram, 'ngram{}doc'.format(self.ngram_prefixes[n]))
 
         ngram = pd.DataFrame(docngram.ngram.value_counts())
