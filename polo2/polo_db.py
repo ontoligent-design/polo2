@@ -1,5 +1,6 @@
 import sqlite3, re
 import pandas as pd
+import os.path
 
 
 # todo: Integrate SQLAlchemy to add indexes, etc.
@@ -12,6 +13,8 @@ class PoloDb():
     def __init__(self, dbfile, read_only=False):
         self.dbfile = dbfile
         self.read_only = read_only
+        if not os.path.isfile(self.dbfile):
+            raise ValueError("DB file does not exit.")
         try:
             self.conn = sqlite3.connect(self.dbfile)
             self.conn.row_factory = sqlite3.Row
