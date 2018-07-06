@@ -187,7 +187,6 @@ class PoloCorpus(PoloDb):
         if n not in range(2, 5):
             raise ValueError("n not in range. Must be between 2 and 4 inclusive.")
         doctoken = self.get_table('doctoken')
-
         dfs = []
         dummy = pd.DataFrame(dict(doc_id=[None], sentence_id=[None], token_str=[None]))
         for i in range(n):
@@ -196,21 +195,18 @@ class PoloCorpus(PoloDb):
                 dt = pd.concat([dummy, dt], ignore_index=True)
             for x in range(i):
                 dt = pd.concat([dt, dummy], ignore_index=True)
-            dt = dt.add_suffix('_{}'.format(i))
+            if i > 0: # We don't prefix the base table
+                dt = dt.add_suffix('_{}'.format(i))
             dfs.append(dt)
         docngram = pd.concat(dfs, axis=1)
-        docngram = docngram[(docngram.doc_id_0 == docngram['doc_id_{}'.format(n - 1)])
-                        & (docngram.sentence_id_0 == docngram['sentence_id_{}'.format(n - 1)])]
-        cols1 = ['doc_id_0', 'sentence_id_0']
-        cols2 = ['doc_id', 'sentence_id']
-        for i in range(n):
-            cols1.append('token_str_{}'.format(i))
-            cols2.append('token_str_{}'.format(i))
-        docngram = docngram[cols1]
-        docngram.columns = cols2
-        docngram['ngram'] = docngram.apply(lambda x: '_'.join(x[2:2 + n]), 1)
-        docngram = docngram[['doc_id', 'sentence_id', 'ngram']]
-        self.put_table(docngram, 'ngram{}doc'.format(self.ngram_prefixes[n]))
+        docngram = docngram[(docngram['doc_id'] == docngram['doc_id_{}'.format(n - 1)])
+                        & (docngram['sentence_id'] == docngram['sentence_id_{}'.format(n - 1)])] # Remove bogus ngrams
+        cols = ['doc_id', 'sentence_id', 'token_str'] + ['token_str_{}'.format(i) for i in range(1, n)]
+        docngram = docngram[cols]  # Remove redundant doc and sentence cols
+        docngram.set_index(['doc_id', 'sentence_id'], inplace=True)
+        docngram['ngram'] = docngram.apply(lambda x: x.str.cat(sep=' '), axis=1)
+        docngram = docngram[['ngram']]
+        self.put_table(docngram, 'ngram{}doc'.format(self.ngram_prefixes[n]), index=True)
 
         ngram = pd.DataFrame(docngram.ngram.value_counts())
         ngram.index.name = 'ngram'
