@@ -191,20 +191,25 @@ class PoloCorpus(PoloDb):
         dummy = pd.DataFrame(dict(doc_id=[None], sentence_id=[None], token_str=[None]))
         for i in range(n):
             dt = doctoken[['doc_id', 'sentence_id', 'token_str']]
-            for x in range(n - 1 - i):
+            for x in range(n - 1 - i): # Prepend padding
                 dt = pd.concat([dummy, dt], ignore_index=True)
-            for x in range(i):
+            for x in range(i): # Append padding
                 dt = pd.concat([dt, dummy], ignore_index=True)
-            if i > 0: # We don't prefix the base table
+            if i < n - 1: # Suffix join glue to prevent doing a join or cat below
+                dt['token_str'] = dt['token_str'] + '_'
+            if i > 0: # Don't prefix the base table
                 dt = dt.add_suffix('_{}'.format(i))
             dfs.append(dt)
         docngram = pd.concat(dfs, axis=1)
-        docngram = docngram[(docngram['doc_id'] == docngram['doc_id_{}'.format(n - 1)])
-                        & (docngram['sentence_id'] == docngram['sentence_id_{}'.format(n - 1)])] # Remove bogus ngrams
+        suffix = '_{}'.format(n - 1)
+        docngram = docngram[(docngram['doc_id'] == docngram['doc_id'+suffix])
+                            & (docngram['sentence_id'] == docngram['sentence_id'+suffix])] # Remove bogus ngrams
         cols = ['doc_id', 'sentence_id', 'token_str'] + ['token_str_{}'.format(i) for i in range(1, n)]
         docngram = docngram[cols]  # Remove redundant doc and sentence cols
         docngram.set_index(['doc_id', 'sentence_id'], inplace=True)
-        docngram['ngram'] = docngram.apply(lambda x: x.str.cat(sep=' '), axis=1)
+        #docngram['ngram'] = docngram.apply(lambda x: x.str.cat(sep='_'), axis=1)  # SLOW!
+        #docngram['ngram'] = docngram.apply('_'.join, axis=1) # Faster, but still slow
+        docngram['ngram'] = docngram.sum(1)  # FAST, but above we had to suffix our terms
         docngram = docngram[['ngram']]
         self.put_table(docngram, 'ngram{}doc'.format(self.ngram_prefixes[n]), index=True)
 
