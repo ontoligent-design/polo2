@@ -2,6 +2,8 @@ import os
 import re
 import nltk
 import nltk.data
+from nltk.tokenize import sent_tokenize
+
 from textblob import TextBlob
 import pandas as pd
 from polo2 import PoloDb
@@ -70,11 +72,36 @@ class PoloCorpus(PoloDb):
     def add_table_doctoken(self):
         """Create doctoken and doctokenbow tables; update doc table"""
         docs = self.get_table('doc', set_index=True)
-        stopwords = self.get_table('stopword').token_str.tolist()
-        tokenizer = nltk.data.load('nltk:tokenizers/punkt/english.pickle')
-        sentence_id = 0
 
-        # Handle replacements -- EXPERIMENTAL
+        # Replacements?
+        # reps = self._get_replacments()
+
+        stopwords = self.get_table('stopword').token_str.tolist()
+        doctokens = pd.DataFrame([(i, j, k, token)
+                     for i, sentences in enumerate(docs.doc_content.apply(sent_tokenize, 1))
+                     for j, sentence in enumerate(sentences)
+                     for k, token in enumerate(nltk.word_tokenize(sentence))
+                     ], columns=['doc_id', 'sentence_id', 'token_pos', 'token_str'])
+        doctokens.set_index(['doc_id', 'sentence_id', 'token_pos'], inplace=True)
+
+        # Normalize
+        doctokens.token_str = doctokens.token_str.str.lower()
+        doctokens.token_str = doctokens.token_str.str.replace(r'\W+', '')
+        doctokens = doctokens[~doctokens.token_str.str.match(r'^\s*$')]
+        doctokens = doctokens[~doctokens.token_str.isin(stopwords)]
+
+        self.put_table(doctokens, 'doctoken', if_exists='replace', index=True)
+
+        # Creates a BOW model for the doc, removing words in sequence and only keeping counts
+        doctokenbow = pd.DataFrame(doctokens.groupby('doc_id').token_str.value_counts())
+        doctokenbow.columns = ['token_count']
+        self.put_table(doctokenbow, 'doctokenbow', index=True)
+
+        # Add token counts to doc
+        docs['token_count'] = doctokenbow.groupby('doc_id').token_count.sum()
+        self.put_table(docs, 'doc', if_exists='replace', index=True)
+
+    def _get_replacments(self):
         reps = []
         rfile_name = '{}/{}'.format(self.cfg_base_path, self.cfg_replacements)
         if os.path.exists(rfile_name):
@@ -82,41 +109,7 @@ class PoloCorpus(PoloDb):
             reps = [tuple(line.strip().split('|')) for line in rfile.read_lines()]
         else:
             print(rfile_name, 'not found')
-
-        # Not efficient but intelligible
-        doctoken = dict(doc_id=[], sentence_id=[], token_str=[], token_pos=[])
-        for doc_id in docs.index:
-            doc = docs.loc[doc_id].doc_content
-            for sentence_raw in tokenizer.tokenize(doc):
-
-                # Normalize
-                sentence = sentence_raw.lower()
-                sentence = re.sub(r'[^\w\s]','', sentence)
-
-                # Do replacements
-                for rep in reps:
-                    sentence = re.sub(rep[0], rep[1], sentence)
-
-                sentence_id += 1
-                # todo: Parametize using pos, stopwords, removing numbers
-                for token_str, token_pos in nltk.pos_tag(nltk.word_tokenize(sentence)):
-                    if token_str not in stopwords and not re.match(r'^\d+$', token_str):
-                        doctoken['doc_id'].append(doc_id)
-                        doctoken['sentence_id'].append(sentence_id)
-                        doctoken['token_str'].append(token_str)
-                        doctoken['token_pos'].append(token_pos)
-
-        doctoken_df = pd.DataFrame(doctoken)
-        self.put_table(doctoken_df, 'doctoken', if_exists='replace', index=False)
-
-        # Creates a BOW model for the doc, removing words in sequence and only keeping counts
-        doctokenbow = pd.DataFrame(doctoken_df.groupby('doc_id').token_str.value_counts())
-        doctokenbow.columns = ['token_count']
-        self.put_table(doctokenbow, 'doctokenbow', index=True)
-
-        # Add token counts to doc
-        docs['token_count'] = doctokenbow.groupby('doc_id').token_count.sum()
-        self.put_table(docs, 'doc', if_exists='replace', index=True)
+        return reps
 
     def add_table_token(self):
         """Get token data from doctoken and doctokenbow"""
