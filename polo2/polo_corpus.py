@@ -89,8 +89,8 @@ class PoloCorpus(PoloDb):
         doctokens.set_index(['doc_id', 'sentence_id', 'token_ord'], inplace=True)
 
         # Normalize
-        doctokens.token_str = doctokens.token_str.str.lower()
         #doctokens = doctokens[doctokens.token_pos.str.match(r'^(NN|JJ|VB)')]
+        doctokens.token_str = doctokens.token_str.str.lower()
         doctokens.token_str = doctokens.token_str.str.replace(r'[^a-z]+', '')
         doctokens = doctokens[~doctokens.token_str.str.match(r'^\s*$')]
 
@@ -192,9 +192,9 @@ class PoloCorpus(PoloDb):
         dummy = pd.DataFrame(dict(doc_id=[None], sentence_id=[None], token_str=[None]))
         for i in range(n):
             dt = doctoken[['doc_id', 'sentence_id', 'token_str']]
-            for x in range(n - 1 - i): # Prepend padding
+            for _ in range(n - 1 - i): # Prepend padding
                 dt = pd.concat([dummy, dt], ignore_index=True)
-            for x in range(i): # Append padding
+            for _ in range(i): # Append padding
                 dt = pd.concat([dt, dummy], ignore_index=True)
             if i < n - 1: # Suffix join glue to prevent doing a join or cat below
                 dt['token_str'] = dt['token_str'] + '_'
