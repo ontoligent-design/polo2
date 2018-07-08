@@ -76,18 +76,26 @@ class PoloCorpus(PoloDb):
         # Replacements?
         # reps = self._get_replacments()
 
-        stopwords = self.get_table('stopword').token_str.tolist()
+        # doctokens = pd.DataFrame([(i, j, k, token[0], token[1])
+        #              for i, sentences in enumerate(docs.doc_content.apply(sent_tokenize, 1))
+        #              for j, sentence in enumerate(sentences)
+        #              for k, token in enumerate(nltk.pos_tag(nltk.word_tokenize(sentence)))
+        #              ], columns=['doc_id', 'sentence_id', 'token_ord', 'token_str', 'token_pos'])
         doctokens = pd.DataFrame([(i, j, k, token)
                      for i, sentences in enumerate(docs.doc_content.apply(sent_tokenize, 1))
                      for j, sentence in enumerate(sentences)
                      for k, token in enumerate(nltk.word_tokenize(sentence))
-                     ], columns=['doc_id', 'sentence_id', 'token_pos', 'token_str'])
-        doctokens.set_index(['doc_id', 'sentence_id', 'token_pos'], inplace=True)
+                     ], columns=['doc_id', 'sentence_id', 'token_ord', 'token_str'])
+        doctokens.set_index(['doc_id', 'sentence_id', 'token_ord'], inplace=True)
 
         # Normalize
         doctokens.token_str = doctokens.token_str.str.lower()
-        doctokens.token_str = doctokens.token_str.str.replace(r'\W+', '')
+        #doctokens = doctokens[doctokens.token_pos.str.match(r'^(NN|JJ|VB)')]
+        doctokens.token_str = doctokens.token_str.str.replace(r'[^a-z]+', '')
         doctokens = doctokens[~doctokens.token_str.str.match(r'^\s*$')]
+
+        # Remove stopwords
+        stopwords = self.get_table('stopword').token_str.tolist()
         doctokens = doctokens[~doctokens.token_str.isin(stopwords)]
 
         self.put_table(doctokens, 'doctoken', if_exists='replace', index=True)
@@ -223,7 +231,6 @@ class PoloCorpus(PoloDb):
         """Create a MALLET corpus file"""
         # We export the doctoken table as the input corpus to MALLET. This preserves our normalization
         # between the corpus and trial model databases.
-        token_type = 'token_str' # token_stem_porter token_stem_snowball
         
         _mallet_corpus_sql = """
         CREATE VIEW mallet_corpus AS
@@ -233,7 +240,8 @@ class PoloCorpus(PoloDb):
         ORDER BY dt.doc_id
         """
 
-        mallet_corpus_sql = """
+        token_type = 'token_str' # Could also be token_stem_porter token_stem_snowball
+        _mallet_corpus_sql = """
         CREATE VIEW mallet_corpus AS
         SELECT dt.doc_id, d.doc_label, GROUP_CONCAT({}, ' ') AS doc_content
         FROM doctoken dt JOIN doc d USING (doc_id) JOIN token t USING (token_str)
@@ -241,6 +249,15 @@ class PoloCorpus(PoloDb):
         GROUP BY dt.doc_id
         ORDER BY dt.doc_id
         """.format(token_type)
+        
+        mallet_corpus_sql = """
+        CREATE VIEW mallet_corpus AS
+        SELECT dt.doc_id, d.doc_label, GROUP_CONCAT({}, ' ') AS doc_content
+        FROM doctoken dt JOIN doc d USING (doc_id) JOIN token t USING (token_str)
+        GROUP BY dt.doc_id
+        ORDER BY dt.doc_id
+        """.format(token_type)
+
         self.conn.execute("DROP VIEW IF EXISTS mallet_corpus")
         self.conn.execute(mallet_corpus_sql)
         self.conn.commit()
