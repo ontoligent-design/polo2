@@ -222,9 +222,25 @@ class PoloCorpus(PoloDb):
 
         self.put_table(docngram, 'ngram{}doc'.format(self.ngram_prefixes[n]), index=True)
 
+        # Get ngrams sorted by special sauce
+        from scipy.stats import entropy
+        docs = pd.read_sql_query("SELECT doc_id, doc_label FROM doc", self.conn, index_col='doc_id')
+        docngram = docngram.join(docs.doc_label)
+        ndm = docngram.groupby(['doc_label', 'ngram']).ngram.count()
+        ndm = ndm[ndm > 2].unstack().fillna(0).T
+        f_d = ndm.sum(0)
+        f_t = ndm.sum(1)
+        p_d = f_d / f_d.sum()
+        p_t = f_t / f_t.sum()
+        p_td = ndm.div(f_d)
+        p_dt = p_td.apply(lambda x: p_d.loc[x.name] / p_t.loc[x.index]) * p_td
+        h = p_dt.apply(entropy, 1)
+        score = (p_t * h).sort_values(ascending=False)
+
         ngram = pd.DataFrame(docngram.ngram.value_counts())
         ngram.index.name = 'ngram'
         ngram.columns = ['ngram_count']
+        ngram['score'] = score
         self.put_table(ngram, 'ngram{}'.format(self.ngram_prefixes[n]), index=True)
 
     def add_bigram_tables(self):
