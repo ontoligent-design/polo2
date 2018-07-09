@@ -1,11 +1,10 @@
 import os
 import re
+import pandas as pd
 import nltk
 import nltk.data
 from nltk.tokenize import sent_tokenize
-
 from textblob import TextBlob
-import pandas as pd
 from polo2 import PoloDb
 from polo2 import PoloFile
 
@@ -188,30 +187,39 @@ class PoloCorpus(PoloDb):
         if n not in range(2, 5):
             raise ValueError("n not in range. Must be between 2 and 4 inclusive.")
         doctoken = self.get_table('doctoken')
+
+        # Build the ngram dataframe by staggered alignment of doctoken
         dfs = []
         dummy = pd.DataFrame(dict(doc_id=[None], sentence_id=[None], token_str=[None]))
         for i in range(n):
             dt = doctoken[['doc_id', 'sentence_id', 'token_str']]
-            for _ in range(n - 1 - i): # Prepend padding
+            for _ in range(n - 1 - i): # Prepend dummy rows
                 dt = pd.concat([dummy, dt], ignore_index=True)
-            for _ in range(i): # Append padding
+            for _ in range(i): # Append dummy rows
                 dt = pd.concat([dt, dummy], ignore_index=True)
             if i < n - 1: # Suffix join glue to prevent doing a join or cat below
                 dt['token_str'] = dt['token_str'] + '_'
-            if i > 0: # Don't prefix the base table
+            if i > 0: # Don't prefix the first table
                 dt = dt.add_suffix('_{}'.format(i))
             dfs.append(dt)
         docngram = pd.concat(dfs, axis=1)
+
+        # Remove ngrams that cross sentences or which have padding
         suffix = '_{}'.format(n - 1)
         docngram = docngram[(docngram['doc_id'] == docngram['doc_id'+suffix])
-                            & (docngram['sentence_id'] == docngram['sentence_id'+suffix])] # Remove bogus ngrams
+                            & (docngram['sentence_id'] == docngram['sentence_id'+suffix])]  # Remove ngrams that cross sentences
+
+        # Remove redundant doc and sentence cols
         cols = ['doc_id', 'sentence_id', 'token_str'] + ['token_str_{}'.format(i) for i in range(1, n)]
-        docngram = docngram[cols]  # Remove redundant doc and sentence cols
+        docngram = docngram[cols]
+
+        # Join the grams into a single ngram
         docngram.set_index(['doc_id', 'sentence_id'], inplace=True)
         #docngram['ngram'] = docngram.apply(lambda x: x.str.cat(sep='_'), axis=1)  # SLOW!
         #docngram['ngram'] = docngram.apply('_'.join, axis=1) # Faster, but still slow
         docngram['ngram'] = docngram.sum(1)  # FAST, but above we had to suffix our terms
         docngram = docngram[['ngram']]
+
         self.put_table(docngram, 'ngram{}doc'.format(self.ngram_prefixes[n]), index=True)
 
         ngram = pd.DataFrame(docngram.ngram.value_counts())
