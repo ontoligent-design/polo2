@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+
+{% block main %}
+<div class="w3-third">
+    <div class="w3-container">
+        <h3>Ngram Frequency by Document Group</h3>
+        <div id="group-freq-graph"></div>
+    </div>
+</div>
+<div class="w3-rest">
+    <div class="w3-container">
+        <h3>Documents with this Ngram</h3>
+        <table>
+        {% for doc_id in docs.index %}
+        {% set doc = docs.loc[doc_id] %}
+        <tr>
+            <td>
+                <a href="/projects/{{slug}}/{{trial}}/doc/{{doc_id}}">{{doc.doc_title[:30]}}</a>
+            </td>
+            <td>
+                <div class="w3-light-gray">
+                    <div class="w3-light-green" style="padding-left:.5rem;height:24px; width: {{doc.n * 100}}%">
+                        {{doc.n}}
+                    </div>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+        </table>
+    </div>
+</div>
+
+{% endblock  %}
+
+{% block code %}
+
+// Group Frequency Graph
+var layout = {
+    xaxis: {title: 'doc group', tickangle: 45, visible: true, showgrid: false, showline: false, showticklabels: true},
+    yaxis: {title: 'ngram freq', visible: true, showgrid: true, showline: true, showticklabels: true},
+    margin: {l: 50, r: 50, b: 200, t: 30, pad: 10}
+}
+var config = {displaylogo: false, displayModeBar: false, scrollZoom: false, editable: false, staticPlot: false}
+var x = {{ groups.group_name.tolist() | tojson | safe }}
+var y = {{ groups.n.tolist()| tojson | safe }}
+var data = [{x:x, y:y, type:'bar', hoverinfo: 'x+y', showlegend: false}]
+Plotly.newPlot("group-freq-graph", data, layout, config)
+
+{% endblock %}
+
+

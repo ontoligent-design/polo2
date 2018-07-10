@@ -31,7 +31,11 @@ table td:first-child { text-align: right; color: gray; }
             </tr>
             <tr>
                 <td class="w3-xlarge">phrases</td>
-                <td class="w3-xlarge">{{topic.topic_phrases.values[0]}}</td>
+                <td class="w3-xlarge">
+                    {% for phrase in topic.topic_phrases.values[0].split(',') %}
+                    [<a href="/projects/{{slug}}/{{trial}}/ngram/{{phrase.strip().replace(' ','_')}}">{{phrase.strip()}}</a>]
+                    {% endfor %}
+                </td>
             </tr>
         </table>
     </div>

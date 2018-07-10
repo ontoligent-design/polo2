@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro');
 
 * { font-family: 'Open Sans', 'Source Sans Pro', sans-serif; }
-a  {text-decoration: none; }
+a  {text-decoration: none; color: blue; }
 h2 {border-top: 1px solid gray; padding-top:.5rem;margin-top:1rem;}
 h3 {border-top: 1px solid lightgray; padding-top:.5rem;margin-top:1rem;}
 

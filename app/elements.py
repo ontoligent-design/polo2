@@ -53,14 +53,16 @@ class Elements(object):
 
     def get_top_bigrams(self, limit = 50):
         limit = int(limit)
-        sql = "SELECT ngram, ngram_count from ngrambi ORDER BY ngram_count DESC LIMIT {}".format(limit)
+        sql = "SELECT ngram, ngram_count, score FROM ngrambi " \
+              "ORDER BY score DESC LIMIT {}".format(limit)
         df = pd.read_sql_query(sql, self.corpus.conn)
-        df['ngram_percent'] = (df.ngram_count / df.ngram_count.max() * 100).astype('int')
+        df['ngram_percent'] = (df.score / df.score.max() * 100).astype('int')
         return df
 
     def get_topic_phrases(self, topic_id):
         topic_id = int(topic_id)
-        sql = "SELECT topic_phrase FROM topicphrase WHERE topic_id = ? ORDER BY phrase_weight DESC"
+        sql = "SELECT topic_phrase FROM topicphrase " \
+              "WHERE topic_id = ? ORDER BY phrase_weight DESC"
         phrases = ', '.join(pd.read_sql_query(sql, self.model.conn, params=(topic_id,)).topic_phrase.tolist())
         return phrases
 
@@ -288,3 +290,40 @@ class Elements(object):
         sql = "SELECT value as 'max_tw' FROM config WHERE key = 'doctopic_weight_max'"
         df = pd.read_sql_query(sql, self.model.conn)
         return df.max_tw.tolist()[0]
+
+    ngram_prefixes = ['no', 'uni', 'bi', 'tri', 'quadri']  # Put in central place
+    def get_docs_for_ngram(self, ngram, degree):
+        my_type = self.ngram_prefixes[degree]
+        sql = """SELECT doc.doc_id, doc.doc_title, count() as n 
+        FROM ngram{}doc 
+        JOIN doc USING(doc_id) 
+        WHERE ngram = ?
+        GROUP BY doc.doc_id
+        ORDER BY n DESC, doc_label, doc.doc_id 
+        LIMIT 100 """.format(my_type)
+        df = pd.read_sql_query(sql, self.corpus.conn, params=(ngram,), index_col='doc_id')
+        return df
+
+    def get_ngrams_per_group(self, ngram, degree, group_name='doc_label'):
+        my_type = self.ngram_prefixes[degree]
+        sql = """
+        SELECT DISTINCT d.doc_label as group_name,  coalesce(n1, 0) as n 
+        FROM doc d
+        LEFT JOIN (
+            SELECT {0}, COUNT() as n1 
+            FROM ngram{1}doc 
+            JOIN doc USING(doc_id) WHERE ngram = ?
+            GROUP BY {0}
+        ) t USING({0})
+        ORDER BY group_name
+        """.format(group_name, my_type)
+        df = pd.read_sql_query(sql, self.corpus.conn, params=(ngram,))
+        return df
+
+    def get_ngram_group_matrix(self, degree):
+        my_type = self.ngram_prefixes[degree]
+        ngm = self.corpus.get_table('ngram{}doc_group_matrix'.format(my_type))
+        ngm.set_index('ngram', inplace=True)
+        return ngm
+
+

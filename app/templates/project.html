@@ -13,13 +13,15 @@ table td .topic_gloss { font-size: 16pt; margin: 0 0 1rem 0; }
 
 {% block main %}
 
+<!--
 <div class="w3-row">
     <div class="w3-container">
         <div class="w3-btn w3-blue" id="info-toggle">Toggle</div>
     </div>
 </div>
+-->
 
-<div class="w3-twothird">
+<div class="w3-half">
     <div class="w3-container">
 
         <h2>Topic List</h2>
@@ -32,7 +34,7 @@ table td .topic_gloss { font-size: 16pt; margin: 0 0 1rem 0; }
             {% set topic = topics.loc[topic_id] %}
             <tr>
                 <td>
-                    <div class="topic_trend_graph" id="topic_trend_graph_{{topic_id}}" style="width:200px; height:100px;"></div>
+                    <div class="topic_trend_graph"   id="topic_trend_graph_{{topic_id}}" style="width:200px; height:100px;"></div>
                 </td>
                 <!--
                 <td>
@@ -63,10 +65,37 @@ table td .topic_gloss { font-size: 16pt; margin: 0 0 1rem 0; }
     </div>
 </div>
 
-<div class="w3-third">
+<div class="w3-rest">
     <div class="w3-container">
 
-        <h2>Model Information</h2>
+        <!-- Top Bigrams -->
+        <h2>Top Bigrams</h2>
+        <p>Top bigrams in the corpus out of <tt>{{bigrams.ngram_count.sum()}}</tt> unique bigrams. Bigrams
+            are sorted on the basis of their overall frequency in the corpus, multiplied by their entropy. This
+            prevents words that appear frequenty in a single document, for example, from trending highly.
+        </p>
+        <table class="w3-table">
+            {% for i in bigrams.index %}
+            {% set bigram = bigrams.loc[i] %}
+            <tr>
+                <td style="width:20%;">
+                    <div class="bigram_trend_graph" id="bigram_trend_graph_{{bigram.ngram}}" style="height:100px;"></div>
+                </td>
+                <td style="width:80%;">
+                    <a class="w3-xlarge" href="/projects/{{slug}}/{{trial}}/ngram/{{bigram.ngram}}">
+                        {{bigram.ngram | replace('_', '&nbsp;') | safe }}
+                    </a>
+                <!--
+                </td>
+                <td>
+                -->
+                    <div class="w3-light-green" style="height:24px; width:{{bigrams.loc[i].ngram_percent}}%">{{bigrams.loc[i].score | round(4)}}</div>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+
+                <h2>Model Information</h2>
         <table class="w3-table">
             <!--
             <tr>
@@ -110,21 +139,6 @@ table td .topic_gloss { font-size: 16pt; margin: 0 0 1rem 0; }
         </table>
 
 
-        <!-- Top Bigrams -->
-        <h2>Top Bigrams</h2>
-        <p>Top bigrams in the corpus out of <tt>{{bigrams.ngram_count.sum()}}</tt> unique bigrams.</p>
-        <table class="w3-table">
-            {% for i in bigrams.index %}
-            {% set bigram = bigrams.loc[i] %}
-            <tr>
-                <td style="width:20%;">{{bigram.ngram | replace('_', '&nbsp;') | safe }}</td>
-                <td>
-                    <div class="w3-light-green" style="height:24px; width:{{bigrams.loc[i].ngram_percent}}%"></div>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-
         <div id="doc_ord_counts"></div>
         <div id="topic_alpha_hist"></div>
 
@@ -133,7 +147,7 @@ table td .topic_gloss { font-size: 16pt; margin: 0 0 1rem 0; }
 </div>
 
 <div class="w3-row">
-
+<pre>{{ngm}}</pre>
 </div>
 
 {% endblock %}
@@ -186,6 +200,22 @@ var x{{topic_id}} = {{ dtm[topic_col].index.astype('str').tolist() | tojson | sa
 var y{{topic_id}} = {{ dtm[topic_col].values.tolist() | tojson | safe }}
 var data{{topic_id}} = [{x:x{{topic_id}}, y:y{{topic_id}}, type:'bar', hoverinfo: 'x+y', showlegend: false}]
 Plotly.newPlot("topic_trend_graph_{{topic_id}}", data{{topic_id}}, layout, config)
+{% endfor %}
+
+// General config for bigram trend graphs
+var layout = {
+    xaxis: {visible: false, showgrid: false, showline: false, showticklabels: false, type: 'category'},
+    yaxis: {visible: true, showgrid: true, showline: false, showticklabels: false},
+    margin: {l: 10, r: 10, b: 50, t: 0, pad: 0}
+}
+var config = {displaylogo: false, displayModeBar: false, scrollZoom: false, editable: false, staticPlot: false};
+{% for i in bigrams.index %}
+{% set bigram = bigrams.loc[i] %}
+{% set ngram = bigram.ngram %}
+var x{{ngram}} = {{ ngm.columns.tolist() | tojson | safe }}
+var y{{ngram}} = {{ ngm.loc[ngram].values.tolist() | tojson | safe }}
+var data{{ngram}} = [{x:x{{ngram}}, y:y{{ngram}}, type:'bar', hoverinfo: 'x+y', showlegend: false}]
+Plotly.newPlot("bigram_trend_graph_{{ngram}}", data{{ngram}}, layout, config)
 {% endfor %}
 
 {% endblock %}

@@ -62,6 +62,7 @@ def project(slug, trial='trial1'):
     data['topic_count'] = els.get_topic_count()
     data['topics'] = els.get_topics()
     data['bigrams'] = els.get_top_bigrams()
+    data['ngm'] = els.get_ngram_group_matrix(degree=2)
     src_ord_col = cfg.ini['DEFAULT']['src_ord_col']
     data['dtm'] = els.get_topicdoc_group_matrix(group_field=src_ord_col)
     data['doc_ord_counts'] = els.get_topicdocgrooup_counts('topic{}_matrix_counts'.format(src_ord_col))
@@ -224,6 +225,19 @@ def group_item(slug, trial, group, item):
     data['docs'] = els.get_docs_for_group(item, group)
     data['max_tw'] = els.get_max_topic_weight()
     return render_template('group_item.html', **data)
+
+@app.route("/projects/<slug>/<trial>/ngram/<ngram>")
+def ngram_item(slug, trial, ngram):
+    cfg = get_project_config(slug)
+    els = Elements(cfg, trial)
+    data['slug'] = slug
+    data['trial'] = trial
+    data['ngram'] = ngram
+    data['degree'] = len(ngram.split('_'))
+    data['page_title'] = '{}, {}: NGram: "{}"'.format(slug, trial, ngram.replace('_', ' '))
+    data['docs'] = els.get_docs_for_ngram(ngram, data['degree'])
+    data['groups'] = els.get_ngrams_per_group(ngram, data['degree'])
+    return render_template('ngram_item.html', **data)
 
 # Helpers -- Consider moving to module
 def get_project_config_file(slug):

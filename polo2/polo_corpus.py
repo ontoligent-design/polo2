@@ -51,6 +51,8 @@ class PoloCorpus(PoloDb):
 
         # Remove empty docs
         doc = doc[~doc.doc_content.isnull()]
+        doc.reindex()
+
         self.put_table(doc, 'doc', index=True)
 
     def import_table_stopword(self, use_nltk=False):
@@ -75,14 +77,9 @@ class PoloCorpus(PoloDb):
         # Replacements?
         # reps = self._get_replacments()
 
-        # doctokens = pd.DataFrame([(i, j, k, token[0], token[1])
-        #              for i, sentences in enumerate(docs.doc_content.apply(sent_tokenize, 1))
-        #              for j, sentence in enumerate(sentences)
-        #              for k, token in enumerate(nltk.pos_tag(nltk.word_tokenize(sentence)))
-        #              ], columns=['doc_id', 'sentence_id', 'token_ord', 'token_str', 'token_pos'])
-        doctokens = pd.DataFrame([(i, j, k, token)
-                     for i, sentences in enumerate(docs.doc_content.apply(sent_tokenize, 1))
-                     for j, sentence in enumerate(sentences)
+        doctokens = pd.DataFrame([(sentences[0], j, k, token)
+                     for sentences in docs.apply(lambda x: (x.name, sent_tokenize(x.doc_content)), 1)
+                     for j, sentence in enumerate(sentences[1])
                      for k, token in enumerate(nltk.word_tokenize(sentence))
                      ], columns=['doc_id', 'sentence_id', 'token_ord', 'token_str'])
         doctokens.set_index(['doc_id', 'sentence_id', 'token_ord'], inplace=True)
@@ -240,8 +237,13 @@ class PoloCorpus(PoloDb):
         ngram = pd.DataFrame(docngram.ngram.value_counts())
         ngram.index.name = 'ngram'
         ngram.columns = ['ngram_count']
+        ngram['freq'] = f_t
+        ngram['entropy'] = h
         ngram['score'] = score
         self.put_table(ngram, 'ngram{}'.format(self.ngram_prefixes[n]), index=True)
+
+        # Test
+        self.put_table(ndm, 'ngram{}doc_group_matrix'.format(self.ngram_prefixes[n]), index=True)
 
     def add_bigram_tables(self):
         """Convenience function to add ngram tables for n = 2"""
@@ -256,23 +258,23 @@ class PoloCorpus(PoloDb):
         # We export the doctoken table as the input corpus to MALLET. This preserves our normalization
         # between the corpus and trial model databases.
         
-        _mallet_corpus_sql = """
-        CREATE VIEW mallet_corpus AS
-        SELECT dt.doc_id, d.doc_label, GROUP_CONCAT(ngram, ' ') AS doc_content
-        FROM ngrambidoc dt JOIN doc d USING (doc_id) JOIN ngrambi t USING (ngram)
-        GROUP BY dt.doc_id
-        ORDER BY dt.doc_id
-        """
+        # _mallet_corpus_sql = """
+        # CREATE VIEW mallet_corpus AS
+        # SELECT dt.doc_id, d.doc_label, GROUP_CONCAT(ngram, ' ') AS doc_content
+        # FROM ngrambidoc dt JOIN doc d USING (doc_id) JOIN ngrambi t USING (ngram)
+        # GROUP BY dt.doc_id
+        # ORDER BY dt.doc_id
+        # """
 
         token_type = 'token_str' # Could also be token_stem_porter token_stem_snowball
-        _mallet_corpus_sql = """
-        CREATE VIEW mallet_corpus AS
-        SELECT dt.doc_id, d.doc_label, GROUP_CONCAT({}, ' ') AS doc_content
-        FROM doctoken dt JOIN doc d USING (doc_id) JOIN token t USING (token_str)
-        WHERE dt.token_pos LIKE 'NN%' OR dt.token_pos LIKE 'VB%' OR dt.token_pos LIKE 'JJ%'
-        GROUP BY dt.doc_id
-        ORDER BY dt.doc_id
-        """.format(token_type)
+        # _mallet_corpus_sql = """
+        # CREATE VIEW mallet_corpus AS
+        # SELECT dt.doc_id, d.doc_label, GROUP_CONCAT({}, ' ') AS doc_content
+        # FROM doctoken dt JOIN doc d USING (doc_id) JOIN token t USING (token_str)
+        # WHERE dt.token_pos LIKE 'NN%' OR dt.token_pos LIKE 'VB%' OR dt.token_pos LIKE 'JJ%'
+        # GROUP BY dt.doc_id
+        # ORDER BY dt.doc_id
+        # """.format(token_type)
         
         mallet_corpus_sql = """
         CREATE VIEW mallet_corpus AS
