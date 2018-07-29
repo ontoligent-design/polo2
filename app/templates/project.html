@@ -8,7 +8,7 @@ table .topic_words { font-weight: bold; font-size: large; }
 table td .topic_alpha_zscore { padding: 0 .5rem; }
 table td .topic_alpha_zscore.neg { color: red; }
 table td .topic_alpha_zscore.pos { color: green; }
-table td .topic_gloss { font-size: 16pt; margin: 0 0 1rem 0; }
+table td .topic_gloss { font-size: 16pt; margin: 0 0 0 0; }
 {% endblock %}
 
 {% block main %}
@@ -25,7 +25,7 @@ table td .topic_gloss { font-size: 16pt; margin: 0 0 1rem 0; }
     <div class="w3-container">
 
         <h2>Topic List</h2>
-        <p class="w3-xlarge">
+        <p class="w3-large">
             {{topic_count}} topics in {{doc_count}} documents.
             Topics listed in order of <b>&alpha;</b>. Trend graphs show topic weight <b>averages</b> within the feature {{src_ord_col}}.
         </p>
@@ -70,7 +70,7 @@ table td .topic_gloss { font-size: 16pt; margin: 0 0 1rem 0; }
 
         <!-- Top Bigrams -->
         <h2>Top Bigrams</h2>
-        <p>Top bigrams in the corpus out of <tt>{{bigrams.ngram_count.sum()}}</tt> unique bigrams. Bigrams
+        <p class="w3-large">Top bigrams in the corpus out of <tt>{{bigrams.ngram_count.sum()}}</tt> unique bigrams. Bigrams
             are sorted on the basis of their overall frequency in the corpus, multiplied by their entropy. This
             prevents words that appear frequenty in a single document, for example, from trending highly.
         </p>
@@ -144,10 +144,6 @@ table td .topic_gloss { font-size: 16pt; margin: 0 0 1rem 0; }
 
 
     </div>
-</div>
-
-<div class="w3-row">
-<pre>{{ngm}}</pre>
 </div>
 
 {% endblock %}
