@@ -158,6 +158,7 @@ class PoloCorpus(PoloDb):
         doctokenbow['tfidf'] = doctokenbow.tf.multiply(1 + log(num_docs / tokens.doc_count))
         self.put_table(doctokenbow, 'doctokenbow', if_exists='replace', index=True)
         tokens['tfidf_sum'] = doctokenbow.groupby('token_id').tfidf.sum()
+        tokens['tfidf_avg'] = doctokenbow.groupby('token_id').tfidf.mean()
         self.put_table(tokens, 'token', if_exists='replace', index=True)
 
     def add_stems_to_token(self):
@@ -219,6 +220,7 @@ class PoloCorpus(PoloDb):
 
         self.put_table(docngram, 'ngram{}doc'.format(self.ngram_prefixes[n]), index=True)
 
+        #fixme: Create fuction here
         # Get ngrams sorted by special sauce
         from scipy.stats import entropy
         docs = pd.read_sql_query("SELECT doc_id, doc_label FROM doc", self.conn, index_col='doc_id')

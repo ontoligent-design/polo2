@@ -115,7 +115,8 @@ class PoloMallet(PoloDb):
 
     def import_table_state(self, src_file=None):
         """Import the state file into docword table"""
-        if not src_file: src_file = self.mallet['train-topics']['output-state']
+        if not src_file:
+            src_file = self.mallet['train-topics']['output-state']
         import gzip
         with gzip.open(src_file, 'rb') as f:
             docword = pd.DataFrame([line.split() for line in f.readlines()[3:]],

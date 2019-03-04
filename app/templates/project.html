@@ -78,9 +78,11 @@ table td .topic_gloss { font-size: 16pt; margin: 0 0 0 0; }
             {% for i in bigrams.index %}
             {% set bigram = bigrams.loc[i] %}
             <tr>
+                {% if ngm %}
                 <td style="width:20%;">
                     <div class="bigram_trend_graph" id="bigram_trend_graph_{{bigram.ngram}}" style="height:100px;"></div>
                 </td>
+                {% endif %}
                 <td style="width:80%;">
                     <a class="w3-xlarge" href="/projects/{{slug}}/{{trial}}/ngram/{{bigram.ngram}}">
                         {{bigram.ngram | replace('_', '&nbsp;') | safe }}
@@ -198,20 +200,29 @@ var data{{topic_id}} = [{x:x{{topic_id}}, y:y{{topic_id}}, type:'bar', hoverinfo
 Plotly.newPlot("topic_trend_graph_{{topic_id}}", data{{topic_id}}, layout, config)
 {% endfor %}
 
+
+{% if ngm %}
+
 // General config for bigram trend graphs
 var layout = {
     xaxis: {visible: false, showgrid: false, showline: false, showticklabels: false, type: 'category'},
     yaxis: {visible: true, showgrid: true, showline: false, showticklabels: false},
     margin: {l: 10, r: 10, b: 50, t: 0, pad: 0}
 }
+
 var config = {displaylogo: false, displayModeBar: false, scrollZoom: false, editable: false, staticPlot: false};
+
 {% for i in bigrams.index %}
+
 {% set bigram = bigrams.loc[i] %}
 {% set ngram = bigram.ngram %}
 var x{{ngram}} = {{ ngm.columns.tolist() | tojson | safe }}
 var y{{ngram}} = {{ ngm.loc[ngram].values.tolist() | tojson | safe }}
 var data{{ngram}} = [{x:x{{ngram}}, y:y{{ngram}}, type:'bar', hoverinfo: 'x+y', showlegend: false}]
 Plotly.newPlot("bigram_trend_graph_{{ngram}}", data{{ngram}}, layout, config)
+
 {% endfor %}
+
+{% endif %}
 
 {% endblock %}

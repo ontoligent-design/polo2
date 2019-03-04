@@ -322,8 +322,11 @@ class Elements(object):
 
     def get_ngram_group_matrix(self, degree):
         my_type = self.ngram_prefixes[degree]
-        ngm = self.corpus.get_table('ngram{}doc_group_matrix'.format(my_type))
-        ngm.set_index('ngram', inplace=True)
+        try:
+            ngm = self.corpus.get_table('ngram{}doc_group_matrix'.format(my_type))
+            ngm.set_index('ngram', inplace=True)
+        except:
+            mgm = pd.DataFrame()
         return ngm
 
 

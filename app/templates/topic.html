@@ -137,7 +137,7 @@ Plotly.newPlot("topic-trend-graph", data, layout, config)
 
 plot = document.getElementById("topic-trend-graph")
 plot.on('plotly_click', function(data) {
-    url = '/projects/{{slug}}/{{trial}}/groups/doc_label/' + data.points[0].x
+    url = '/projects/{{slug}}/{{trial}}/groups/{{group_label}}/' + data.points[0].x
     window.open(url, '_self')
 })
 

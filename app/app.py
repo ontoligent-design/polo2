@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Import installed modules
 import os, sys
 from flask import Flask, render_template
@@ -62,7 +64,7 @@ def project(slug, trial='trial1'):
     data['topic_count'] = els.get_topic_count()
     data['topics'] = els.get_topics()
     data['bigrams'] = els.get_top_bigrams()
-    data['ngm'] = els.get_ngram_group_matrix(degree=2)
+    #data['ngm'] = els.get_ngram_group_matrix(degree=2)
     src_ord_col = cfg.ini['DEFAULT']['src_ord_col']
     data['dtm'] = els.get_topicdoc_group_matrix(group_field=src_ord_col)
     data['doc_ord_counts'] = els.get_topicdocgrooup_counts('topic{}_matrix_counts'.format(src_ord_col))
@@ -187,6 +189,7 @@ def docs_for_topic_and_label(slug, topic_id, doc_label, trial='trial1'):
 def topic(slug, topic_id, trial='trial1'):
     cfg = get_project_config(slug)
     els = Elements(cfg, trial)
+    data['group_label'] = cfg.ini['DEFAULT']['src_ord_col']
     data['topic_id'] = topic_id
     data['slug'] = slug
     data['trial'] = trial
