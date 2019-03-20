@@ -7,7 +7,7 @@ Polo allows you to explore the logic of topic models in a practical and empirica
 It provides these functions:
 * It converts a raw corpus into a relational database with a normalized model.
 * It performs preprocessing on the corpus in preparation for topic modeling and to provide statistical information about the corpus itself.
-* It provides a wrapper to MALLET and runs its with the converted corpus.
+* It provides a wrapper to MALLET and runs it with the converted corpus.
 * It compiles the results of the topic model into a relational database with a normalized model.
 * It calculates statistical and informational properties about the model.
 * It provides a web interface to the topic model so that it can be explored as a hypertext.
@@ -105,7 +105,6 @@ To create and initialize a new project directory, use the `polo` command  line t
 ```
 polo setup myproject
 cd myproject
-
 ```
 
 Of course, you can use any project name you want, within the constrains of filenaming on your operating system. Names with only lowercase letters, numbers, and underscores are always safe.
