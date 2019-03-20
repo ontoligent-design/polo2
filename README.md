@@ -163,6 +163,35 @@ Both of these processes may take some time, depending on the size of your corpus
 
 At the end of this process, you should now have two SQLite databases with all of the corpus and model data you need to run analytics and visualizations. Open them up in a SQLite viewer and see what you have.
 
+## Running the Polo2 Flask App
+
+One you have generated your databases for a project, you can see them in a web application. To run the application, you need to enter two environment variables. In Linux or Mac,  do this:
+
+```
+env FLASK_APP=<path_to_polo_application_directory>/app/app.py
+env POLO_PROJ=<path_to_polo_project_directory>
+```
+
+The path to Polo2 application directory is just the directory that was created when you cloned or unzipped the code or Polo2. So, it will look something like this:
+
+```
+/Users/rca2t/projects/polo2
+```
+
+The path to the project directory is just the directory you created to hold your Polo2 projects. It will look something like this:
+
+```
+/Users/rca2t/projects/polo_projects
+```
+
+Once these variables are set, you can run this command 
+
+```
+flask run
+```
+
+If successful, it should give you a URL that you can open in your favorite web browser.
+
 
 ## Understanding and Editing `config.ini`
 
