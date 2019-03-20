@@ -2,28 +2,41 @@
 
 ## Introduction
 
-Polo was written to allow me to explore the logic of topic models in a practical way. In meeting this goal, it
-provides the following functions:
+Polo allows you to explore the logic of topic models in a practical and empirical way. It was created to simplify the process of generating topic models from texts and to produce an interactive data product to fully explore of model as a kind of text in itself.
+
+It provides these functions:
 * It converts a raw corpus into a relational database with a normalized model.
-* It provides a wrapper to MALLET which runs its against the corpus.
+* It performs preprocessing on the corpus in preparation for topic modeling and to provide statistical information about the corpus itself.
+* It provides a wrapper to MALLET and runs its with the converted corpus.
 * It compiles the results of the topic model into a relational database with a normalized model.
-* It provides a web interface to the topic model so that it can be explored as a website.
+* It calculates statistical and informational properties about the model.
+* It provides a web interface to the topic model so that it can be explored as a hypertext.
+
+## Philosophy
+
+Polo is built on the principle that software developers should put as much information
+as possible into config files and databases (the fewer of these the better) and to save logic for
+essential data processing work. The idea is to remove contingent information from code and to make 
+program design more solid and elegant. Functions should be as pure as possible, with minimum side 
+effects, and their logic should be intuitive for users who have familiarized themselves with the 
+data structures the functions work on. Although Polo is by no means written as a functional program, 
+it strives to be functional in a general sense, and to be as interpretable as possible to users.
 
 ## Requirements
+
 * Python 3
     * Polo is written in Python 3.6, but earlier versions of 3 should work. If you don't 
     have Python installed already, I recommend the [Anaconda distribution](https://www.anaconda.com/), even though
     `conda`, the package manager it comes with, has known conflicts with other package 
     managers, such as `brew` on MacOS. 
+* [MALLET](http://mallet.cs.umass.edu/)
+    * This of course is essential. You'll need Java installed first. Follow the instructions [here](http://mallet.cs.umass.edu/download.php) if you have not already installed it.
+    * Once installed, you will need to know where the `mallet` binary is located and point to it in `config.ini`.
 * [NLTK](http://www.nltk.org/)
     * This is used for stopwords right now but will be used more later. Install
     this with `conda install nltk` or  `pip install nltk`. Once installed,
     make sure to download `nltk_data` to get relevant resources.
     * To install stopwords, open a Python command line (e.g. with ipython) and enter `import nltk` and then `nltk.download('stopwords')`.
-* [MALLET](http://mallet.cs.umass.edu/)
-    * This of course is essential. You'll need Java installed first. Once installed, you
-    will need to know where the `mallet` binary is located and point to it in `config.ini`.
-    * You may need to install the Java JDK to make it work. 
 * [SQlite 3](https://www.sqlite.org/)
     * You usually don't need to install this, as most unix-based OSes have it
     built in and Python has native support for it.
@@ -32,65 +45,125 @@ provides the following functions:
 * [Gensim](https://radimrehurek.com/gensim/) (Optional)
     * Currently, Polo has an experimental library to take advantage of Gensim's models, such as 
     Hierarchical Dirichlet Process (HDP). But you don't need to use this library to use Polo.
+    
+## Other Things You Should Have Anyway
 
-## Getting Started
+The following is also expected:
 
-Follow the directions in the comments to get started with Polo. This will install
-the package and create a project directory where you can run the polo command line
-tool.
+* You have `git` or `unzip` on your system.
+* You know how to create and navigate directories from the command line.
+* You know what an environment variable is and how to set one. If not, follow the instructions carefully, and  then go learn about these things.
+* You have a text editor, like [Microsoft Visual Code](https://code.visualstudio.com/) or  [Atom](https://code.visualstudio.com/) on your computer. Spyder, PyCharm  --  heck, even RStduio  --  will work also. Don't try to do this stuff in a Jupyter notebook, though. 
 
-```bash
-# Clone the repo somewhere suitable.
+## Getting Started 
+
+### Install the Required Software
+
+Make sure the software listed above is installed on your computer. Instructions are listed above.
+
+### Clone or download Polo2
+
+You can use `git` to clone Polo2 onto your system or you can go to the Github site and download the `.zip` file and unzip it. The URL for the codebase is here:
+
+> https://github.com/ontoligent-design/polo2 
+
+So, to clone, do  this:
+
+```
 git clone https://github.com/ontoligent-design/polo2
+```
 
-# Change directory into the repo.
+### Install Polo2
+
+After you've either cloned, or downloaded and unzipped, the code onto your computer and in a suitable location in your file system, get into the directory and run the Python `setup.py` file. On Linux  or Mac, you do something like this from the directory in which you cloned or unzipped the code:
+
+```
 cd polo2
-
-# Install the package. Do this every time you pull from the repo to 
-# make the changes active in your python environment.
 sudo python3 setup.py install
+```
 
-# Test the installation -- this should return a help screen.
-# If this does not work, you may need to install some Python libraries,
-# or you may be using the wrong version of Python.
-polo
+### Test Polo2
 
-# Now move out of the repo and create a new project directory with the polo
-# command line tool. For example, you might move one level up from the cloned 
-# and have a project called 'myproject'. If so, do the following: 
-cd ..
+To test the installation, just enter the command `polo` at the command line, anywhere on your system. This should return a help screen. If this does not work, you may need to install some Python libraries, or you may be using the wrong version of Python. The error messages should tell you what you are missing.
+
+### Create a project directory on your system
+
+Somewhere in your file system, but outside of the Polo2 application directory you just set up, create a new directory that will be the top directory of your Polo projects. This directory will contain one or more subdirectories, each of which will contain an individual corpus to be processed by Polo2. 
+
+So, move out of the Polo2's application directory and create a directory called `polo_projects` or something. This may be on your desktop, in your home directory, or anywhere you like. (It's a good idea to have standard place for these kinds of things, such as a `projects` directory under your home directory. Of course, do not put it in any system directories or applicatiomn directories. 
+
+### Create a new Polo2 project
+
+Once you have created your project directory, move into it, as in the command below. From here you can create a new project. All future projects  will be created here too. (Of course, you can symlink directories here too.)
+
+```
+cd polo_projects
+```
+
+To create and initialize a new project directory, use the `polo` command  line tool, which was installed when you ran  `setup.py` above. To create a project called 'myproject,' enter the following command: 
+
+```
 polo setup myproject
 cd myproject
 
-# Edit the config.ini file to match your environment and parameters.
-# Information about the purpose and contents of this file is given below.
-# Of course, you don't need to use emacs for this :)
-emacs config.ini
+```
 
-# Go into the corpus directory and create a scraper that pulls content from 
-# some source and creates a corpus file in standard source corpus format (SSCF). 
-# Information about the requirements of SSCF is given below. If you already 
-# have a  corpus file or collection of files, write a script to convert it or them
-# into SSCF.
-cd corpus
-emacs scraper.py
+Of course, you can use any project name you want, within the constrains of filenaming on your operating system. Names with only lowercase letters, numbers, and underscores are always safe.
 
-# Change directory back into the root of your project.
-cd ..
+###  Understand what `polo` just did
 
-# Make sure config.ini points to the correct source corpus file.
-# Run polo corpus to generate corpus data.
-polo corpus
-
-# Run polo mallet to generate a topic model.
-# Running polo mallet by itself will use parameters from
-# the trail1 section of config.ini.
-polo mallet
-
-# You should now have two SQLite databases with all of the corpus and model
-# data you need to run analytics and visualizations.
+The `polo setup <projectname>` command creates a directory to hold your project as well as the directories and files:
 
 ```
+myproject
+    corpus
+    trials
+    corpus.ini
+``` 
+
+The `corpus` directory is where you will put your corpus file. It is usally called `corpus.csv` and must be created or acquired by you, using whatever tools needed to convert a source collection of texts into a file with  the correct format (described below).
+
+The `trials` directory will hold files created by MALLET each time it is one -- each run is called a  "trial."
+
+The `corpus.ini` file contains information about your project that Polo2 needs to know in order to run. You need to edit this file to get Polo2 to run, in addition to having a corpus file to work with.
+
+###  Edit the project `config.ini` file
+
+Use your text editor to open and edit the `config.ini` file that `polo` created for you. Information about the purpose and contents of this file is given below.
+
+### Acquire or create a corpus
+
+Go into the corpus directory and create a scraper that pulls content from 
+some source and creates a corpus file in standard source corpus format (SSCF). 
+Information about the requirements of SSCF is given below. If you already 
+have a corpus file or collection of files, write a script to convert it or them
+into SSCF.
+
+Polo2 provides an abstract class 'PoloScraper' that you can subclass to create your scraper, but  you do not need to use it. 
+
+### Run `polo`
+
+Once you have a corpus and have edited your config file, you are ready to go. Change back into your project root directory and run the following commands:
+
+````
+polo corpus
+````
+
+Make sure `config.ini` points to the correct source corpus file.
+
+After this completes, enter this:
+
+```
+polo mallet <trialname>
+```
+
+Running `polo mallet` by itself will use parameters from the trail1 section of `config.ini`. To run trials using other parameters, create a new section in `config.ini` and pass the section name as the argument to `polo mallet`.
+
+Both of these processes may take some time, depending on the size of your corpus.
+
+At the end of this process, you should now have two SQLite databases with all of the corpus and model data you need to run analytics and visualizations. Open them up in a SQLite viewer and see what you have.
+
+
 ## Understanding and Editing `config.ini`
 
 The `config.ini` is an essential part of Polo. Consistent with Polo's design philosophy (see below),
@@ -377,19 +450,3 @@ hard-coded in `PoloCorpus`, but this will change.
 * `word`: Words in the corpus. Should be really be `token_type`. Also called the "dictionary."
     * `word_id`: The word ID.
     * `word_str`: The normalized word string.
-
-
-## Motivation
-
-Create a tool to simplify the process of generating models from texts and, 
-more important, of producing interactive data products with these models.
-
-## Philosophy
-
-Polo is built on the principle that software developers should put as much information
-as possible into config files and databases (the fewer of these the better) and to save logic for
-essential data processing work. The idea is to remove contingent information from code and to make 
-program design more solid and elegant. Functions should be as pure as possible, with minimum side 
-effects, and their logic should be intuitive for users who have familiarized themselves with the 
-data structures the functions work on. Although Polo is by no means written as a functional program, 
-it strives to be functional in a general sense, and to be as interpretable as possible to users.
