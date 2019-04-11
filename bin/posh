@@ -243,10 +243,12 @@ Or to run a single command:
             if 'get_bigrams' in self.config.ini['DEFAULT'] and int(self.config.ini['DEFAULT']['get_bigrams']) == 1:
                 print("Importing bigrams")
                 self.corpus.add_tables_ngram_and_docngram(n=2)
+                self.add_stats_to_ngrams(type='bi')
 
             if 'get_trigrams' in self.config.ini['DEFAULT'] and int(self.config.ini['DEFAULT']['get_trigrams']) == 1:
                 print("Importing trigrams")
                 self.corpus.add_tables_ngram_and_docngram(n=3)
+                self.add_stats_to_ngrams(type='tri')
 
             print("Export mallet corpus")
             self.corpus.export_mallet_corpus()

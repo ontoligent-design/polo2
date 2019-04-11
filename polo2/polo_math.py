@@ -17,10 +17,10 @@ class PoloMath():
     @staticmethod
     def js_divergence(p1, p2):
         """Computes the Jensen-Shannon Divergence between two vectors (series)."""
-        P1 = p1 / np.sum(p1)
-        P2 = p2 / np.sum(p2)
-        M = .5 * (P1 + P2)
-        return .5 * (sps.entropy(P1, M, 2) + sps.entropy(P2, M, 2))
+        p = sps.entropy(p1, p2, 2)
+        q = sps.entropy(p2, p1, 2)
+        jsd = (p + q) / 2
+        return jsd
 
     @staticmethod
     def pwmi(p_a, p_b, p_ab, norm=.000001):

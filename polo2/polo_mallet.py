@@ -439,7 +439,7 @@ class PoloMallet(PoloDb):
         dtm_counts.name = 'doc_count'
         self.put_table(dtm_counts, 'topicdoc{}_matrix_counts'.format(group_col), index=True)
 
-    def create_topicdoc_group_matrix(self, group_field):
+    def create_topicdoc_group_matrix(self, group_field='doc_label'):
         """Create topicdoc group matrix table"""
 
         # Get source doc table
@@ -472,7 +472,7 @@ class PoloMallet(PoloDb):
         dtm_counts.name = 'doc_count'
         self.put_table(dtm_counts, 'topic{}_matrix_counts'.format(group_field), index=True)
 
-    def create_topicdoc_group_pairs(self, group_field):
+    def create_topicdoc_group_pairs(self, group_field='doc_label'):
         """Create topicdoc group pairs table"""
         thresh = self.get_thresh()
         gtm = self.get_table('topic{}_matrix'.format(group_field))

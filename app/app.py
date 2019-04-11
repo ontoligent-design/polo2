@@ -69,6 +69,7 @@ def project(slug, trial='trial1'):
     data['bigrams'] = els.get_top_bigrams()
     #data['ngm'] = els.get_ngram_group_matrix(degree=2)
     src_ord_col = cfg.ini['DEFAULT']['src_ord_col']
+    print(src_ord_col)
     data['dtm'] = els.get_topicdoc_group_matrix(group_field=src_ord_col)
     data['doc_ord_counts'] = els.get_topicdocgrooup_counts('topic{}_matrix_counts'.format(src_ord_col))
     data['dtm_sums'] = els.get_topicdoc_sum_matrix(data['dtm'], data['doc_ord_counts'])

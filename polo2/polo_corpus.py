@@ -1,13 +1,13 @@
 import os
 import re
 import pandas as pd
+import numpy as np
 import nltk
 import nltk.data
 from nltk.tokenize import sent_tokenize
 from textblob import TextBlob
 from polo2 import PoloDb
 from polo2 import PoloFile
-
 
 class PoloCorpus(PoloDb):
 
@@ -179,7 +179,98 @@ class PoloCorpus(PoloDb):
         del(doc['doc_sentiment'])
         self.put_table(doc, 'doc', index=True)
 
-    def add_tables_ngram_and_docngram(self, n = 2):
+    def add_tables_ngram_and_docngram(self, n=2):
+        """Create ngram and docngram tables for n"""
+
+        if n == 2:
+            sql = """
+            SELECT x.doc_id, x.token_str || '_' || y.token_str as ngram, count() as tf
+            FROM doctoken x JOIN doctoken y ON (
+                x.doc_id = y.doc_id AND x.sentence_id = y.sentence_id 
+                AND y.rowid = (x.rowid + 1))
+            GROUP BY x.doc_id, ngram
+            """
+            infix = 'bi'
+
+        elif n == 3:
+            sql = """
+            SELECT x.doc_id, x.token_str || '_' || y.token_str || '_' || z.token_str as ngram, count() as tf
+            FROM doctoken x JOIN doctoken y ON (
+                x.doc_id = y.doc_id AND x.sentence_id = y.sentence_id 
+                AND y.rowid = (x.rowid + 1))
+                JOIN doctoken z ON (
+                    x.doc_id = z.doc_id AND x.sentence_id = z.sentence_id
+                    AND z.rowid = (y.rowid + 1)) 
+            GROUP BY x.doc_id, ngram
+            """
+            infix = 'tri'
+        else:
+            return None
+
+        docngrams = pd.read_sql(sql, self.conn)
+        self.put_table(docngrams, 'ngram{}doc'.format(infix), index=False)
+
+    def add_stats_to_ngrams(self, type='bi'):
+        """Create distinct ngram tables with stats"""
+
+        from scipy.stats import entropy
+
+        sql1 = """
+        SELECT g.doc_id, d.doc_label, g.ngram, g.tf
+        FROM ngrambidoc g
+        JOIN doc d USING(doc_id)        
+        """
+
+        sql2 = """
+        SELECT ngram, doc_label, sum(tf) AS tf_sum FROM (
+            SELECT g.doc_id, d.doc_label, g.ngram, g.tf
+            FROM ngram{}doc g
+            JOIN doc d USING(doc_id)
+        )
+        group by doc_label, ngram
+        """.format(type)
+
+        sql3 = """
+        WITH stats(n) AS (SELECT COUNT() as n FROM doc)
+        SELECT ngram, count() as c, (SELECT n FROM stats) AS n, 
+        CAST(COUNT() AS REAL) / CAST((SELECT n FROM stats) AS REAL) AS df
+        FROM ngrambidoc
+        GROUP BY ngram
+        ORDER BY c DESC
+        """
+
+        docngram = pd.read_sql_query(sql1, self.conn, index_col='doc_id')
+        labelngram = pd.read_sql(sql2, self.conn,  index_col=['ngram','doc_label'])
+        ngramstats = pd.read_sql(sql3, self.conn,  index_col=['ngram'])
+
+        ndm = labelngram.unstack().fillna(0)
+        ndm.columns = ndm.columns.droplevel(0)
+
+        f_d = ndm.sum(0)
+        f_t = ndm.sum(1)
+
+        p_d = f_d / f_d.sum()
+        p_t = f_t / f_t.sum()
+
+        p_td = ndm.div(f_d)
+        p_dt = p_td.apply(lambda x: p_d.loc[x.name] / p_t.loc[x.index]) * p_td
+        h = p_dt.apply(entropy, 1)
+
+        score = (p_t * h).sort_values(ascending=False)
+
+        ngram = pd.DataFrame(docngram.ngram.value_counts())
+        ngram.index.name = 'ngram'
+        ngram.columns = ['ngram_count']
+        # ngram['df'] = docngram.groupby(['ngram']).doc_id.count()
+        ngram['idf'] = np.log10(1 / ngramstats.df) # ngram.apply(lambda x: np.log10(N/x.df), 1)
+        ngram['freq'] = f_t
+        ngram['entropy'] = h
+        ngram['score'] = score
+
+        self.put_table(ngram, 'ngram{}'.format(type), index=True)
+        self.put_table(ndm, 'ngram{}doc_group_matrix'.format(type), index=True)
+
+    def add_tables_ngram_and_docngram_old(self, n = 2):
         """Create ngram and docngram tables for n"""
         """This may seem slow, but it doesn't hang like Gensim's version"""
         if n not in range(2, 5):

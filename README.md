@@ -114,9 +114,9 @@ Of course, you can use any project name you want, within the constrains of filen
 The `polo setup <projectname>` command creates a directory to hold your project as well as the directories and files:
 
 ```
-myproject
-    corpus
-    trials
+myproject/
+    corpus/
+    trials/
     corpus.ini
 ``` 
 

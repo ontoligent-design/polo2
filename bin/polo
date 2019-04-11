@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#!# /usr/bin/env python3
 
 import argparse, sys, os
 from polo2 import PoloConfig
@@ -175,9 +175,11 @@ if __name__ == '__main__':
 
         if 'get_bigrams' in config.ini['DEFAULT'] and int(config.ini['DEFAULT']['get_bigrams']) == 1:
             run_funcs(corpus, ['add_tables_ngram_and_docngram'], arg_dict=dict(n=2))
+            run_funcs(corpus, ['add_stats_to_ngrams'], arg_dict=dict(type='bi'))
 
         if 'get_trigrams' in config.ini['DEFAULT'] and int(config.ini['DEFAULT']['get_trigrams']) == 1:
             run_funcs(corpus, ['add_tables_ngram_and_docngram'], arg_dict=dict(n=3))
+            run_funcs(corpus, ['add_stats_to_ngrams'], arg_dict=dict(type='tri'))
 
         run_funcs(corpus, ['export_mallet_corpus'])
 
@@ -217,6 +219,12 @@ if __name__ == '__main__':
         add_topic_glosses
         """.split()
         run_funcs(mallet, funcs)
+
+        groups = config.get_group_fields()
+        for group in groups:
+            # mallet.create_topicdoc_group_matrix(group_field=group)
+            run_funcs(mallet, ['create_topicdoc_group_matrix'], arg_dict=dict(group_field=group))
+
         print("Done with", mallet.trial_name)
 
     elif args.cmd == 'info':
@@ -272,7 +280,9 @@ if __name__ == '__main__':
         if args.name:
             ini_file = args.name
         if not os.path.isfile(ini_file):
-            print("Creating INI file template `{}`. When this process is done, edit this file with sensible values.".format(ini_file))
+            print("Creating INI file template `{}`. "
+                  "When this process is done, edit "
+                  "this file with sensible values.".format(ini_file))
             config = PoloConfig(ini_file, create=True)
         else:
             print("INI file `{}` already exists.".format(ini_file))
