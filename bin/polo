@@ -130,8 +130,10 @@ if __name__ == '__main__':
 
     # RETRO
     parser.retro = subparsers.add_parser('retro', help='Combines the corpus and model dbs for use in older Polo')
-    parser.retro.add_argument('-c', '--corpus_dbfile', help="Corpus database name", action="store", type=str, default=None)
-    parser.retro.add_argument('-m', '--model_dbfile', help="Mallet model database name", action="store", type=str, default=None)
+    parser.retro.add_argument('-c', '--corpus_dbfile', help="Corpus database name", action="store",
+                              type=str, default=None)
+    parser.retro.add_argument('-m', '--model_dbfile', help="Mallet model database name", action="store",
+                              type=str, default=None)
 
     # SEQUENCE
     parser.sequence = subparsers.add_parser('sequence', help='Run a sequence of commands')
