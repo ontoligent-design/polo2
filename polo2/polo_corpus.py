@@ -296,7 +296,8 @@ class PoloCorpus(PoloDb):
         # Remove ngrams that cross sentences or which have padding
         suffix = '_{}'.format(n - 1)
         docngram = docngram[(docngram['doc_id'] == docngram['doc_id'+suffix])
-                            & (docngram['sentence_id'] == docngram['sentence_id'+suffix])]  # Remove ngrams that cross sentences
+                            & (docngram['sentence_id'] == docngram['sentence_id'+suffix])]
+                            # Remove ngrams that cross sentences
 
         # Remove redundant doc and sentence cols
         cols = ['doc_id', 'sentence_id', 'token_str'] + ['token_str_{}'.format(i) for i in range(1, n)]
@@ -311,7 +312,7 @@ class PoloCorpus(PoloDb):
 
         self.put_table(docngram, 'ngram{}doc'.format(self.ngram_prefixes[n]), index=True)
 
-        #fixme: Create fuction here
+        # fixme: Create fuction here
         # Get ngrams sorted by special sauce
         from scipy.stats import entropy
         docs = pd.read_sql_query("SELECT doc_id, doc_label FROM doc", self.conn, index_col='doc_id')
