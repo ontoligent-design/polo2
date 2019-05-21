@@ -9,6 +9,7 @@ from textblob import TextBlob
 from polo2 import PoloDb
 from polo2 import PoloFile
 
+
 class PoloCorpus(PoloDb):
 
     ngram_prefixes = ['no', 'uni', 'bi', 'tri', 'quadri']
@@ -85,7 +86,7 @@ class PoloCorpus(PoloDb):
         doctokens.set_index(['doc_id', 'sentence_id', 'token_ord'], inplace=True)
 
         # Normalize
-        #doctokens = doctokens[doctokens.token_pos.str.match(r'^(NN|JJ|VB)')]
+        # doctokens = doctokens[doctokens.token_pos.str.match(r'^(NN|JJ|VB)')]
         doctokens.token_str = doctokens.token_str.str.lower()
         doctokens.token_str = doctokens.token_str.str.replace(r'[^a-z]+', '')
         doctokens = doctokens[~doctokens.token_str.str.match(r'^\s*$')]
@@ -346,6 +347,49 @@ class PoloCorpus(PoloDb):
     def add_trigram_tables(self):
         """Convenience function to add ngram tables for n = 3"""
         self.add_tables_ngram_and_docngram(n=3)
+
+    def add_pca_tables(self, k=10, quantile=.9):
+        """Create a PCA table with K components using quantile by TFIDF"""
+        # todo: Store stats about TFIDF and other things
+
+        from sklearn.preprocessing import normalize
+        from sklearn.decomposition import PCA
+
+        doctokenbow = self.get_table('doctokenbow', set_index=True)
+        vocab = self.get_table('token', set_index=True)
+        stops = self.get_table('stopword')
+
+        # Method 1
+        # doctokenbow = doctokenbow[doctokenbow.tfidf > doctokenbow.tfidf.quantile(quantile)]
+        # doctokenbow = doctokenbow.sort_index()
+
+        # Method 2
+        # vocab_reduced = vocab[(vocab.tfidf_sum > vocab.tfidf_sum.quantile(.75))
+        #           & (vocab.doc_count > vocab.doc_count.quantile(.75))]
+
+        # Method 3
+        vocab_reduced = vocab[~vocab.token_str.isin(stops)].doc_count.sort_values(ascending=False).head(10000)
+
+        doctokenbow = doctokenbow.loc[vocab_reduced.index]
+
+        tfidf = doctokenbow['tfidf'].unstack().fillna(0)
+        vocab_idx = tfidf.columns
+        doc_idx = tfidf.index
+
+        pca = PCA(n_components=k)
+
+        pccols = ["PC{}".format(i+1) for i in range(k)]
+
+        # pca_doc
+        projected = pca.fit_transform(normalize(tfidf.values, norm='l2'))
+        pca_doc = pd.DataFrame(projected, columns=pccols, index=doc_idx)
+
+        # pca_term
+        pca_term = pd.DataFrame((pca.components_.T * np.sqrt(pca.explained_variance_)),
+                                columns=pccols, index=vocab_idx)
+
+        self.put_table(pca_doc, 'pca_doc', index=True, index_label='doc_id')
+        self.put_table(pca_term, 'pca_term', index=True)
 
     def export_mallet_corpus(self):
         """Create a MALLET corpus file"""

@@ -329,4 +329,17 @@ class Elements(object):
             mgm = pd.DataFrame()
         return ngm
 
+    def get_pca_term(self):
+        try:
+            df = self.corpus.get_table('pca_term')
+            return df
+        except:
+            return None
+
+    def get_pca_doc(self):
+        try:
+            df = self.corpus.get_table('pca_doc')
+            return df
+        except:
+            return None
 

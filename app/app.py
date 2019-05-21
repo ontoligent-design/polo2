@@ -246,6 +246,11 @@ def ngram_item(slug, trial, ngram):
     data['groups'] = els.get_ngrams_per_group(ngram, data['degree'])
     return render_template('ngram_item.html', **data)
 
+@app.route("/projects/<slug>/pca")
+def pca_page(slug):
+    cfg = get_project_config(slug)
+    pca_docs = ''
+
 # Helpers -- Consider moving to module
 def get_project_config_file(slug):
     return '{}/{}/config.ini'.format(projects_dir, slug)
