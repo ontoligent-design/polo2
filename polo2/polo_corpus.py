@@ -78,11 +78,14 @@ class PoloCorpus(PoloDb):
         # Replacements?
         # reps = self._get_replacments()
 
-        doctokens = pd.DataFrame([(sentences[0], j, k, token)
+
+
+        doctokens = pd.DataFrame([(sentences[0], j, k, token[0], token[1])
                      for sentences in docs.apply(lambda x: (x.name, sent_tokenize(x.doc_content)), 1)
                      for j, sentence in enumerate(sentences[1])
-                     for k, token in enumerate(nltk.word_tokenize(sentence))
-                     ], columns=['doc_id', 'sentence_id', 'token_ord', 'token_str'])
+                     # for k, token in enumerate(nltk.word_tokenize(sentence))
+                     for k, token in enumerate(nltk.pos_tag(nltk.word_tokenize(sentence)))
+                     ], columns=['doc_id', 'sentence_id', 'token_ord', 'token_str', 'pos'])
         doctokens.set_index(['doc_id', 'sentence_id', 'token_ord'], inplace=True)
 
         # Normalize
@@ -348,72 +351,93 @@ class PoloCorpus(PoloDb):
         """Convenience function to add ngram tables for n = 3"""
         self.add_tables_ngram_and_docngram(n=3)
 
-    def add_pca_tables(self, k=10, quantile=.9):
-        """Create a PCA table with K components using quantile by TFIDF"""
-        # todo: Store stats about TFIDF and other things
-
+    def add_pca_tables(self, k_components=10, n_terms=1000):
+        """Create a PCA table with k components, n terms"""
         from sklearn.preprocessing import normalize
         from sklearn.decomposition import PCA
 
-        doctokenbow = self.get_table('doctokenbow', set_index=True)
-        vocab = self.get_table('token', set_index=True)
-        stops = self.get_table('stopword')
+        sql = """
+        select doc_id, token_id, token_str, tfidf 
+        from doctokenbow join token using (token_id)
+        where token_id in (
+            select token_id from token
+            order by doc_count desc
+            limit ?
+        )
+        """
 
-        # Method 1
-        # doctokenbow = doctokenbow[doctokenbow.tfidf > doctokenbow.tfidf.quantile(quantile)]
-        # doctokenbow = doctokenbow.sort_index()
+        doctokenbow = pd.read_sql_query(sql, self.conn, params=(n_terms,), index_col=['doc_id', 'token_id'])
+        vocab = doctokenbow.reset_index()[['token_id', 'token_str']].drop_duplicates().set_index('token_id')
+        docs = doctokenbow['tfidf'].unstack().fillna(0)
 
-        # Method 2
-        # vocab_reduced = vocab[(vocab.tfidf_sum > vocab.tfidf_sum.quantile(.75))
-        #           & (vocab.doc_count > vocab.doc_count.quantile(.75))]
-
-        # Method 3
-        vocab_reduced = vocab[~vocab.token_str.isin(stops)].doc_count.sort_values(ascending=False).head(10000)
-
-        doctokenbow = doctokenbow.loc[vocab_reduced.index]
-
-        tfidf = doctokenbow['tfidf'].unstack().fillna(0)
-        vocab_idx = tfidf.columns
-        doc_idx = tfidf.index
-
-        pca = PCA(n_components=k)
-
-        pccols = ["PC{}".format(i+1) for i in range(k)]
-
-        # pca_doc
-        projected = pca.fit_transform(normalize(tfidf.values, norm='l2'))
-        pca_doc = pd.DataFrame(projected, columns=pccols, index=doc_idx)
-
-        # pca_term
+        pca = PCA(n_components=k_components)
+        projected = pca.fit_transform(normalize(docs.values, norm='l2'))
+        pccols = ["PC{}".format(i) for i in range(k_components)]
+        pca_doc = pd.DataFrame(projected, columns=pccols, index=docs.index)
         pca_term = pd.DataFrame((pca.components_.T * np.sqrt(pca.explained_variance_)),
-                                columns=pccols, index=vocab_idx)
+                                columns=pccols, index=docs.columns)
+        pca_term['token_str'] = vocab['token_str']
+        pca_item = self._get_pca_terms(pca_term, k_components)
+        pca_term = pca_term.drop('token_str', 1)
+        pca_item['explained_variance'] = pd.DataFrame(pca.explained_variance_)
+        pca_item['explained_variance_ratio'] = pd.DataFrame(pca.explained_variance_ratio_)
 
+        pca_doc_narrow = pca_doc.stack().reset_index()
+        pca_doc_narrow.columns = ['doc_id', 'pc_id', 'pc_weight']
+        pca_doc_narrow['pc_id'] = pca_doc_narrow['pc_id'].apply(lambda x: x.replace('PC', '')).astype('int')
+        pca_doc_narrow = pca_doc_narrow.set_index(['doc_id', 'pc_id']).dropna().sort_index()
+
+        pca_term_narrow = pca_term.stack().reset_index()
+        pca_term_narrow.columns = ['token_id', 'pc_id', 'pc_weight']
+        pca_term_narrow['pc_id'] = pca_term_narrow['pc_id'].apply(lambda x: x.replace('PC', '')).astype('int')
+        pca_term_narrow = pca_term_narrow.set_index(['pc_id', 'token_id']).dropna().sort_index()
+
+        self.put_table(pca_item, 'pca_item', index=True)
         self.put_table(pca_doc, 'pca_doc', index=True, index_label='doc_id')
         self.put_table(pca_term, 'pca_term', index=True)
+        self.put_table(pca_term_narrow, 'pca_term_narrow', index=True)
+        self.put_table(pca_doc_narrow, 'pca_doc_narrow', index=True)
 
-    def export_mallet_corpus(self):
+    def _get_pca_terms(self, V, k=10, n=15):
+        loadings = []
+        for i in range(k):
+            PC = 'PC{}'.format(i)
+            cols = ['token_str', PC]
+            pos = V.sort_values(PC, ascending=False).iloc[:n][cols].copy()
+            neg = V.sort_values(PC, ascending=True).iloc[:n][cols].copy()
+            pos['pc_id'] = i
+            neg['pc_id'] = i
+            neg['pc_val'] = neg[PC]
+            pos['val'] = 'pos'
+            neg['val'] = 'neg'
+            pos['pc_val'] = pos[PC]
+            loadings.append(pos)
+            loadings.append(neg)
+        loadings = pd.concat(loadings, sort=True).iloc[:, k:].reset_index(drop=True).set_index('pc_id')
+        loadings = loadings.groupby(['pc_id', 'val']).token_str.apply(lambda x: ' '.join(x)) \
+            .to_frame().unstack()
+        loadings.columns = loadings.columns.droplevel(0)
+        return loadings
+
+    # def add_nnmf_tables(self, k=20):
+    #     from sklearn.preprocessing import normalize
+    #     from sklearn.decomposition import NMF
+    #
+    #     doctokenbow = self.get_table('doctokenbow', set_index=True)
+    #     vocab = self.get_table('token', set_index=True)
+    #     stops = self.get_table('stopword')
+    #     vocab_reduced = vocab[~vocab.token_str.isin(stops)] \
+    #         .doc_count.sort_values(ascending=False).head(v_terms)
+    #     doctokenbow = doctokenbow.loc[vocab_reduced.index]
+    #     tfidf = doctokenbow['tfidf'].unstack().fillna(0)
+    #     vocab_idx = tfidf.columns
+    #     doc_idx = tfidf.index
+
+    def export_mallet_corpus(self, token_type='token_str'):
         """Create a MALLET corpus file"""
+        # token_type = 'token_str'  # Could also be token_stem_porter token_stem_snowball
         # We export the doctoken table as the input corpus to MALLET. This preserves our normalization
         # between the corpus and trial model databases.
-        
-        # _mallet_corpus_sql = """
-        # CREATE VIEW mallet_corpus AS
-        # SELECT dt.doc_id, d.doc_label, GROUP_CONCAT(ngram, ' ') AS doc_content
-        # FROM ngrambidoc dt JOIN doc d USING (doc_id) JOIN ngrambi t USING (ngram)
-        # GROUP BY dt.doc_id
-        # ORDER BY dt.doc_id
-        # """
-
-        token_type = 'token_str' # Could also be token_stem_porter token_stem_snowball
-        # _mallet_corpus_sql = """
-        # CREATE VIEW mallet_corpus AS
-        # SELECT dt.doc_id, d.doc_label, GROUP_CONCAT({}, ' ') AS doc_content
-        # FROM doctoken dt JOIN doc d USING (doc_id) JOIN token t USING (token_str)
-        # WHERE dt.token_pos LIKE 'NN%' OR dt.token_pos LIKE 'VB%' OR dt.token_pos LIKE 'JJ%'
-        # GROUP BY dt.doc_id
-        # ORDER BY dt.doc_id
-        # """.format(token_type)
-        
         mallet_corpus_sql = """
         CREATE VIEW mallet_corpus AS
         SELECT dt.doc_id, d.doc_label, GROUP_CONCAT({}, ' ') AS doc_content
@@ -421,7 +445,6 @@ class PoloCorpus(PoloDb):
         GROUP BY dt.doc_id
         ORDER BY dt.doc_id
         """.format(token_type)
-
         self.conn.execute("DROP VIEW IF EXISTS mallet_corpus")
         self.conn.execute(mallet_corpus_sql)
         self.conn.commit()

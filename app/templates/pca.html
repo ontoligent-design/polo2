@@ -1,0 +1,119 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+{% set k = pca_terms.shape[1] - 1 %}
+
+<pre>{{pca_terms}}</pre>
+
+<div class="w3-half w3-container">
+    <h1>K = {{k}},  N = {{pca_docs.shape[0]}}</h1>
+    <div id="box-plot"></div>
+    <div id="pca_plots"></div>
+</div>
+
+<div class="w3-rest">
+
+</div>
+
+{% endblock %}
+
+{% block code %}
+
+{% set k = pca_terms.shape[1] - 1 %}
+
+// DATA
+pc = []
+{% for i in range(k) %}
+{% set col = 'PC{}'.format(i+1) %}
+pc.push( {{pca_docs[col].tolist() | tojson | safe }})
+{% endfor %}
+pc_docs = {{pca_docs.doc_id.tolist() | tojson | safe}}
+
+// projects/$slug/$trial/doc/$doc_id
+
+// BOX PLOT
+bx_traces = []
+{% for i in range(k) %}
+bx_traces.push({ y: pc[{{i}}], type: 'box', name: 'PC{{i+1}}' })
+{% endfor %}
+
+var bx_layout = {
+    title: "Box Plots of PCs",
+    showlegend: false
+}
+Plotly.newPlot('box-plot', bx_traces, bx_layout);
+
+// SCATTER PLOTS
+labels = {{pca_labels.tolist() | tojson | safe}}
+uniques = {{pca_label_uniques.tolist() | tojson | safe}}
+var tickvals = []
+for (i=0; i < {{ pca_label_uniques.shape[0] }}; i++) { tickvals.push(i) }
+console.log(tickvals)
+function plot_pcas(pc_x, pc_y) {
+    var x_lab = pc_x + 1
+    var y_lab = pc_y + 1
+    var  div_id = 'scatter_' + x_lab + '_' + y_lab
+    $('#pca_plots').append('<div id="' + div_id + '"></div>')
+    var trace1 = {
+        x: pc[pc_x],
+        y: pc[pc_y],
+        type: 'scatter',
+        mode: 'markers',
+        text: pc_docs,
+        marker: {
+            color: labels,
+            colorscale: 'YIGnBu',
+            showscale: true,
+            colorbar: {
+                tickmode: 'arrays',
+                //nticks: {{pca_label_uniques.shape[0]}},
+                tickvals: tickvals,
+                ticktext: uniques,
+            }
+        }
+    };
+    /*
+    var trace2 = {
+        x: pc[pc_x],
+        y: pc[pc_y],
+        type: 'histogram2dcontour',
+        name: 'density',
+        ncontours: 20,
+        colorscale: 'Hot',
+        reversescale: true,
+        showscale: false,
+    };
+    var trace3 = {
+      x: pc[pc_x],
+      name: 'x density',
+      marker: {color: 'rgb(102,0,0)'},
+      yaxis: 'y2',
+      type: 'histogram'
+    };
+    var trace4 = {
+      y: pc[pc_y],
+      name: 'y density',
+      marker: {color: 'rgb(102,0,0)'},
+      xaxis: 'x2',
+      type: 'histogram'
+    };
+    */
+    var layout = {
+        title: "PC" + x_lab + " and PC" + y_lab,
+        hovermode: 'closest'
+    }
+    Plotly.newPlot(div_id, [trace1], layout);
+    var plot = document.getElementById(div_id), data = pc_docs
+    plot.on('plotly_click', function(data){
+        doc_id = data.points[0].text
+        url = '/projects/{{slug}}/{{trial}}/doc/' + doc_id
+        window.open(url, '_blank')
+    });
+}
+
+for (i = 0; i < ({{k}} - 1); i++) {
+    plot_pcas(i, i+1)
+}
+
+{% endblock %}

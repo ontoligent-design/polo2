@@ -329,16 +329,30 @@ class Elements(object):
             mgm = pd.DataFrame()
         return ngm
 
-    def get_pca_term(self):
+    def get_pca_terms(self):
         try:
-            df = self.corpus.get_table('pca_term')
+            df = self.corpus.get_table('pca_term', set_index='token_id')
+            # for pc in df.columns:
+            #     top_pos = df[pc].sort_values(pc).head(10)
+            #     top_neg = df[pc].sort_values(pc).tail(10)
+                # print(pc)
+                # print(top_pos)
+                # print(top_neg)
             return df
         except:
             return None
 
-    def get_pca_doc(self):
+    def get_pca_docs(self, n=1000):
+        """Grab a random sample of n documents for plotting"""
+        sql = """
+        SELECT d.doc_label, p.* 
+        FROM pca_doc p JOIN doc d USING(doc_id) 
+        ORDER BY RANDOM() 
+        LIMIT ?
+        """
         try:
-            df = self.corpus.get_table('pca_doc')
+            df = pd.read_sql_query(sql, self.corpus.conn, params=(n,))
+            # df = self.corpus.get_table('pca_doc')
             return df
         except:
             return None
