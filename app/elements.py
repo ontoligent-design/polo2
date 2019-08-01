@@ -1,5 +1,6 @@
 from polo2 import PoloDb
 import pandas as pd
+import numpy as np
 
 class Corpus(object):
 
@@ -332,12 +333,13 @@ class Elements(object):
     def get_pca_terms(self):
         try:
             df = self.corpus.get_table('pca_term', set_index='token_id')
-            # for pc in df.columns:
-            #     top_pos = df[pc].sort_values(pc).head(10)
-            #     top_neg = df[pc].sort_values(pc).tail(10)
-                # print(pc)
-                # print(top_pos)
-                # print(top_neg)
+            return df
+        except:
+            return None
+
+    def get_pca_items(self):
+        try:
+            df = self.corpus.get_table('pca_item', set_index='pc_id')
             return df
         except:
             return None
@@ -357,3 +359,20 @@ class Elements(object):
         except:
             return None
 
+    def get_tsne_coords(self):
+        """Get the x and y values of the word_embeddings table to plot"""
+        sql = """
+        select token_str, tsne_x, tsne_y,  token_count, pc_id
+        from word_embedding we 
+        join token t using(token_str)
+        join (
+            select token_id, pc_id, max(pc_weight) as argmax
+            from pca_term_narrow
+            group by (token_id)
+        ) pca using(token_id)
+        """
+        df = pd.read_sql_query(sql, self.corpus.conn)
+        df['token_norm_count'] = np.round(np.log2(df['token_count'])**1.2)
+        return df
+        # df = self.corpus.get_table('word_embedding')
+        # return df[['token_str', 'tsne_x', 'tsne_y']]

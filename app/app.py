@@ -273,7 +273,18 @@ def pca_page(slug):
     labels, uniques = data['pca_docs']['doc_label'].factorize()
     data['pca_labels'] = labels
     data['pca_label_uniques'] = uniques
+    data['pca_items'] = els.get_pca_items()
     return render_template('pca.html', **data)
+
+@app.route("/projects/<slug>/w2v")
+def w2v_page(slug):
+    cfg = get_project_config(slug)
+    els = Elements(cfg, 'trial1')  # We don't need a trial value
+    data['slug'] = slug
+    data['trial'] = 'trial1'
+    data['page_title'] = 'Word Embeddings'
+    data['coords'] = els.get_tsne_coords()
+    return render_template('w2v.html', **data)
 
 
 # Helpers -- Consider moving to module
@@ -308,9 +319,12 @@ def set_project_menu(cfg, slug, trial):
         group_field = group_field.strip()
         data['sub_menu'].append(("{}/topic_heatmap/{}".format(path_prefix, group_field),
                                     "Topic {} Heatmap".format(group_field)))
-    data['sub_menu'].append(("{}/topic_pair_net/0.18".format(path_prefix), "Topic Pair Network"))
-    data['sub_menu'].append(("{}/topic_pair_heatmap/jsd".format(path_prefix), "Topic Pair Similiarity Heatmap"))
-    data['sub_menu'].append(("{}/topic_pair_heatmap/i_ab".format(path_prefix), "Topic Pair Contiguity Heatmap"))
+    data['sub_menu'].append(("{}/topic_pair_net/0.18".format(path_prefix),
+                             "Topic Pair Network"))
+    data['sub_menu'].append(("{}/topic_pair_heatmap/jsd".format(path_prefix),
+                             "Topic Pair Similiarity Heatmap"))
+    data['sub_menu'].append(("{}/topic_pair_heatmap/i_ab".format(path_prefix),
+                             "Topic Pair Contiguity Heatmap"))
     data['sub_menu'].append(("{}/docs".format(path_prefix), "Documents"))
 
 

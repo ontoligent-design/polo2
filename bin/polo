@@ -170,6 +170,7 @@ if __name__ == '__main__':
         add_stems_to_token
         add_tfidf_to_doctokenbow
         add_pca_tables
+        add_word2vec_table
         """.split()
         run_funcs(corpus, funcs)
 

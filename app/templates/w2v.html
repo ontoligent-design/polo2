@@ -1,0 +1,44 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+<div id="tsne_plot"></div>
+
+{% endblock %}s
+
+{% block code %}
+
+var labels = {{coords.token_str.tolist() | tojson | safe}}
+var x = {{coords.tsne_x.tolist() | tojson | safe}}
+var y = {{coords.tsne_y.tolist() | tojson | safe}}
+var counts = {{coords.token_norm_count.tolist() | tojson | safe}}
+var pcs = {{coords.pc_id.tolist() | tojson | safe}}
+var trace = {
+    x: x,
+    y: y,
+    text: labels,
+    textposition: 'top center',
+    textfont: {
+        family:  'Raleway, sans-serif',
+        size: counts,
+        color: counts
+    },
+    marker: { 
+        size: counts,
+        color: pcs,
+        colorscale: 'Rainbow',
+        sizemode: 'diameter'
+    },
+    type: 'scatter',
+    mode: 'markers+text'
+}
+var layout = {
+    /* title: "Word Embeddings", */
+    hovermode: 'closest',
+    width: 1200,
+    height: 1200,
+    hoverinfo: 'none'
+}
+Plotly.newPlot('tsne_plot', [trace], layout);
+
+{% endblock %}

@@ -4,8 +4,6 @@
 
 {% set k = pca_terms.shape[1] - 1 %}
 
-<pre>{{pca_terms}}</pre>
-
 <div class="w3-half w3-container">
     <h1>K = {{k}},  N = {{pca_docs.shape[0]}}</h1>
     <div id="box-plot"></div>
@@ -14,6 +12,15 @@
 
 <div class="w3-rest">
 
+{% for item in pca_items.index %}
+
+<h2>PC{{item+1}}</h2>
+<div class="w3-large">
+    <p class="w3-large"><b>&plus;</b> {{pca_items.loc[item, 'pos']}}</p>
+    <p class="w3-large"><b>&minus;</b> {{pca_items.loc[item, 'neg']}}</p>    
+    <!-- <p class="w3-large"><tt>explained variance</tt>: {{pca_items.loc[item, 'explained_variance']}}</p> -->
+</div>
+{% endfor %}
 </div>
 
 {% endblock %}
@@ -24,8 +31,9 @@
 
 // DATA
 pc = []
-{% for i in range(k) %}
-{% set col = 'PC{}'.format(i+1) %}
+{% for i in range(k+1) %}
+// {{i}}
+{% set col = 'PC{}'.format(i) %}
 pc.push( {{pca_docs[col].tolist() | tojson | safe }})
 {% endfor %}
 pc_docs = {{pca_docs.doc_id.tolist() | tojson | safe}}
@@ -34,7 +42,8 @@ pc_docs = {{pca_docs.doc_id.tolist() | tojson | safe}}
 
 // BOX PLOT
 bx_traces = []
-{% for i in range(k) %}
+{% for i in range(k+1) %}
+// {{i}}
 bx_traces.push({ y: pc[{{i}}], type: 'box', name: 'PC{{i+1}}' })
 {% endfor %}
 
@@ -63,7 +72,7 @@ function plot_pcas(pc_x, pc_y) {
         text: pc_docs,
         marker: {
             color: labels,
-            colorscale: 'YIGnBu',
+            colorscale: 'Rainbow',
             showscale: true,
             colorbar: {
                 tickmode: 'arrays',

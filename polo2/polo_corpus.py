@@ -1,5 +1,4 @@
 import os
-import re
 import pandas as pd
 import numpy as np
 import nltk
@@ -74,11 +73,6 @@ class PoloCorpus(PoloDb):
     def add_table_doctoken(self):
         """Create doctoken and doctokenbow tables; update doc table"""
         docs = self.get_table('doc', set_index=True)
-
-        # Replacements?
-        # reps = self._get_replacments()
-
-
 
         doctokens = pd.DataFrame([(sentences[0], j, k, token[0], token[1])
                      for sentences in docs.apply(lambda x: (x.name, sent_tokenize(x.doc_content)), 1)
@@ -351,8 +345,32 @@ class PoloCorpus(PoloDb):
         """Convenience function to add ngram tables for n = 3"""
         self.add_tables_ngram_and_docngram(n=3)
 
+    def add_word2vec_table(self, k=246, window=5, min_count=100, workers=4,
+            perplexity=40, n_components=2, init='pca', n_iter=2500, random_state=23):
+        """Use Gensim to generate word2vec model from doctoken table"""
+        from gensim.models import word2vec
+        from sklearn.manifold import TSNE
+        
+        doctoken = self.get_table('doctoken', set_index=True)
+        corpus = doctoken.groupby('doc_id').apply(lambda x: x.token_str.tolist()).values.tolist()
+        model = word2vec.Word2Vec(corpus, size=k, window=window, min_count=min_count, workers=workers)
+        del corpus
+        df = pd.DataFrame(model.wv.vectors, index=model.wv.index2entity)
+        del model
+        df.columns = ['F{}'.format(i) for i in range(k)]
+        df.index.name = 'token_str' # todo: Later change this to term_str
+        
+        tsne_model = TSNE(perplexity=perplexity,
+                          n_components=n_components, init=init,
+                          n_iter=n_iter, random_state=random_state)
+        tsne_values = tsne_model.fit_transform(df)
+        df['tsne_x'] = tsne_values[:, 0]
+        df['tsne_y'] = tsne_values[:, 1]
+        
+        self.put_table(df, 'word_embedding', index=True)
+
     def add_pca_tables(self, k_components=10, n_terms=1000):
-        """Create a PCA table with k components, n terms"""
+        """Create a PCA table with k components, n terms from doctokenbow table"""
         from sklearn.preprocessing import normalize
         from sklearn.decomposition import PCA
 
@@ -392,6 +410,7 @@ class PoloCorpus(PoloDb):
         pca_term_narrow['pc_id'] = pca_term_narrow['pc_id'].apply(lambda x: x.replace('PC', '')).astype('int')
         pca_term_narrow = pca_term_narrow.set_index(['pc_id', 'token_id']).dropna().sort_index()
 
+        # todo: Decide if you want to keep narrow and wide tables
         self.put_table(pca_item, 'pca_item', index=True)
         self.put_table(pca_doc, 'pca_doc', index=True, index_label='doc_id')
         self.put_table(pca_term, 'pca_term', index=True)
@@ -433,20 +452,32 @@ class PoloCorpus(PoloDb):
     #     vocab_idx = tfidf.columns
     #     doc_idx = tfidf.index
 
-    def export_mallet_corpus(self, token_type='token_str'):
+    def export_mallet_corpus(self):
         """Create a MALLET corpus file"""
         # token_type = 'token_str'  # Could also be token_stem_porter token_stem_snowball
         # We export the doctoken table as the input corpus to MALLET. This preserves our normalization
         # between the corpus and trial model databases.
+
+        # mallet_corpus_sql = """
+        # CREATE VIEW mallet_corpus AS
+        # SELECT dt.doc_id, d.doc_label, GROUP_CONCAT({}, ' ') AS doc_content
+        # FROM doctoken dt JOIN doc d USING (doc_id) JOIN token t USING (token_str)
+        # GROUP BY dt.doc_id
+        # ORDER BY dt.doc_id
+        # """.format(token_type)
+        # self.conn.execute("DROP VIEW IF EXISTS mallet_corpus")
+        # self.conn.execute(mallet_corpus_sql)
+        # self.conn.commit()
+        # mallet_corpus = pd.read_sql_query('SELECT * FROM mallet_corpus', self.conn)
+
         mallet_corpus_sql = """
-        CREATE VIEW mallet_corpus AS
-        SELECT dt.doc_id, d.doc_label, GROUP_CONCAT({}, ' ') AS doc_content
-        FROM doctoken dt JOIN doc d USING (doc_id) JOIN token t USING (token_str)
+        SELECT dt.doc_id, d.doc_label, GROUP_CONCAT(token_str, ' ') AS doc_content
+        FROM doctoken dt 
+            JOIN doc d USING (doc_id) 
+            JOIN token t USING (token_str)
         GROUP BY dt.doc_id
         ORDER BY dt.doc_id
-        """.format(token_type)
-        self.conn.execute("DROP VIEW IF EXISTS mallet_corpus")
-        self.conn.execute(mallet_corpus_sql)
-        self.conn.commit()
-        mallet_corpus = pd.read_sql_query('SELECT * FROM mallet_corpus', self.conn)
+        """
+        mallet_corpus = pd.read_sql_query(mallet_corpus_sql, self.conn)
+
         mallet_corpus.to_csv(self.cfg_mallet_corpus_input, index=False, header=False, sep=',')
