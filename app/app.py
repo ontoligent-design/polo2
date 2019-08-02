@@ -261,29 +261,37 @@ def ngram_item(slug, trial, ngram):
     return render_template('ngram_item.html', **data)
 
 
-@app.route("/projects/<slug>/pca")
-def pca_page(slug):
+@app.route("/projects/<slug>/<trial>/pca")
+def pca_page(slug, trial='trial1'):
     cfg = get_project_config(slug)
-    els = Elements(cfg, 'trial1')  # We don't need a trial value
+    els = Elements(cfg, trial)
     data['slug'] = slug
-    data['trial'] = 'trial1'
+    data['trial'] = trial
     data['page_title'] = 'PCA'
+
     data['pca_docs'] = els.get_pca_docs()
     data['pca_terms'] = els.get_pca_terms()
     labels, uniques = data['pca_docs']['doc_label'].factorize()
     data['pca_labels'] = labels
     data['pca_label_uniques'] = uniques
     data['pca_items'] = els.get_pca_items()
+    data['max_variance'] = data['pca_items']['explained_variance'].max()
+
     return render_template('pca.html', **data)
 
-@app.route("/projects/<slug>/w2v")
-def w2v_page(slug):
+
+@app.route("/projects/<slug>/<trial>/w2v")
+@app.route("/projects/<slug>/<trial>/w2v/<join>")
+def w2v_page(slug, trial='trial1', join='inner'):
     cfg = get_project_config(slug)
-    els = Elements(cfg, 'trial1')  # We don't need a trial value
+    els = Elements(cfg, trial)
+
     data['slug'] = slug
-    data['trial'] = 'trial1'
+    data['trial'] = trial
     data['page_title'] = 'Word Embeddings'
-    data['coords'] = els.get_tsne_coords()
+
+    data['coords'] = els.get_tsne_coords(join=join)
+
     return render_template('w2v.html', **data)
 
 
@@ -326,6 +334,8 @@ def set_project_menu(cfg, slug, trial):
     data['sub_menu'].append(("{}/topic_pair_heatmap/i_ab".format(path_prefix),
                              "Topic Pair Contiguity Heatmap"))
     data['sub_menu'].append(("{}/docs".format(path_prefix), "Documents"))
+    data['sub_menu'].append(("{}/pca".format(path_prefix), "Principle Components"))
+    data['sub_menu'].append(("{}/w2v".format(path_prefix), "Word Embeddings"))
 
 
 if __name__ == '__main__':

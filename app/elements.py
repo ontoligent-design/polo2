@@ -235,7 +235,7 @@ class Elements(object):
         else:
             return tpm
 
-    def get_topicpair_net(self, thresh = 0.05):
+    def get_topicpair_net(self, thresh=0.05):
         topics = self.model.get_table('topic')
         pairs = self.model.get_table('topicpair', set_index=False)
         pairs = pairs.loc[pairs.i_ab >= thresh, ['topic_a_id', 'topic_b_id', 'i_ab']]
@@ -339,7 +339,8 @@ class Elements(object):
 
     def get_pca_items(self):
         try:
-            df = self.corpus.get_table('pca_item', set_index='pc_id')
+            df = self.corpus.get_table('pca_item') #, set_index='pc_id')
+            df['label'] = df['pc_id'].apply(lambda x: 'PC{}'.format(x + 1), 1)
             return df
         except:
             return None
@@ -354,25 +355,22 @@ class Elements(object):
         """
         try:
             df = pd.read_sql_query(sql, self.corpus.conn, params=(n,))
-            # df = self.corpus.get_table('pca_doc')
             return df
         except:
             return None
 
-    def get_tsne_coords(self):
+    def get_tsne_coords(self, join='left'):
         """Get the x and y values of the word_embeddings table to plot"""
         sql = """
-        select token_str, tsne_x, tsne_y,  token_count, pc_id
-        from word_embedding we 
-        join token t using(token_str)
-        join (
-            select token_id, pc_id, max(pc_weight) as argmax
-            from pca_term_narrow
-            group by (token_id)
-        ) pca using(token_id)
-        """
+        SELECT token_str, tsne_x, tsne_y, token_count, pc_id
+        FROM word_embedding we 
+        JOIN token t USING(token_str)
+        {} JOIN (
+            SELECT token_id, pc_id, max(pc_weight) AS argmax
+            FROM pca_term_narrow
+            GROUP BY (token_id)
+        ) pca USING(token_id)
+        """.format(join)
         df = pd.read_sql_query(sql, self.corpus.conn)
         df['token_norm_count'] = np.round(np.log2(df['token_count'])**1.2)
         return df
-        # df = self.corpus.get_table('word_embedding')
-        # return df[['token_str', 'tsne_x', 'tsne_y']]

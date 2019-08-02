@@ -33,6 +33,7 @@ class PoloCorpus(PoloDb):
 
     def import_table_doc(self, src_file_name=None, normalize=True):
         """Import source file into doc table"""
+
         if not src_file_name:
             src_file_name = self.cfg_src_file_name
         doc = pd.read_csv(src_file_name, header=0, sep=self.cfg_src_file_sep)
@@ -57,6 +58,7 @@ class PoloCorpus(PoloDb):
 
     def import_table_stopword(self, use_nltk=False):
         """Import stopwords"""
+
         swset = set()
         # fixme: Cast integers in config object
         # fixme: Parametize language
@@ -72,6 +74,7 @@ class PoloCorpus(PoloDb):
         
     def add_table_doctoken(self):
         """Create doctoken and doctokenbow tables; update doc table"""
+
         docs = self.get_table('doc', set_index=True)
 
         doctokens = pd.DataFrame([(sentences[0], j, k, token[0], token[1])
@@ -375,12 +378,13 @@ class PoloCorpus(PoloDb):
         from sklearn.decomposition import PCA
 
         sql = """
-        select doc_id, token_id, token_str, tfidf 
-        from doctokenbow join token using (token_id)
-        where token_id in (
-            select token_id from token
-            order by doc_count desc
-            limit ?
+        SELECT doc_id, token_id, token_str, tfidf 
+        FROM doctokenbow 
+        JOIN token USING (token_id)
+        WHERE token_id IN (
+            SELECT token_id FROM token
+            ORDER BY doc_count DESC
+            LIMIT ?
         )
         """
 
@@ -473,8 +477,8 @@ class PoloCorpus(PoloDb):
         mallet_corpus_sql = """
         SELECT dt.doc_id, d.doc_label, GROUP_CONCAT(token_str, ' ') AS doc_content
         FROM doctoken dt 
-            JOIN doc d USING (doc_id) 
-            JOIN token t USING (token_str)
+        JOIN doc d USING (doc_id) 
+        JOIN token t USING (token_str)
         GROUP BY dt.doc_id
         ORDER BY dt.doc_id
         """

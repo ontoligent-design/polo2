@@ -2,9 +2,12 @@
 
 {% block main %}
 
-<div id="tsne_plot"></div>
+<div class="w3-half w3-container">
+    <h1></h1>
+    <div id="tsne_plot"></div>
+</div>
 
-{% endblock %}s
+{% endblock %}
 
 {% block code %}
 
@@ -21,7 +24,7 @@ var trace = {
     textfont: {
         family:  'Raleway, sans-serif',
         size: counts,
-        color: counts
+        color: 'Grays'
     },
     marker: { 
         size: counts,

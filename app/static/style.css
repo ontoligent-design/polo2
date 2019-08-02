@@ -2,7 +2,10 @@
 
 * { font-family: 'Open Sans', 'Source Sans Pro', sans-serif; }
 a  {text-decoration: none; color: blue; }
-h2 {border-top: 1px solid gray; padding-top:.5rem;margin-top:1rem;}
+h1 {font-size: 2rem;}
+h2 {font-size: 1.5rem; border-top: 1px solid gray; padding-top:.5rem;margin-top:1rem;}
 h3 {border-top: 1px solid lightgray; padding-top:.5rem;margin-top:1rem;}
-
-
+p {
+    margin-block-start: .5em;
+    margin-block-end: .5em;
+}

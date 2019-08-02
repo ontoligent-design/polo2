@@ -1,50 +1,97 @@
 {% extends "layout.html" %}
 
 {% block main %}
-
-{% set k = pca_terms.shape[1] - 1 %}
+{% set k = pca_terms.shape[1] %}
+<div class="w3-container">
+    <b>Params: <code>K = {{k}},  N = {{pca_docs.shape[0]}}</code></b>
+</div>
 
 <div class="w3-half w3-container">
-    <h1>K = {{k}},  N = {{pca_docs.shape[0]}}</h1>
-    <div id="box-plot"></div>
+    <h1>Loadings</h1>
+    <p class="w3-large">The loadings of each component represent the words associated with each component.
+        Each component is effectively a language model, where each word is assigned aweight ranging
+        from &minus;1 to  &plus;1. Words that cluster at each end of the spectrum -- words with very high
+        or very low (negative) weights -- may be considered topics or themes that characterize the corpus.
+        We consider the top 15 positive and negative words for each component.
+    </p>
+    {% set max_var = pca_items.explained_variance.max() %}
+    {% for item in pca_items.index %}
+    {% set var_percent = (pca_items.loc[item, 'explained_variance'] / max_var) * 100 %}
+    <h2>PC{{item+1}}</h2>
+    <div class="w3-large">
+         <div class="pc_ev">
+             <div class="w3-light-green" style="padding-left:.5rem;height:24px;
+             width: {{var_percent}}%">
+             σ<sup>2</sup>={{pca_items.loc[item, 'explained_variance']}}</div>
+         </div>
+        <p><b>&#10133;</b> {{pca_items.loc[item, 'pos']}}</p>
+        <p><b>&#10134;</b> {{pca_items.loc[item, 'neg']}}</p>
+        <div id="pc_ev_box_{{item}}"></div>
+    </div>
+    {% endfor %}
+  <div id="box-plot"></div>
+</div>
+
+<div class="w3-half w3-container">
+    <h1>Comparative Scatter Plots</h1>
     <div id="pca_plots"></div>
 </div>
 
-<div class="w3-rest">
-
-{% for item in pca_items.index %}
-
-<h2>PC{{item+1}}</h2>
-<div class="w3-large">
-    <p class="w3-large"><b>&plus;</b> {{pca_items.loc[item, 'pos']}}</p>
-    <p class="w3-large"><b>&minus;</b> {{pca_items.loc[item, 'neg']}}</p>    
-    <!-- <p class="w3-large"><tt>explained variance</tt>: {{pca_items.loc[item, 'explained_variance']}}</p> -->
-</div>
-{% endfor %}
-</div>
 
 {% endblock %}
 
 {% block code %}
 
-{% set k = pca_terms.shape[1] - 1 %}
+{% set k = pca_terms.shape[1] %}
 
 // DATA
 pc = []
-{% for i in range(k+1) %}
+{% for i in range(k) %}
 // {{i}}
 {% set col = 'PC{}'.format(i) %}
 pc.push( {{pca_docs[col].tolist() | tojson | safe }})
 {% endfor %}
 pc_docs = {{pca_docs.doc_id.tolist() | tojson | safe}}
 
-// projects/$slug/$trial/doc/$doc_id
+// BOX PLOTS
 
-// BOX PLOT
 bx_traces = []
-{% for i in range(k+1) %}
-// {{i}}
+bx_layout = {
+    height: 75,
+  yaxis: {
+        autorange: true,
+        showgrid: false,
+        zeroline: true,
+        dtick: 5,
+        /* gridcolor: 'rgb(255, 255, 255)', */
+        gridwidth: 1,
+        zerolinecolor: 'rgb(255, 255, 255)',
+        zerolinewidth: 2
+    },
+    margin: {
+        l: 0,
+        r: 0,
+        b: 0,
+        t: 0
+    },
+    /* paper_bgcolor: 'rgb(243, 243, 243)', */
+    /* plot_bgcolor: 'rgb(243, 243, 243)', */
+    showlegend: false
+}
+{% for i in range(k) %}
 bx_traces.push({ y: pc[{{i}}], type: 'box', name: 'PC{{i+1}}' })
+Plotly.newPlot(
+    'pc_ev_box_{{i}}',
+    [
+        {
+            x: pc[{{i}}],
+            type: 'violin',
+            //boxpoints: 'all',
+            name: 'PC{{i+1}}'
+        }
+    ],
+    bx_layout
+)
 {% endfor %}
 
 var bx_layout = {
@@ -57,13 +104,14 @@ Plotly.newPlot('box-plot', bx_traces, bx_layout);
 labels = {{pca_labels.tolist() | tojson | safe}}
 uniques = {{pca_label_uniques.tolist() | tojson | safe}}
 var tickvals = []
-for (i=0; i < {{ pca_label_uniques.shape[0] }}; i++) { tickvals.push(i) }
-console.log(tickvals)
+for (i=0; i < {{ pca_label_uniques.shape[0]}}; i++) { tickvals.push(i) }
 function plot_pcas(pc_x, pc_y) {
+
     var x_lab = pc_x + 1
     var y_lab = pc_y + 1
     var  div_id = 'scatter_' + x_lab + '_' + y_lab
     $('#pca_plots').append('<div id="' + div_id + '"></div>')
+
     var trace1 = {
         x: pc[pc_x],
         y: pc[pc_y],
@@ -81,37 +129,30 @@ function plot_pcas(pc_x, pc_y) {
                 ticktext: uniques,
             }
         }
-    };
-    /*
-    var trace2 = {
-        x: pc[pc_x],
-        y: pc[pc_y],
-        type: 'histogram2dcontour',
-        name: 'density',
-        ncontours: 20,
-        colorscale: 'Hot',
-        reversescale: true,
-        showscale: false,
-    };
-    var trace3 = {
-      x: pc[pc_x],
-      name: 'x density',
-      marker: {color: 'rgb(102,0,0)'},
-      yaxis: 'y2',
-      type: 'histogram'
-    };
-    var trace4 = {
-      y: pc[pc_y],
-      name: 'y density',
-      marker: {color: 'rgb(102,0,0)'},
-      xaxis: 'x2',
-      type: 'histogram'
-    };
-    */
-    var layout = {
-        title: "PC" + x_lab + " and PC" + y_lab,
-        hovermode: 'closest'
     }
+
+    var layout = {
+        /* title: "PC" + x_lab + " and PC" + y_lab, */
+        hovermode: 'closest',
+        showlegend: false,
+        xaxis: {
+            visible: true,
+            title: 'PC'+ (pc_x+1)
+        },
+        yaxis: {
+            visible: true,
+            title: 'PC'+ (pc_y+1)
+        },
+        margin: {
+            l: 0,
+            r: 0,
+            b: 10,
+            t: 10
+        },
+        height: 400,
+        width: 800
+    }
+
     Plotly.newPlot(div_id, [trace1], layout);
     var plot = document.getElementById(div_id), data = pc_docs
     plot.on('plotly_click', function(data){
@@ -119,9 +160,10 @@ function plot_pcas(pc_x, pc_y) {
         url = '/projects/{{slug}}/{{trial}}/doc/' + doc_id
         window.open(url, '_blank')
     });
+
 }
 
-for (i = 0; i < ({{k}} - 1); i++) {
+for (i = 0; i < ({{k-1}}); i++) {
     plot_pcas(i, i+1)
 }
 
