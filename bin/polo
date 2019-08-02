@@ -8,12 +8,19 @@ from polo2 import PoloRetro
 
 
 def load_config(ini_file):
-    try:
-        config = PoloConfig(ini_file)
-    except ValueError as e:
-        print("Can't create config.", e)
+    if os.path.exists(ini_file)  and  os.path.isfile(ini_file):
+        try:
+            config = PoloConfig(ini_file)
+        except ValueError as e:
+            print("Can't create config.", e)
+            sys.exit(1)
+        except TypeError as e:
+            print("You probably don't have a config.ini in this directory.", e)
+            sys.exit(1)
+        return config
+    else:
+        print("No config.ini file found. Create one or move to a directory that has one.")
         sys.exit(1)
-    return config
 
 
 def load_scraper(config):
