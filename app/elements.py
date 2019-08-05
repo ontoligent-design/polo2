@@ -364,13 +364,14 @@ class Elements(object):
         sql = """
         SELECT token_str, tsne_x, tsne_y, token_count, pc_id
         FROM word_embedding we 
-        JOIN token t USING(token_str)
+        JOIN token t USING (token_str)
         {} JOIN (
-            SELECT token_id, pc_id, max(pc_weight) AS argmax
+            SELECT token_id, pc_id, MAX(pc_weight) AS argmax
             FROM pca_term_narrow
             GROUP BY (token_id)
-        ) pca USING(token_id)
+        ) pca USING (token_id)
         """.format(join)
         df = pd.read_sql_query(sql, self.corpus.conn)
-        df['token_norm_count'] = np.round(np.log2(df['token_count'])**1.2)
+        df['token_norm_count'] = np.round(np.log2(df['token_count'])**1.2).astype('int')
+        df['pc_id'] = df['pc_id'].fillna(-1).astype('int')  
         return df

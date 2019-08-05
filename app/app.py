@@ -270,7 +270,9 @@ def pca_page(slug, trial='trial1'):
     data['page_title'] = 'PCA'
 
     data['pca_docs'] = els.get_pca_docs()
+    print(data['pca_docs'])
     data['pca_terms'] = els.get_pca_terms()
+    #data['pca_label_names'] = data['pca_docs']['doc_label']
     labels, uniques = data['pca_docs']['doc_label'].factorize()
     data['pca_labels'] = labels
     data['pca_label_uniques'] = uniques
@@ -285,13 +287,11 @@ def pca_page(slug, trial='trial1'):
 def w2v_page(slug, trial='trial1', join='inner'):
     cfg = get_project_config(slug)
     els = Elements(cfg, trial)
-
     data['slug'] = slug
     data['trial'] = trial
     data['page_title'] = 'Word Embeddings'
-
+    data['join'] = join
     data['coords'] = els.get_tsne_coords(join=join)
-
     return render_template('w2v.html', **data)
 
 

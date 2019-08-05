@@ -34,9 +34,9 @@
 
 <div class="w3-half w3-container">
     <h1>Comparative Scatter Plots</h1>
+    <div id="3d_plot"></div>
     <div id="pca_plots"></div>
 </div>
-
 
 {% endblock %}
 
@@ -125,7 +125,7 @@ function plot_pcas(pc_x, pc_y) {
             colorbar: {
                 tickmode: 'arrays',
                 //nticks: {{pca_label_uniques.shape[0]}},
-                tickvals: tickvals,
+                tickvals: uniques,
                 ticktext: uniques,
             }
         }
@@ -166,5 +166,53 @@ function plot_pcas(pc_x, pc_y) {
 for (i = 0; i < ({{k-1}}); i++) {
     plot_pcas(i, i+1)
 }
+
+// 3D 
+
+Plotly.newPlot(
+    '3d_plot',
+    [{
+        x: pc[0],
+        y: pc[1],
+        z: pc[2],
+        type: 'scatter3d',
+        mode: 'markers+text',
+        text: {{ pca_docs.doc_label.tolist() | tojson | safe  }},
+        marker: {
+            color: labels,
+            colorscale: 'Rainbow',
+            showscale: true,
+            colorbar: {
+                tickmode: 'arrays',
+                //nticks: {{pca_label_uniques.shape[0]}},
+                tickvals: tickvals,
+                ticktext: uniques,
+            }
+        }
+    }],
+    {
+        legends: false,
+        height: 800,
+        width: 800,
+        margin: {
+            l: 0,
+            r: 0,
+            b: 10,
+            t: 10
+        },
+        xaxis: {
+            visible: true,
+            title: 'PC0'
+        },
+        yaxis: {
+            visible: true,
+            title: 'PC1'
+        },
+        zaxis: {
+            visible: true,
+            title: 'PC2'
+        }
+    }
+)
 
 {% endblock %}

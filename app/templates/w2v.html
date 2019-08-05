@@ -3,45 +3,56 @@
 {% block main %}
 
 <div class="w3-half w3-container">
-    <h1></h1>
     <div id="tsne_plot"></div>
+    <div>
+        {% if join == 'left' %}
+        <a href="{{url_for('w2v_page', slug=slug, trial=trial, join='inner')}}" class="w3-btn w3-black">Exclude</a>
+        {% else %}
+        <a href="{{url_for('w2v_page', slug=slug, trial=trial, join='left')}}" class="w3-btn w3-black">Include</a>    
+        {% endif %}
+    </div>
 </div>
 
 {% endblock %}
 
 {% block code %}
 
-var labels = {{coords.token_str.tolist() | tojson | safe}}
-var x = {{coords.tsne_x.tolist() | tojson | safe}}
-var y = {{coords.tsne_y.tolist() | tojson | safe}}
-var counts = {{coords.token_norm_count.tolist() | tojson | safe}}
-var pcs = {{coords.pc_id.tolist() | tojson | safe}}
-var trace = {
-    x: x,
-    y: y,
-    text: labels,
+{% set max_pc = coords.pc_id.max() %}
+{% set min_pc = coords.pc_id.min() %}
+var traces  = []
+{% for pc_id in range(min_pc, max_pc+1) %}
+{% set pc = coords.loc[coords.pc_id == pc_id] %}
+var sizes = {{ pc.token_norm_count.tolist() | tojson | safe }}
+traces.push({
+    x: {{ pc.tsne_x.tolist() | tojson | safe }},
+    y: {{ pc.tsne_y.tolist() | tojson | safe }},
+    text: {{ pc.token_str.tolist() | tojson | safe }},
+    type: 'scatter',
+    mode: 'text+markers',
+    name: 'PC'+{{pc_id+1}},
     textposition: 'top center',
     textfont: {
-        family:  'Raleway, sans-serif',
-        size: counts,
-        color: 'Grays'
+        family: 'Arial, sans-serif',
+        size: sizes
+        /* color: 'Grays' */
     },
     marker: { 
-        size: counts,
-        color: pcs,
-        colorscale: 'Rainbow',
+        size: sizes,
         sizemode: 'diameter'
     },
-    type: 'scatter',
-    mode: 'markers+text'
-}
+
+})
+{% endfor %}
+
 var layout = {
-    /* title: "Word Embeddings", */
     hovermode: 'closest',
     width: 1200,
     height: 1200,
-    hoverinfo: 'none'
+    hoverinfo: 'none',
+    legend: {
+        orientation: 'v'
+    }
 }
-Plotly.newPlot('tsne_plot', [trace], layout);
+Plotly.newPlot('tsne_plot', traces, layout)
 
 {% endblock %}
