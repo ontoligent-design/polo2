@@ -9,8 +9,12 @@
 {% endblock %}
 
 {% block scripts %}
-<link rel="stylesheet" type="text/css" href="http://visjs.org/dist/vis-network.min.css">
-<script src="http://visjs.org/dist/vis.js"></script>
+<script 
+    type="text/javascript" 
+    src="https://unpkg.com/vis-network@latest/dist/vis-network.min.js"></script>
+<link 
+    href="https://unpkg.com/vis-network@latest/dist/vis-network.min.css" 
+    rel="stylesheet" type="text/css" />
 {% endblock %}
 
 {% block main %}
@@ -33,8 +37,16 @@ var options = {
     autoResize: true,
     height: '1000px',
     width: '100%',
-    layout: {},
-    nodes: {shape: 'box'}
+    nodes: {shape: 'box'},
+    physics: {
+        enabled: true,
+        solver: 'forceAtlas2Based',
+        forceAtlas2Based: {
+            damping: .4,
+        }
+    },
 };
 var network = new vis.Network(container, data, options);
+
+
 {% endblock %}

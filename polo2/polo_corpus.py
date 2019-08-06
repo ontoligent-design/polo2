@@ -116,6 +116,7 @@ class PoloCorpus(PoloDb):
             print(rfile_name, 'not found')
         return reps
 
+    # fixme: TOKEN should be the TERM table (aka VOCAB) 
     def add_table_token(self):
         """Get token data from doctoken and doctokenbow"""
         doctoken = self.get_table('doctoken')
@@ -139,6 +140,7 @@ class PoloCorpus(PoloDb):
         token['doc_count'] = doctokenbow.groupby('token_id').count()
         self.put_table(token, 'token', index=True)
 
+    # fixme: Use a better sentiment detector
     def _get_sentiment(self, doc):
         doc2 = TextBlob(doc)
         return doc2.sentiment
@@ -369,7 +371,7 @@ class PoloCorpus(PoloDb):
         tsne_values = tsne_model.fit_transform(df)
         df['tsne_x'] = tsne_values[:, 0]
         df['tsne_y'] = tsne_values[:, 1]
-        
+
         self.put_table(df, 'word_embedding', index=True)
 
     def add_pca_tables(self, k_components=10, n_terms=1000):

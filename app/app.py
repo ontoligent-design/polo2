@@ -325,14 +325,15 @@ def set_project_menu(cfg, slug, trial):
     data['sub_menu'] = [("{}".format(path_prefix), "Project")]
     for group_field in cfg.ini['DEFAULT']['group_fields'].split(','):
         group_field = group_field.strip()
+        group_field_label = group_field.replace('doc_', '').replace('_', ' ')
         data['sub_menu'].append(("{}/topic_heatmap/{}".format(path_prefix, group_field),
-                                    "Topic {} Heatmap".format(group_field)))
+                                    "Topic/{} Heatmap".format(group_field_label)))
     data['sub_menu'].append(("{}/topic_pair_net/0.18".format(path_prefix),
                              "Topic Pair Network"))
-    data['sub_menu'].append(("{}/topic_pair_heatmap/jsd".format(path_prefix),
-                             "Topic Pair Similiarity Heatmap"))
-    data['sub_menu'].append(("{}/topic_pair_heatmap/i_ab".format(path_prefix),
-                             "Topic Pair Contiguity Heatmap"))
+    # data['sub_menu'].append(("{}/topic_pair_heatmap/jsd".format(path_prefix),
+    #                          "Topic Pair Similiarity Heatmap"))
+    # data['sub_menu'].append(("{}/topic_pair_heatmap/i_ab".format(path_prefix),
+    #                          "Topic Pair Contiguity Heatmap"))
     data['sub_menu'].append(("{}/docs".format(path_prefix), "Documents"))
     data['sub_menu'].append(("{}/pca".format(path_prefix), "Principle Components"))
     data['sub_menu'].append(("{}/w2v".format(path_prefix), "Word Embeddings"))

@@ -6,10 +6,11 @@
     <div id="tsne_plot"></div>
     <div>
         {% if join == 'left' %}
-        <a href="{{url_for('w2v_page', slug=slug, trial=trial, join='inner')}}" class="w3-btn w3-black">Exclude</a>
+        <a href="{{url_for('w2v_page', slug=slug, trial=trial, join='inner')}}" class="w3-btn w3-red">Exclude </a>
         {% else %}
-        <a href="{{url_for('w2v_page', slug=slug, trial=trial, join='left')}}" class="w3-btn w3-black">Include</a>    
+        <a href="{{url_for('w2v_page', slug=slug, trial=trial, join='left')}}" class="w3-btn w3-green">Include</a>    
         {% endif %}
+        words without PCs.
     </div>
 </div>
 
@@ -22,6 +23,11 @@
 var traces  = []
 {% for pc_id in range(min_pc, max_pc+1) %}
 {% set pc = coords.loc[coords.pc_id == pc_id] %}
+{% if pc_id == -1 %}
+    {% set legend_name = 'No PC' %}
+{% else %}
+    {% set legend_name = 'PC{}'.format(pc_id+1) %}
+{% endif %}
 var sizes = {{ pc.token_norm_count.tolist() | tojson | safe }}
 traces.push({
     x: {{ pc.tsne_x.tolist() | tojson | safe }},
@@ -29,7 +35,7 @@ traces.push({
     text: {{ pc.token_str.tolist() | tojson | safe }},
     type: 'scatter',
     mode: 'text+markers',
-    name: 'PC'+{{pc_id+1}},
+    name: '{{legend_name}}',
     textposition: 'top center',
     textfont: {
         family: 'Arial, sans-serif',
