@@ -71,19 +71,20 @@ class PoloCorpus(PoloDb):
             swset.update([word for word in src.read_bigline().split()])
         swdf = pd.DataFrame({'token_str': list(swset)})
         self.put_table(swdf, 'stopword')
-        
+
+    # todo: Consider changing table name to DOCTERM or TOKEN
     def add_table_doctoken(self):
         """Create doctoken and doctokenbow tables; update doc table"""
 
         docs = self.get_table('doc', set_index=True)
 
+        # todo: Consider dividing this in two parts, the first to create a Phrase model with Gensim
         doctokens = pd.DataFrame([(sentences[0], j, k, token[0], token[1])
-                     for sentences in docs.apply(lambda x: (x.name, sent_tokenize(x.doc_content)), 1)
-                     for j, sentence in enumerate(sentences[1])
-                     # for k, token in enumerate(nltk.word_tokenize(sentence))
-                     for k, token in enumerate(nltk.pos_tag(nltk.word_tokenize(sentence)))
-                     ], columns=['doc_id', 'sentence_id', 'token_ord', 'token_str', 'pos'])
-        doctokens.set_index(['doc_id', 'sentence_id', 'token_ord'], inplace=True)
+            for sentences in docs.apply(lambda x: (x.name, sent_tokenize(x.doc_content)), 1)
+            for j, sentence in enumerate(sentences[1])
+            for k, token in enumerate(nltk.pos_tag(nltk.word_tokenize(sentence)))],
+                columns=['doc_id', 'sentence_id', 'token_ord', 'token_str', 'pos'])
+        doctokens = doctokens.set_index(['doc_id', 'sentence_id', 'token_ord'])
 
         # Normalize
         # doctokens = doctokens[doctokens.token_pos.str.match(r'^(NN|JJ|VB)')]
@@ -91,7 +92,7 @@ class PoloCorpus(PoloDb):
         doctokens.token_str = doctokens.token_str.str.replace(r'[^a-z]+', '')
         doctokens = doctokens[~doctokens.token_str.str.match(r'^\s*$')]
 
-        # Remove stopwords
+        # todo: Instead of removing stopwords, identify with column
         stopwords = self.get_table('stopword').token_str.tolist()
         doctokens = doctokens[~doctokens.token_str.isin(stopwords)]
 
@@ -225,23 +226,23 @@ class PoloCorpus(PoloDb):
         """
 
         sql2 = """
-        SELECT ngram, doc_label, sum(tf) AS tf_sum FROM (
+        SELECT ngram, doc_label, sum(tf) AS tf_sum 
+        FROM (
             SELECT g.doc_id, d.doc_label, g.ngram, g.tf
             FROM ngram{}doc g
             JOIN doc d USING(doc_id)
         )
-        group by doc_label, ngram
+        GROUP BY doc_label, ngram
         """.format(type)
 
         sql3 = """
-        WITH stats(n) AS (SELECT COUNT() as n FROM doc)
-        SELECT ngram, count() as c, (SELECT n FROM stats) AS n, 
+        WITH stats(n) AS (SELECT COUNT() AS n FROM doc)
+        SELECT ngram, count() AS c, (SELECT n FROM stats) AS n, 
         CAST(COUNT() AS REAL) / CAST((SELECT n FROM stats) AS REAL) AS df
         FROM ngrambidoc
         GROUP BY ngram
         ORDER BY c DESC
         """
-
         docngram = pd.read_sql_query(sql1, self.conn, index_col='doc_id')
         labelngram = pd.read_sql(sql2, self.conn,  index_col=['ngram','doc_label'])
         ngramstats = pd.read_sql(sql3, self.conn,  index_col=['ngram'])
@@ -350,20 +351,24 @@ class PoloCorpus(PoloDb):
         """Convenience function to add ngram tables for n = 3"""
         self.add_tables_ngram_and_docngram(n=3)
 
-    def add_word2vec_table(self, k=246, window=5, min_count=100, workers=4,
-            perplexity=40, n_components=2, init='pca', n_iter=2500, random_state=23):
+    def add_word2vec_table(self, k=246, window=5,
+                        min_count=100, workers=4,
+                        perplexity=40, n_components=2,
+                        init='pca', n_iter=2500, random_state=23):
         """Use Gensim to generate word2vec model from doctoken table"""
         from gensim.models import word2vec
         from sklearn.manifold import TSNE
         
         doctoken = self.get_table('doctoken', set_index=True)
         corpus = doctoken.groupby('doc_id').apply(lambda x: x.token_str.tolist()).values.tolist()
-        model = word2vec.Word2Vec(corpus, size=k, window=window, min_count=min_count, workers=workers)
+        model = word2vec.Word2Vec(corpus,
+                                  size=k, window=window,
+                                  min_count=min_count, workers=workers)
         del corpus
         df = pd.DataFrame(model.wv.vectors, index=model.wv.index2entity)
         del model
         df.columns = ['F{}'.format(i) for i in range(k)]
-        df.index.name = 'token_str' # todo: Later change this to term_str
+        df.index.name = 'token_str'  # todo: Later change this to term_str
         
         tsne_model = TSNE(perplexity=perplexity,
                           n_components=n_components, init=init,

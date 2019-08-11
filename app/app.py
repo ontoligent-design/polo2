@@ -291,6 +291,7 @@ def w2v_page(slug, trial='trial1', join='inner'):
     data['trial'] = trial
     data['page_title'] = 'Word Embeddings'
     data['join'] = join
+    data['topics']  = els.get_topics()
     data['coords'] = els.get_tsne_coords(join=join)
     return render_template('w2v.html', **data)
 

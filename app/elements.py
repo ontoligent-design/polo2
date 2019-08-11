@@ -64,7 +64,8 @@ class Elements(object):
         topic_id = int(topic_id)
         sql = "SELECT topic_phrase FROM topicphrase " \
               "WHERE topic_id = ? ORDER BY phrase_weight DESC"
-        phrases = ', '.join(pd.read_sql_query(sql, self.model.conn, params=(topic_id,)).topic_phrase.tolist())
+        phrases = ', '.join(pd.read_sql_query(sql, self.model.conn,
+                                params=(topic_id,)).topic_phrase.tolist())
         return phrases
 
     def get_topic_entropy_hist(self):
@@ -88,7 +89,8 @@ class Elements(object):
         return dtm
 
     def get_topicdoc_group_matrix(self, sort_by_alpha = True, group_field='doc_label', use_gloss_label=False):
-        dtm = self.model.get_table('topic{}_matrix'.format(group_field), set_index=False) # todo: Should be schema driven
+        dtm = self.model.get_table('topic{}_matrix'.format(group_field),
+                set_index=False) # todo: Should be schema driven
         col1 = dtm.columns.tolist()[0] # todo: Should always be doc_group; should be schema driven
         dtm.set_index(col1, inplace=True)
 
@@ -156,7 +158,9 @@ class Elements(object):
         df = pd.read_sql_query(sql, self.model.conn, params=(topic_id,))
         df.set_index('src_doc_id', inplace=True)
         doc_ids = ','.join(df.index.astype('str').tolist())
-        sql2 = "SELECT doc_id, doc_label, doc_title, doc_content as doc_original, doc_content, doc_key FROM doc WHERE doc_id IN ({})".format(doc_ids)
+        sql2 = "SELECT doc_id, doc_label, doc_title, " \
+               "doc_content as doc_original, doc_content, doc_key " \
+               "FROM doc WHERE doc_id IN ({})".format(doc_ids)
         df2 = pd.read_sql_query(sql2, self.corpus.conn,)
         df2.set_index('doc_id', inplace=True)
         df = df.join(df2)
@@ -239,8 +243,10 @@ class Elements(object):
         topics = self.model.get_table('topic')
         pairs = self.model.get_table('topicpair', set_index=False)
         pairs = pairs.loc[pairs.i_ab >= thresh, ['topic_a_id', 'topic_b_id', 'i_ab']]
-        nodes = [{'id':t, 'label':'T{}: {} '.format(t, topics.loc[t].topic_gloss)} for t in pd.concat([pairs.topic_a_id, pairs.topic_b_id], axis=0).unique()]
-        edges = [{'from': int(pairs.loc[i].topic_a_id), 'to': int(pairs.loc[i].topic_b_id)} for i in pairs.index]
+        nodes = [{'id': t, 'label': 'T{}: {} '.format(t, topics.loc[t].topic_gloss)}
+                 for t in pd.concat([pairs.topic_a_id, pairs.topic_b_id], axis=0).unique()]
+        edges = [{'from': int(pairs.loc[i].topic_a_id), 'to': int(pairs.loc[i].topic_b_id)}
+                 for i in pairs.index]
         return nodes, edges
 
     def get_topics_related(self, topic_id):
@@ -281,8 +287,10 @@ class Elements(object):
 
     def get_group_comps(self, group_field, group_name):
         table_name = 'topic{}_pairs'.format(group_field)
-        sql1 = "SELECT group_b as 'doc_group', kld, jsd, jscore, euclidean FROM {} WHERE group_a = ?".format(table_name)
-        sql2 = "SELECT group_a as 'doc_group', kld, jsd, jscore, euclidean FROM {} WHERE group_b = ?".format(table_name)
+        sql1 = "SELECT group_b as 'doc_group', kld, jsd, jscore, euclidean " \
+               "FROM {} WHERE group_a = ?".format(table_name)
+        sql2 = "SELECT group_a as 'doc_group', kld, jsd, jscore, euclidean " \
+               "FROM {} WHERE group_b = ?".format(table_name)
         df1 = pd.read_sql_query(sql1, self.model.conn, params=(group_name,))
         df2 = pd.read_sql_query(sql2, self.model.conn, params=(group_name,))
         return df1.append(df2).sort_values('doc_group').set_index('doc_group')
@@ -347,12 +355,10 @@ class Elements(object):
 
     def get_pca_docs(self, n=1000):
         """Grab a random sample of n documents for plotting"""
-        sql = """
-        SELECT d.doc_label, p.* 
-        FROM pca_doc p JOIN doc d USING(doc_id) 
-        ORDER BY RANDOM() 
-        LIMIT ?
-        """
+        sql = "SELECT d.doc_label, p.* " \
+              "FROM pca_doc p " \
+              "JOIN doc d USING(doc_id) " \
+              "ORDER BY RANDOM() LIMIT ?"
         try:
             df = pd.read_sql_query(sql, self.corpus.conn, params=(n,))
             return df
@@ -361,18 +367,44 @@ class Elements(object):
 
     def get_tsne_coords(self, join='left'):
         """Get the x and y values of the word_embeddings table to plot"""
-        sql = """
-        SELECT token_str, tsne_x, tsne_y, token_count, pc_id
+
+        # todo: Convert into genuine error trap
+        if join and join not in ('left', 'inner'):
+            join = 'left'
+
+        sql1 = """
+        SELECT token_str, tsne_x, tsne_y, token_count, pc_id, ROUND(pc_weight * 1000) as pc_w 
         FROM word_embedding we 
         JOIN token t USING (token_str)
         {} JOIN (
-            SELECT token_id, psc_id, MAX(pc_weight) AS argmax
+            SELECT token_id, pc_id, pc_weight, MAX(ABS(pc_weight)) AS argmax
             FROM pca_term_narrow
             GROUP BY (token_id)
         ) pca USING (token_id)
-        WHERE token_str NOT IN (SELECT token_str FROM stopword)
-        """.format(join)
-        df = pd.read_sql_query(sql, self.corpus.conn)
+        WHERE token_str IN (
+            SELECT token_str 
+            FROM token
+            ORDER BY tfidf_sum DESC
+            LIMIT 1000
+        )
+        """.format(join.upper())
+        df = pd.read_sql_query(sql1, self.corpus.conn)
         df['token_norm_count'] = np.round(np.log2(df['token_count'])**1.2).astype('int')
-        df['pc_id'] = df['pc_id'].fillna(-1).astype('int')  
+        df['pc_id'] = df['pc_id'].fillna(-1).astype('int')
+        df.loc[df.pc_w > 0, 'symbol'] = 0
+        df.loc[df.pc_w <= 0, 'symbol'] = 1
+
+        # Experiment: these argmax values should be computed ahead of time and
+        # added to the VOCAB tables
+        sql2 = """
+        SELECT word_str as token_str, word_count as topic_token_count, 
+            topic_alpha, topic_gloss, topic_id, MAX(word_count) AS topic_argmax
+        FROM topicword tw
+        JOIN word w USING(word_id)
+        JOIN topic t USING(topic_id)
+        GROUP BY word_id
+        """
+        tw = pd.read_sql_query(sql2, self.model.conn)
+        df = df.merge(tw[['token_str', 'topic_token_count', 'topic_id',
+                          'topic_alpha', 'topic_gloss']], on='token_str', how='left')
         return df

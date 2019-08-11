@@ -12,6 +12,7 @@
         {% endif %}
         words without PCs.
     </div>
+    <div id="tsne_plot2"></div>
 </div>
 
 {% endblock %}
@@ -29,6 +30,7 @@ var traces  = []
     {% set legend_name = 'PC{}'.format(pc_id+1) %}
 {% endif %}
 var sizes = {{ pc.token_norm_count.tolist() | tojson | safe }}
+var symbols = {{ pc.symbol.tolist() | tojson | safe }}
 traces.push({
     x: {{ pc.tsne_x.tolist() | tojson | safe }},
     y: {{ pc.tsne_y.tolist() | tojson | safe }},
@@ -40,11 +42,11 @@ traces.push({
     textfont: {
         family: 'Arial, sans-serif',
         size: sizes
-        /* color: 'Grays' */
     },
     marker: { 
         size: sizes,
-        sizemode: 'diameter'
+        sizemode: 'diameter',
+        symbol: symbols
     },
 
 })
@@ -60,5 +62,36 @@ var layout = {
     }
 }
 Plotly.newPlot('tsne_plot', traces, layout)
+
+// TSNE with TOPICS
+topic_traces = []
+{% for i in topics.sort_values('topic_alpha', ascending=False).index %}
+{% set topic = coords.loc[coords.topic_id == i] %}
+// stopic_ids = {{ topic.topic_id.tolist() | tojson | safe }}
+topic_sizes = {{ topic.token_norm_count.tolist() | tojson | safe }}
+topic_traces.push({
+    name: 'Topic ' + {{i}} + ' {{topics.loc[i, 'topic_gloss']}}',
+    x: {{ topic.tsne_x.tolist() | tojson | safe }},
+    y: {{ topic.tsne_y.tolist() | tojson | safe }},
+    text: {{ topic.token_str.tolist() | tojson | safe }},
+    type: 'scatter',
+    mode: 'text+markers',
+    textposition: 'top center',
+    textfont: {
+        family: 'Arial, sans-serif',
+        size: topic_sizes,
+    },
+    marker: {
+        size: topic_sizes,
+        sizemode: 'diameter'
+    }
+})
+{% endfor %}
+Plotly.newPlot(
+    'tsne_plot2',
+    topic_traces,
+    layout
+)
+
 
 {% endblock %}
