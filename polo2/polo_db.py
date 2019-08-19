@@ -38,7 +38,7 @@ class PoloDb():
             # fixme: Change ValueErrors to proper errors
             raise ValueError('Read-only mode for safety.')
 
-    def get_table(self, table_name = '', set_index = False):
+    def get_table(self, table_name='', set_index=False):
         if self.cache_mode and table_name in self.tables:
             df = self.tables[table_name]
             if set_index:

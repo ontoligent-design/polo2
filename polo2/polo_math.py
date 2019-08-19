@@ -27,11 +27,11 @@ class PoloMath():
         """Computes the adjusted point-wise mutual information of two items (a and b)
         that appear in container vectors of some kind, e.g. items in a shopping
         basket."""
-        #if p_ab == 0: p_ab = .000001  # To prevent craziness in prob calcs
+        # if p_ab == 0: p_ab = .000001  # To prevent craziness in prob calcs
         p_ab += norm
         i_ab = math.log2(p_ab / (p_a * p_b))  # Raw
         try:
-            i_ab = i_ab / (math.log2(p_ab) * -1) # Adjusted
+            i_ab = i_ab / (math.log2(p_ab) * -1)  # Adjusted
         except ZeroDivisionError:
             i_ab = 0
         return i_ab
@@ -46,7 +46,7 @@ class PoloMath():
         if len(A | B) > 0:
             return 1 - (len(A & B) / len(A | B))
         else:
-            return -1 # Is this correct?
+            return -1  # Is this correct?
 
     @staticmethod
     def euclidean(s1, s2):

@@ -1,4 +1,6 @@
-import os, time, re
+import os
+import time
+import re
 import pandas as pd
 from itertools import combinations
 from lxml import etree
@@ -30,7 +32,7 @@ class PoloMallet(PoloDb):
             setattr(self, att, int(getattr(self, att)))
         self.cfg_thresh = float(self.cfg_thresh)
 
-        self.trial_name = self.trial # HACK
+        self.trial_name = self.trial  # HACK
         self.file_prefix = '{}/{}'.format(self.cfg_mallet_out_dir, self.trial_name)
         self.mallet = {'import-file': {}, 'train-topics': {}}
         self.mallet_init()
@@ -195,11 +197,13 @@ class PoloMallet(PoloDb):
             doctopic.rename(columns={0:'doc_id'}, inplace=True)
             y = [col for col in doctopic.columns[1:]]
             doctopic_narrow = pd.lreshape(doctopic, {'topic_weight': y})
-            doctopic_narrow['topic_id'] = [i for i in range(self.cfg_num_topics) for doc_id in doctopic['doc_id']]
+            doctopic_narrow['topic_id'] = [i for i in range(self.cfg_num_topics)
+                                           for doc_id in doctopic['doc_id']]
             doctopic_narrow = doctopic_narrow[['doc_id', 'topic_id', 'topic_weight']]
             doctopic_narrow.set_index(['doc_id', 'topic_id'], inplace=True)
             doctopic_narrow['topic_weight_zscore'] = stats.zscore(doctopic_narrow.topic_weight)
-            self.computed_thresh = round(doctopic_narrow.topic_weight.quantile(self.cfg_tw_quantile), 3)
+            self.computed_thresh = round(doctopic_narrow.topic_weight\
+                                         .quantile(self.cfg_tw_quantile), 3)
             self.put_table(doctopic_narrow, 'doctopic', index=True)
 
         # todo: Revisit this; in the best place to do this?
@@ -256,8 +260,10 @@ class PoloMallet(PoloDb):
         if not src_file: src_file = self.mallet['train-topics']['diagnostics-file']
         TOPIC = []
         TOPICWORD = []
-        tkeys = ['id', 'tokens', 'document_entropy', 'word-length', 'coherence', 'uniform_dist', 'corpus_dist',
-                 'eff_num_words', 'token-doc-diff', 'rank_1_docs', 'allocation_ratio', 'allocation_count',
+        tkeys = ['id', 'tokens', 'document_entropy', 'word-length', 'coherence',
+                 'uniform_dist', 'corpus_dist',
+                 'eff_num_words', 'token-doc-diff', 'rank_1_docs',
+                 'allocation_ratio', 'allocation_count',
                  'exclusivity']
         tints = ['id', 'tokens']
         wkeys = ['rank', 'count', 'prob', 'cumulative', 'docs', 'word-length', 'coherence',
@@ -311,8 +317,9 @@ class PoloMallet(PoloDb):
     def del_mallet_files(self):
         """Delete MALLET files"""
         file_keys = ['output-topic-keys', 'output-doc-topics',
-                     'word-topic-counts-file', 'xml-topic-report', 'xml-topic-phrase-report',
-                     'diagnostics-file', 'topic-word-weights-file']
+                     'word-topic-counts-file', 'xml-topic-report',
+                     'xml-topic-phrase-report', 'diagnostics-file',
+                     'topic-word-weights-file']
         for fk in file_keys:
             if os.path.isfile(self.mallet['train-topics'][fk]):
                 print("Deleting {}".format(fk))
@@ -368,9 +375,9 @@ class PoloMallet(PoloDb):
         topicpair = pd.DataFrame(pairs, columns=['topic_a_id', 'topic_b_id'])
 
         # Calculate distances by document vector
-        #topicpair['cosim_doc'] = topicpair.apply(lambda x: pm.cosine_sim(dtm[x.topic_a_id], dtm[x.topic_b_id]), axis=1)
-        #topicpair['jscore_doc'] = topicpair.apply(lambda x: pm.jscore(dtm[x.topic_a_id], dtm[x.topic_b_id]), axis=1)
-        #topicpair['jsd_doc'] = topicpair.apply(lambda x: pm.js_divergence(dtm[x.topic_a_id], dtm[x.topic_b_id]), axis=1)
+        # topicpair['cosim_doc'] = topicpair.apply(lambda x: pm.cosine_sim(dtm[x.topic_a_id], dtm[x.topic_b_id]), axis=1)
+        # topicpair['jscore_doc'] = topicpair.apply(lambda x: pm.jscore(dtm[x.topic_a_id], dtm[x.topic_b_id]), axis=1)
+        # topicpair['jsd_doc'] = topicpair.apply(lambda x: pm.js_divergence(dtm[x.topic_a_id], dtm[x.topic_b_id]), axis=1)
 
         # Calculate distances by word vector -- SHOULD BE MORE ACCURATE
         topicpair['cosim'] = topicpair.apply(lambda x: pm.cosine_sim(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
@@ -413,9 +420,10 @@ class PoloMallet(PoloDb):
         del docs
 
         # Get doctopic table
-        #thresh = self.get_thresh()
-        #doctopics = pd.read_sql_query('SELECT * FROM doctopic WHERE topic_weight >= ?', self.conn, params=(thresh,))
-        #doctopics.set_index(['doc_id', 'topic_id'], inplace=True)
+        # thresh = self.get_thresh()
+        # doctopics = pd.read_sql_query('SELECT * \
+        # FROM doctopic WHERE topic_weight >= ?', self.conn, params=(thresh,))
+        # doctopics.set_index(['doc_id', 'topic_id'], inplace=True)
         doctopics = self.get_table('doctopic', set_index=True)
         dtw = doctopics['topic_weight'].unstack()
         del doctopics
@@ -481,7 +489,8 @@ class PoloMallet(PoloDb):
         pair = pd.DataFrame(pairs, columns=['group_a', 'group_b'])
         pair['cosim'] = pair.apply(lambda x: pm.cosine_sim(gtm.loc[x.group_a], gtm.loc[x.group_b]), axis=1)
         pair['jsd'] = pair.apply(lambda x: pm.js_divergence(gtm.loc[x.group_a], gtm.loc[x.group_b]), axis=1)
-        pair['jscore'] = pair.apply(lambda x: pm.jscore(gtm.loc[x.group_a], gtm.loc[x.group_b], thresh=thresh), axis=1)
+        pair['jscore'] = pair.apply(lambda x:
+                                    pm.jscore(gtm.loc[x.group_a], gtm.loc[x.group_b], thresh=thresh), axis=1)
         pair['euclidean'] = pair.apply(lambda x: pm.euclidean(gtm.loc[x.group_a], gtm.loc[x.group_b]), axis=1)
         pair['kld'] = pair.apply(lambda x: pm.kl_distance(gtm.loc[x.group_a], gtm.loc[x.group_b]), axis=1)
         self.put_table(pair, 'topic{}_pairs'.format(group_field))
@@ -510,6 +519,26 @@ class PoloMallet(PoloDb):
             topic_alpha_avg=topic.topic_alpha.mean()
         )
         self.set_config_items(items)
+
+    def add_maxtopic_to_word(self):
+        """Add idxmax topic for each word"""
+        topicword = self.get_table('topicword')
+        word = self.get_table('word')
+        # word['maxtopic'] = topicword.set_index(['topic_id','word_id']).word_count\
+        #     .unstack().fillna(0).idxmax()
+        twm = topicword.set_index(['word_id', 'topic_id']).word_count.unstack().fillna(0)
+        twm = twm / twm.sum()
+        word['maxtopic'] = twm.T.idxmax()
+        self.put_table(word, 'word', index_label='word_id')
+
+    def add_maxtopic_to_doc(self):
+        """Add idmax topic for each doc"""
+        # todo: Put this in the method that creates doctopic
+        doctopic = self.get_table('doctopic', set_index=True)
+        doc = self.get_table('doc')
+        doc = doc.set_index('doc_id')
+        doc['maxtopic'] = doctopic.topic_weight.unstack().fillna(0).T.idxmax()
+        self.put_table(doc, 'doc', index=True)
 
     def add_doctopic_weight_stats(self):
         """Add doctopic weight stats to config table"""

@@ -44,7 +44,7 @@ def load_corpus(config, cache_mode = False):
     return corpus
 
 
-def load_mallet(config, this_trial = 'trial1'):
+def load_mallet(config, this_trial='trial1'):
     try:
         mallet = PoloMallet(config, this_trial)
     except ValueError:
@@ -149,8 +149,9 @@ if __name__ == '__main__':
 
     # FUNCTION
     parser.sequence = subparsers.add_parser('function', help='Run a function')
-    parser.sequence.add_argument('obj', choices=['corpus','mallet'])
+    parser.sequence.add_argument('obj', choices=['corpus', 'mallet'])
     parser.sequence.add_argument('func')
+    parser.sequence.add_argument('trial', default='trial1')
 
     # ALL
     parser.sequence = subparsers.add_parser('all', help='Run corpus and mallet with default settings')
@@ -228,6 +229,8 @@ if __name__ == '__main__':
         add_doctopic_weight_stats
         add_doctopic_entropy_stats
         add_topic_glosses
+        add_maxtopic_to_word
+        add_maxtopic_to_doc
         """.split()
         run_funcs(mallet, funcs)
 
@@ -315,7 +318,7 @@ if __name__ == '__main__':
         config = load_config(args.ini)
         obj = None
         if args.obj == 'mallet':
-            obj = load_mallet(config)
+            obj = load_mallet(config, args.trial)
         elif args.obj == 'corpus':
             obj = load_corpus(config)
         try:

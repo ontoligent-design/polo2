@@ -123,8 +123,9 @@ def topic_pair_heatmap(slug, trial='trial1', sim=None):
     return render_template("topic_pair_heatmap.html", **data)
 
 
+@app.route("/projects/<slug>/<trial>/topic_pair_net")
 @app.route("/projects/<slug>/<trial>/topic_pair_net/<float:thresh>")
-def topic_pair_net(slug, trial='trial1', thresh=0.05):
+def topic_pair_net(slug, trial='trial1', thresh=0.5):
     cfg = get_project_config(slug)
     els = Elements(cfg, trial)
     set_project_menu(cfg, slug, trial)
@@ -268,17 +269,15 @@ def pca_page(slug, trial='trial1'):
     data['slug'] = slug
     data['trial'] = trial
     data['page_title'] = 'PCA'
-
     data['pca_docs'] = els.get_pca_docs()
     print(data['pca_docs'])
     data['pca_terms'] = els.get_pca_terms()
-    #data['pca_label_names'] = data['pca_docs']['doc_label']
     labels, uniques = data['pca_docs']['doc_label'].factorize()
     data['pca_labels'] = labels
     data['pca_label_uniques'] = uniques
     data['pca_items'] = els.get_pca_items()
     data['max_variance'] = data['pca_items']['explained_variance'].max()
-
+    data['topics'] = els.get_topics()
     return render_template('pca.html', **data)
 
 
@@ -329,7 +328,7 @@ def set_project_menu(cfg, slug, trial):
         group_field_label = group_field.replace('doc_', '').replace('_', ' ')
         data['sub_menu'].append(("{}/topic_heatmap/{}".format(path_prefix, group_field),
                                     "Topic/{} Heatmap".format(group_field_label)))
-    data['sub_menu'].append(("{}/topic_pair_net/0.18".format(path_prefix),
+    data['sub_menu'].append(("{}/topic_pair_net".format(path_prefix),
                              "Topic Pair Network"))
     # data['sub_menu'].append(("{}/topic_pair_heatmap/jsd".format(path_prefix),
     #                          "Topic Pair Similiarity Heatmap"))

@@ -6,7 +6,7 @@
     <b>Params: <code>K = {{k}},  N = {{pca_docs.shape[0]}}</code></b>
 </div>
 
-<div class="w3-half w3-container">
+<div class="w3-third w3-container">
     <h1>Loadings</h1>
     <p class="w3-large">The loadings of each component represent the words associated with each component.
         Each component is effectively a language model, where each word is assigned aweight ranging
@@ -17,7 +17,7 @@
     {% set max_var = pca_items.explained_variance.max() %}
     {% for item in pca_items.index %}
     {% set var_percent = (pca_items.loc[item, 'explained_variance'] / max_var) * 100 %}
-    <h2>PC{{item+1}}</h2>
+    <h2>PC{{item}}</h2>
     <div class="w3-large">
          <div class="pc_ev">
              <div class="w3-light-green" style="padding-left:.5rem;height:24px;
@@ -32,7 +32,7 @@
   <div id="box-plot"></div>
 </div>
 
-<div class="w3-half w3-container">
+<div class="w3-rest w3-container">
     <h1>Comparative Scatter Plots</h1>
     <div id="3d_plot"></div>
     <div id="pca_plots"></div>
@@ -44,13 +44,30 @@
 
 {% set k = pca_terms.shape[1] %}
 
-// DATA
+// NEW DATA METHOD
+
+// Get component and topic data for sample docs
+// Better to create a matrix in python code
+var pcdocs = []
+var topic_labels = []
+{% for t in topics.index %}
+topic_labels[{{t}}] = 'T{{t}} {{topics.loc[t].topic_gloss}}'
+pcdocs[{{t}}] = {}
+pcdocs[{{t}}].ids = {{pca_docs.loc[pca_docs.maxtopic == t].index.tolist() | tojson | safe }}
+pcdocs[{{t}}].comps = []
+{% for c in range(k) %}
+{% set col = 'PC{}'.format(c) %}
+pcdocs[{{t}}].comps.push({{pca_docs.loc[pca_docs.maxtopic == t, col].tolist() | tojson | safe }})
+{% endfor %}
+{% endfor %}
+
+// OLD DATA METHOD
 pc = []
 {% for i in range(k) %}
-// {{i}}
 {% set col = 'PC{}'.format(i) %}
 pc.push( {{pca_docs[col].tolist() | tojson | safe }})
 {% endfor %}
+
 pc_docs = {{pca_docs.doc_id.tolist() | tojson | safe}}
 
 // BOX PLOTS
@@ -58,7 +75,7 @@ pc_docs = {{pca_docs.doc_id.tolist() | tojson | safe}}
 bx_traces = []
 bx_layout = {
     height: 75,
-  yaxis: {
+    yaxis: {
         autorange: true,
         showgrid: false,
         zeroline: true,
@@ -79,7 +96,7 @@ bx_layout = {
     showlegend: false
 }
 {% for i in range(k) %}
-bx_traces.push({ y: pc[{{i}}], type: 'box', name: 'PC{{i+1}}' })
+bx_traces.push({ y: pc[{{i}}], type: 'box', name: 'PC{{i}}' })
 Plotly.newPlot(
     'pc_ev_box_{{i}}',
     [
@@ -87,7 +104,7 @@ Plotly.newPlot(
             x: pc[{{i}}],
             type: 'violin',
             //boxpoints: 'all',
-            name: 'PC{{i+1}}'
+            name: 'PC{{i}}'
         }
     ],
     bx_layout
@@ -101,17 +118,37 @@ var bx_layout = {
 Plotly.newPlot('box-plot', bx_traces, bx_layout);
 
 // SCATTER PLOTS
-labels = {{pca_labels.tolist() | tojson | safe}}
-uniques = {{pca_label_uniques.tolist() | tojson | safe}}
+
+var labels = {{pca_docs.maxtopic.tolist() |  tojson | safe}}
+var uniques = {{topics.index.values.tolist() | tojson | safe}}
+
+//var labels = {{pca_labels.tolist() | tojson | safe}}
+//var uniques = {{pca_label_uniques.tolist() | tojson | safe}}
+
+//  What is this for?
 var tickvals = []
 for (i=0; i < {{ pca_label_uniques.shape[0]}}; i++) { tickvals.push(i) }
+
 function plot_pcas(pc_x, pc_y) {
 
-    var x_lab = pc_x + 1
-    var y_lab = pc_y + 1
+    var x_lab = pc_x
+    var y_lab = pc_y
     var  div_id = 'scatter_' + x_lab + '_' + y_lab
     $('#pca_plots').append('<div id="' + div_id + '"></div>')
 
+    var traces = []
+    {% for t in topics.index %}
+    traces.push({
+        x: pcdocs[{{t}}].comps[pc_x],
+        y: pcdocs[{{t}}].comps[pc_y],
+        type: 'scatter',
+        mode: 'markers',
+        text: pcdocs[{{t}}].ids,
+        name: topic_labels[{{t}}]
+    })
+    {% endfor %}
+
+    /*
     var trace1 = {
         x: pc[pc_x],
         y: pc[pc_y],
@@ -130,18 +167,19 @@ function plot_pcas(pc_x, pc_y) {
             }
         }
     }
+    */
 
     var layout = {
         /* title: "PC" + x_lab + " and PC" + y_lab, */
         hovermode: 'closest',
-        showlegend: false,
+        showlegend: true,
         xaxis: {
             visible: true,
-            title: 'PC'+ (pc_x+1)
+            title: 'PC'+ (pc_x)
         },
         yaxis: {
             visible: true,
-            title: 'PC'+ (pc_y+1)
+            title: 'PC'+ (pc_y)
         },
         margin: {
             l: 0,
@@ -150,16 +188,21 @@ function plot_pcas(pc_x, pc_y) {
             t: 10
         },
         height: 400,
-        width: 800
+        width: 800,
+        orientation: 'h'
     }
 
-    Plotly.newPlot(div_id, [trace1], layout);
+    Plotly.newPlot(div_id, traces, layout);
+
     var plot = document.getElementById(div_id), data = pc_docs
-    plot.on('plotly_click', function(data){
-        doc_id = data.points[0].text
-        url = '/projects/{{slug}}/{{trial}}/doc/' + doc_id
-        window.open(url, '_blank')
-    });
+    plot.on(
+        'plotly_click',
+        function(data){
+            doc_id = data.points[0].text
+            url = '/projects/{{slug}}/{{trial}}/doc/' + doc_id
+            window.open(url, '_blank')
+        }
+    );
 
 }
 
@@ -167,10 +210,27 @@ for (i = 0; i < ({{k-1}}); i++) {
     plot_pcas(i, i+1)
 }
 
-// 3D 
+// 3D
 
+// Create traces for each topic
+traces_3d = []
+{% for t in topics.index %}
+var t =  {{t}}
+traces_3d.push({
+    x: pcdocs[t].comps[0],
+    y: pcdocs[t].comps[1],
+    z: pcdocs[t].comps[2],
+    type: 'scatter3d',
+    mode: 'markers+text',
+    name: topic_labels[t],
+    text: pcdocs[t].ids
+})
+{% endfor %}
+
+// Plot the traces
 Plotly.newPlot(
     '3d_plot',
+    /*
     [{
         x: pc[0],
         y: pc[1],
@@ -184,12 +244,14 @@ Plotly.newPlot(
             showscale: true,
             colorbar: {
                 tickmode: 'arrays',
-                //nticks: {{pca_label_uniques.shape[0]}},
-                tickvals: tickvals,
+                nticks: {{topics.shape[0]}},
+                tickvals: uniques,
                 ticktext: uniques,
             }
         }
     }],
+    */
+    traces_3d,
     {
         legends: false,
         height: 800,
@@ -198,7 +260,7 @@ Plotly.newPlot(
             l: 0,
             r: 0,
             b: 10,
-            t: 10
+            t: 30
         },
         xaxis: {
             visible: true,

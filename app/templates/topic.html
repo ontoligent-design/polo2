@@ -76,27 +76,31 @@ table td:first-child { text-align: right; color: gray; }
                     <th>Gloss</th>
                     <th>Top Words</th>
                     <th>Contiguity</th>
-                    <th>Similarity</th>
+                    <!-- <th>Similarity</th> -->
                 </tr>
             </thead>
             <tbody>
-                {% for t in rels.index %}
+                {% for t in rels.sort_values('i_ab', ascending=False).index %}
                 <tr class="item">
                     <td><b>{{t}}</b></td>
                     <td>{{topics.loc[t].topic_gloss | safe}}</td>
-                    <td><a href="/projects/{{slug}}/{{trial}}/topic/{{t}}">{{topics.loc[t].topic_words | safe}}</a></td>
-                    {% for col in [ 'i_ab', 'jsd'] %}
+                    <td><a href="/projects/{{slug}}/{{trial}}/topic/{{t}}">
+                        {{topics.loc[t].topic_words | safe}}</a></td>
+                    {# for col in [ 'i_ab', 'jsd'] #}
+                    {% for col in [ 'i_ab'] %}
                         {% set max_val = rels[col].max() %} <!-- Inefficient -->
                         {% set min_val = rels[col].min() %} <!-- Inefficient -->
                         {% set cur_val = rels.loc[t][col] %}
                         {% set pos_percent = (cur_val / max_val) * 100 %}
                         {% set neg_percent = (cur_val / min_val) * 100 %}
                         {% set div_color = 'light-blue' if cur_val > 0 else 'pale-red' %}
-                        {% set div_color = 'orange' if col == 'jsd' else div_color %}
+                        {# set div_color = 'orange' if col == 'jsd' else div_color #}
                         {% set div_percent = pos_percent if cur_val > 0 else neg_percent %}
                         <td>
                             <div class="">
-                                <div class="w3-{{div_color}}" style="padding-left:.5rem;height:24px;width:{{div_percent}}%">{{cur_val|round(5)}}</div>
+                                <div class="w3-{{div_color}}"
+                                     style="padding-left:.5rem; height:24px;
+                                     width:{{div_percent}}%">{{cur_val|round(5)}}</div>
                             </div>
                         </td>
                     {% endfor %}

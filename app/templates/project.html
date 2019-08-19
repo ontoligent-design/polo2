@@ -171,7 +171,12 @@ Plotly.newPlot('doc_ord_counts',
         hoverinfo: 'x+y',
         showlegend: false
     }],
-    {title:'Documents Counts per Group'}
+    {
+        title:'Documents Counts per Group',
+        xaxis: {
+            tickmode: 'linear'
+        }
+    }
 )
 
 

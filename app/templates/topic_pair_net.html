@@ -34,10 +34,27 @@ var data = {
     edges: edges
 };
 var options = {
-    autoResize: true,
+    //autoResize: true,
     height: '1000px',
     width: '100%',
-    nodes: {shape: 'box'},
+    nodes: {
+        shape: 'box',
+        scaling: {
+            min: 0,
+            max: 100,
+            label:  {
+                enabled: true,
+                drawThreshold: 5
+            }
+        }
+    },
+    edges: {
+        font: {
+            size: 10,
+            face: 'arial',
+            multi: false,
+        }
+    },
     physics: {
         enabled: true,
         solver: 'forceAtlas2Based',
@@ -45,8 +62,15 @@ var options = {
             damping: .4,
         }
     },
+    event: {
+        doubleClick: {
+
+        }
+    }
 };
 var network = new vis.Network(container, data, options);
-
+network.on( 'doubleClick', function(properties) {
+    window.open('/projects/{{slug}}/{{trial}}/topic/'+properties.nodes)
+});
 
 {% endblock %}

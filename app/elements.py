@@ -239,13 +239,21 @@ class Elements(object):
         else:
             return tpm
 
-    def get_topicpair_net(self, thresh=0.05):
+    def get_topicpair_net(self, thresh=.5, n=100):
         topics = self.model.get_table('topic')
         pairs = self.model.get_table('topicpair', set_index=False)
-        pairs = pairs.loc[pairs.i_ab >= thresh, ['topic_a_id', 'topic_b_id', 'i_ab']]
-        nodes = [{'id': t, 'label': 'T{}: {} '.format(t, topics.loc[t].topic_gloss)}
+        # pairs = pairs.loc[pairs.i_ab >= thresh, ['topic_a_id', 'topic_b_id', 'i_ab']]
+        pairs = pairs[pairs.i_ab >= thresh].sort_values('i_ab', ascending=False).head(n)
+        # pairs = pairs.sort_values('i_ab', ascending=False).head(n)
+        nodes = [{'id': t,
+                  'title': '{1}'.format(t, topics.loc[t].topic_words),
+                  'label': 'T{} {}'.format(t, topics.loc[t].topic_gloss),
+                  'value': int((topics.loc[t].topic_alpha / topics.topic_alpha.max()) * 100)}
                  for t in pd.concat([pairs.topic_a_id, pairs.topic_b_id], axis=0).unique()]
-        edges = [{'from': int(pairs.loc[i].topic_a_id), 'to': int(pairs.loc[i].topic_b_id)}
+        edges = [{'from': int(pairs.loc[i].topic_a_id),
+                  'to': int(pairs.loc[i].topic_b_id),
+                  'value': float(pairs.loc[i].i_ab),
+                  'label': '{}'.format(round(pairs.loc[i].i_ab, 2))}
                  for i in pairs.index]
         return nodes, edges
 
@@ -348,19 +356,31 @@ class Elements(object):
     def get_pca_items(self):
         try:
             df = self.corpus.get_table('pca_item') #, set_index='pc_id')
-            df['label'] = df['pc_id'].apply(lambda x: 'PC{}'.format(x + 1), 1)
+            df['label'] = df['pc_id'].apply(lambda x: 'PC{}'.format(x), 1)
             return df
         except:
             return None
 
     def get_pca_docs(self, n=1000):
         """Grab a random sample of n documents for plotting"""
-        sql = "SELECT d.doc_label, p.* " \
-              "FROM pca_doc p " \
-              "JOIN doc d USING(doc_id) " \
-              "ORDER BY RANDOM() LIMIT ?"
+        sql1 = "ATTACH '{}' AS m".format(self.model.dbfile)
+        sql2 = """
+        SELECT a.*, b.maxtopic 
+        FROM  (
+            SELECT d.doc_label, p.* 
+            FROM pca_doc p 
+            JOIN doc d USING(doc_id) 
+            ORDER BY RANDOM() LIMIT ?
+        ) a 
+        JOIN m.doc b ON a.doc_id = b.src_doc_id
+        """
+        # sql = "SELECT d.doc_label, p.* " \
+        #       "FROM pca_doc p " \
+        #       "JOIN doc d USING(doc_id) " \
+        #       "ORDER BY RANDOM() LIMIT ?"
         try:
-            df = pd.read_sql_query(sql, self.corpus.conn, params=(n,))
+            self.corpus.conn.execute(sql1)
+            df = pd.read_sql_query(sql2, self.corpus.conn, params=(n,))
             return df
         except:
             return None
@@ -396,15 +416,25 @@ class Elements(object):
 
         # Experiment: these argmax values should be computed ahead of time and
         # added to the VOCAB tables
-        sql2 = """
-        SELECT word_str as token_str, word_count as topic_token_count, 
-            topic_alpha, topic_gloss, topic_id, MAX(word_count) AS topic_argmax
-        FROM topicword tw
-        JOIN word w USING(word_id)
-        JOIN topic t USING(topic_id)
-        GROUP BY word_id
+        # sql2 = """
+        # SELECT word_str as token_str, word_count as topic_token_count,
+        #     topic_alpha, topic_gloss, topic_id, MAX(word_count) AS topic_argmax
+        # FROM topicword tw
+        # JOIN word w USING(word_id)
+        # JOIN topic t USING(topic_id)
+        # GROUP BY word_id
+        # """
+        # tw = pd.read_sql_query(sql2, self.model.conn)
+        # df = df.merge(tw[['token_str', 'topic_token_count', 'topic_id',
+        #                   'topic_alpha', 'topic_gloss']], on='token_str', how='left')
+
+        sql3 = """
+        SELECT word_str as token_str , topic_alpha, topic_gloss, topic_id
+        FROM word w 
+        JOIN topic t ON (w.maxtopic = t.topic_id)
         """
-        tw = pd.read_sql_query(sql2, self.model.conn)
-        df = df.merge(tw[['token_str', 'topic_token_count', 'topic_id',
+        tw = pd.read_sql_query(sql3, self.model.conn)
+        df = df.merge(tw[['token_str', 'topic_id',
                           'topic_alpha', 'topic_gloss']], on='token_str', how='left')
+
         return df
