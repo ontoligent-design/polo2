@@ -36,7 +36,7 @@ class PoloCorpus(PoloDb):
 
         if not src_file_name:
             src_file_name = self.cfg_src_file_name
-        doc = pd.read_csv(src_file_name, header=0, sep=self.cfg_src_file_sep)
+        doc = pd.read_csv(src_file_name, header=0, sep=self.cfg_src_file_sep, lineterminator='\n')
         doc.index.name = 'doc_id'
 
         # todo: Find a more efficient way of handling this -- such as not duplicating!
@@ -221,9 +221,9 @@ class PoloCorpus(PoloDb):
 
         sql1 = """
         SELECT g.doc_id, d.doc_label, g.ngram, g.tf
-        FROM ngrambidoc g
+        FROM ngram{}doc g
         JOIN doc d USING(doc_id)        
-        """
+        """.format(type)
 
         sql2 = """
         SELECT ngram, doc_label, sum(tf) AS tf_sum 
@@ -239,13 +239,13 @@ class PoloCorpus(PoloDb):
         WITH stats(n) AS (SELECT COUNT() AS n FROM doc)
         SELECT ngram, count() AS c, (SELECT n FROM stats) AS n, 
         CAST(COUNT() AS REAL) / CAST((SELECT n FROM stats) AS REAL) AS df
-        FROM ngrambidoc
+        FROM ngram{}doc
         GROUP BY ngram
         ORDER BY c DESC
-        """
+        """.format(type)
         docngram = pd.read_sql_query(sql1, self.conn, index_col='doc_id')
-        labelngram = pd.read_sql(sql2, self.conn,  index_col=['ngram','doc_label'])
-        ngramstats = pd.read_sql(sql3, self.conn,  index_col=['ngram'])
+        labelngram = pd.read_sql_query(sql2, self.conn,  index_col=['ngram','doc_label'])
+        ngramstats = pd.read_sql_query(sql3, self.conn,  index_col=['ngram'])
 
         ndm = labelngram.unstack().fillna(0)
         ndm.columns = ndm.columns.droplevel(0)
@@ -304,7 +304,8 @@ class PoloCorpus(PoloDb):
                             # Remove ngrams that cross sentences
 
         # Remove redundant doc and sentence cols
-        cols = ['doc_id', 'sentence_id', 'token_str'] + ['token_str_{}'.format(i) for i in range(1, n)]
+        cols = ['doc_id', 'sentence_id', 'token_str'] + \
+               ['token_str_{}'.format(i) for i in range(1, n)]
         docngram = docngram[cols]
 
         # Join the grams into a single ngram

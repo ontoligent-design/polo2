@@ -1,13 +1,14 @@
-import sqlite3, re
+import sqlite3
+import re
 import pandas as pd
 import os.path
 
 
 # todo: Integrate SQLAlchemy to add indexes, etc.
 
-class PoloDb():
+class PoloDb:
 
-    tables = {} # Used to cache tables
+    tables = {}  # Used to cache tables
     cache_mode = False
 
     def __init__(self, dbfile, read_only=False):
@@ -77,19 +78,21 @@ class PoloDb():
             info = res2.fetchone()
             if (re.search(r'PRIMARY KEY', info[0])):
                 continue
-            id_cols = [re.sub(r'\W+', '', token) for token in info[0].split() if re.search('_id', token)]
+            id_cols = [re.sub(r'\W+', '', token)
+                       for token in info[0].split() if re.search('_id', token)]
             alter_sql = ''
 
     def get_table_names(self):
         cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM sqlite_master WHERE type='table';")
+        cursor.execute("SELECT * FROM sqlite_master WHERE type='table'")
         tables = cursor.fetchall()
         tdfs = []
+        sql = "select '{0}' as table_name, count(*) as nrows from {0}"
         for table in tables:
-            tdfs.append(pd.read_sql_query("select '{0}' as table_name, count(*) as nrows from {0}".format(table[1]), self.conn))
+            tdfs.append(pd.read_sql_query(sql.format(table[1]), self.conn))
         tables_df = pd.concat(tdfs, axis=0)
         tables_df.set_index('table_name', inplace=True)
-        return(tables_df)
+        return tables_df
 
     def clear_table_cache(self):
         for table_name in self.tables:
