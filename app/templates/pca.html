@@ -44,6 +44,10 @@
 
 {% set k = pca_terms.shape[1] %}
 
+// EXPLAINED VARIANCE
+
+var expvar = {{pca_items.explained_variance.tolist() | tojson | safe}}
+
 // NEW DATA METHOD
 
 // Get component and topic data for sample docs
@@ -97,6 +101,7 @@ bx_layout = {
 }
 {% for i in range(k) %}
 bx_traces.push({ y: pc[{{i}}], type: 'box', name: 'PC{{i}}' })
+/*
 Plotly.newPlot(
     'pc_ev_box_{{i}}',
     [
@@ -109,6 +114,7 @@ Plotly.newPlot(
     ],
     bx_layout
 )
+*/
 {% endfor %}
 
 var bx_layout = {

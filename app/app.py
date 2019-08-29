@@ -270,7 +270,6 @@ def pca_page(slug, trial='trial1'):
     data['trial'] = trial
     data['page_title'] = 'PCA'
     data['pca_docs'] = els.get_pca_docs()
-    print(data['pca_docs'])
     data['pca_terms'] = els.get_pca_terms()
     labels, uniques = data['pca_docs']['doc_label'].factorize()
     data['pca_labels'] = labels
