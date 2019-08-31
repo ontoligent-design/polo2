@@ -92,7 +92,7 @@ class PoloCorpus(PoloDb):
         doctokens.token_str = doctokens.token_str.str.replace(r'[^a-z]+', '')
         doctokens = doctokens[~doctokens.token_str.str.match(r'^\s*$')]
 
-        # todo: Instead of removing stopwords, identify with column
+        # todo: Instead of removing stopwords, identify with feature
         stopwords = self.get_table('stopword').token_str.tolist()
         doctokens = doctokens[~doctokens.token_str.isin(stopwords)]
 

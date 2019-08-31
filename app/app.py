@@ -141,6 +141,7 @@ def topic_pair_net(slug, trial='trial1', thresh=0.5):
 
 @app.route('/projects/<slug>/<trial>/docs')
 def doc_list(slug, trial='trial1'):
+    """View doc list"""
     cfg = get_project_config(slug)
     els = Elements(cfg, trial)
     set_project_menu(cfg, slug, trial)
@@ -156,9 +157,11 @@ def doc_list(slug, trial='trial1'):
 
 @app.route('/projects/<slug>/<trial>/doc/<int:src_doc_id>')
 def doc_item(slug, src_doc_id, trial='trial1'):
+    """View doc item"""
     cfg = get_project_config(slug)
     els = Elements(cfg, trial)
     set_project_menu(cfg, slug, trial)
+    data['groups'] = cfg.get_group_fields()
     data['slug'] = slug
     data['trial'] = trial
     data['page_title'] = '{}, {} src_doc_id = {}'.format(slug, trial, src_doc_id)
