@@ -23,11 +23,14 @@
             <a href="/projects/{{slug}}/{{trial}}/docs/h/{{h}}">
                 <span class="w3-tag w3-green">h: {{h}}</span>
             </a>
-            <a href="/projects/{{slug}}/{{trial}}/groups/doc_label/{{label}}">
-                <span class="w3-tag w3-green">Label: {{label}}</span>
+            {% for group in groups %}
+            {% set group_val = doc[group].tolist()[0] | safe %}
+            <a href="/projects/{{slug}}/{{trial}}/groups/{{group}}/{{group_val}}">
+                <span class="w3-tag w3-green">{{group | replace('doc_', '')}}: {{group_val}}</span>
             </a>
+            {% endfor %}
             <a href="{# doc.doc_url.tolist()[0] | safe #}" target="_blank">
-                <span class="w3-tag w3-blue">Original</span>
+                <span class="w3-tag w3-blue">Original</span>                
             </a>
         </div>        
     </div>
