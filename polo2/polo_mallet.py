@@ -570,13 +570,14 @@ class PoloMallet(PoloDb):
         twm.columns = twm.columns.droplevel(0)
         twm = twm.T
 
+        topics = self.get_table('topic')
+        topics['label'] = topics.apply(lambda x: "T{}:{}".format(x.name, x.topic_words).strip(), 1) 
+
         # Cteate plots
         import plotly.figure_factory as ff
         fig = ff.create_dendrogram(twm, orientation='left', labels=topics.label.tolist(),
             distfun=lambda x: pdist(x, metric='euclidean'),
             linkagefun=lambda x: sch.linkage(x, method='ward'))
-        topics = self.get_table('topic')
-        topics['label'] = topics.apply(lambda x: "T{}:{}".format(x.name, x.topic_words).strip(), 1) 
         fig.update_layout(width=1200, height=25 * self.cfg_num_topics)
         fig.layout.margin.update({'l':600})
         # fig.show()    
