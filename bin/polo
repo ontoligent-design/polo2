@@ -231,6 +231,7 @@ if __name__ == '__main__':
         add_topic_glosses
         add_maxtopic_to_word
         add_maxtopic_to_doc
+        add_topic_clustering
         """.split()
         run_funcs(mallet, funcs)
 
