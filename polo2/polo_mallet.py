@@ -560,6 +560,36 @@ class PoloMallet(PoloDb):
         )
         self.set_config_items(items)
 
+    def add_topic_clustering(self):
+        """Apply HCA to topicword matrix"""
+        import scipy.cluster.hierarchy as sch
+        from scipy.spatial.distance import pdist
+        tw = self.get_table('topicword')
+        twm = tw.set_index(['word_id', 'topic_id']).unstack().fillna(0)
+        twm = twm / twm.sum()
+        twm.columns = twm.columns.droplevel(0)
+        twm = twm.T
+
+        # Cteate plots
+        import plotly.figure_factory as ff
+        fig = ff.create_dendrogram(twm, orientation='left', labels=topics.label.tolist(),
+            distfun=lambda x: pdist(x, metric='euclidean'),
+            linkagefun=lambda x: sch.linkage(x, method='ward'))
+        topics = self.get_table('topic')
+        topics['label'] = topics.apply(lambda x: "T{}:{}".format(x.name, x.topic_words).strip(), 1) 
+        fig.update_layout(width=1200, height=25 * self.cfg_num_topics)
+        fig.layout.margin.update({'l':600})
+        # fig.show()    
+        fig.write_image('{}-{}-dendrogram.png'.format(self.config.ini['DEFAULT']['slug'], self.trial_name))
+        fig.write_image('{}-{}-dendrogram.svg'.format(self.config.ini['DEFAULT']['slug'], self.trial_name))
+
+        # Put tree data in db
+        sims = pdist(twm, metric='euclidean')
+        tree = pd.DataFrame(sch.linkage(sims, method='ward'), 
+            columns=['clust_a','clust_b','dist_ab','n_orig_obs'])
+        tree.index.name = 'iter_id'
+        self.put_table(tree, 'topictree', index=True)
+
     def set_config_items(self, items = dict()):
         """Add config items to config table"""
         for key in items.keys():
