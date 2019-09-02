@@ -492,4 +492,8 @@ class PoloCorpus(PoloDb):
         """
         mallet_corpus = pd.read_sql_query(mallet_corpus_sql, self.conn)
 
+        from pandas.api.types import is_string_dtype
+        if is_string_dtype(mallet_corpus['doc_label']):
+            mallet_corpus['doc_label'] = mallet_corpus['doc_label'].str.replace(r'\s+', '_')
+            
         mallet_corpus.to_csv(self.cfg_mallet_corpus_input, index=False, header=False, sep=',')
