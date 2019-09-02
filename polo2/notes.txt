@@ -1,0 +1,9 @@
+Need to put external dependencies somewhere
+* orca
+* mallet
+* nltk_data
+
+Divide config
+* system wide
+* project
+* user?
