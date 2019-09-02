@@ -230,13 +230,13 @@ class PoloMallet(PoloDb):
     def add_topic_glosses(self):
         """Add glosses to topic table"""
         sql = """
-        SELECT topic_id, GROUP_CONCAT(topic_phrase, '|') as 'topic_gloss'
-        FROM (SELECT * FROM topicphrase ORDER BY phrase_weight DESC)
+        SELECT topic_id, topic_phrase as topic_gloss, 
+            MAX(phrase_weight) as max_phrase_weight
+        FROM topicphrase
         GROUP BY topic_id
-        """.strip()
+        """
         topicphrase = pd.read_sql_query(sql, self.conn)
         topicphrase.set_index('topic_id', inplace=True)
-        topicphrase['topic_gloss'] = topicphrase.apply(lambda x: x.topic_gloss.split('|')[0], 1)
         topic = self.get_table('topic', set_index=True)
         topic['topic_gloss'] = topicphrase.topic_gloss
         self.put_table(topic, 'topic', index=True)
@@ -581,8 +581,8 @@ class PoloMallet(PoloDb):
         fig.update_layout(width=1200, height=25 * self.cfg_num_topics)
         fig.layout.margin.update({'l':600})
         # fig.show()    
-        fig.write_image('{}-{}-dendrogram.png'.format(self.config.ini['DEFAULT']['slug'], self.trial_name))
-        fig.write_image('{}-{}-dendrogram.svg'.format(self.config.ini['DEFAULT']['slug'], self.trial_name))
+        fig.write_image('{}-{}-dendrogram.png'.format(self.cfg_slug, self.trial_name))
+        fig.write_image('{}-{}-dendrogram.svg'.format(self.cfg_slug, self.trial_name))
 
         # Put tree data in db
         sims = pdist(twm, metric='euclidean')
