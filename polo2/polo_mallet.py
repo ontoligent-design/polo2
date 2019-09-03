@@ -534,10 +534,17 @@ class PoloMallet(PoloDb):
     def add_maxtopic_to_doc(self):
         """Add idmax topic for each doc"""
         # todo: Put this in the method that creates doctopic
-        doctopic = self.get_table('doctopic', set_index=True)
+        # doctopic = self.get_table('doctopic', set_index=True)
         doc = self.get_table('doc')
         doc = doc.set_index('doc_id')
-        doc['maxtopic'] = doctopic.topic_weight.unstack().fillna(0).T.idxmax()
+        doc = doc.sort_index()
+        sql = """
+        SELECT doc_id, topic_id as maxtopic, MAX(topic_weight) as maxweight
+        FROM doctopic
+        GROUP BY doc_id
+        """
+        doc['maxtopic'] = pd.read_sql_query(sql, self.conn).set_index('doc_id').sort_index()
+        # doc['maxtopic'] = doctopic.topic_weight.unstack().fillna(0).T.idxmax()
         self.put_table(doc, 'doc', index=True)
 
     def add_doctopic_weight_stats(self):
@@ -560,10 +567,39 @@ class PoloMallet(PoloDb):
         )
         self.set_config_items(items)
 
+    def add_topiccompcorr(self):
+        """Add topic component correlation table"""
+        corpus_db_file = self.config.generate_corpus_db_file_path()
+        corpus = PoloDb(corpus_db_file)
+        pca_doc = corpus.get_table('pca_doc')
+        del(corpus)
+        pca_doc = pca_doc.set_index('doc_id')
+        sql = """
+        SELECT a.src_doc_id AS doc_id, topic_id, topic_weight  
+        FROM doc a 
+        JOIN doctopic b USING(doc_id)
+        """
+        doctopic = pd.read_sql_query(sql, self.conn, index_col=['doc_id', 'topic_id'])
+        dtm = doctopic.unstack()
+        dtm.columns = dtm.columns.droplevel(0)
+        # dtm.columns = ["T{0}".format(col) for col in  dtm.columns]
+        X = dtm.T.dot(pca_doc)
+        self.put_table(X, 'topiccomp_corr', index=True)
+
+        # Add topic poles
+        A = X.idxmax()
+        B = X.idxmin()
+        C = pd.concat([A,B], 1)
+        C.columns = ['max_pos_topic_id','max_neg_topic_id']
+        C.index.name  = 'pc_id'
+        C.index = [int(idx.replace('PC','')) for idx in C.index]
+        self.put_table(C, 'topiccomp_pole', index=True)
+
     def add_topic_clustering(self):
-        """Apply HCA to topicword matrix"""
+        """Apply Ward clustering of topics based on topicword matrix"""
         import scipy.cluster.hierarchy as sch
         from scipy.spatial.distance import pdist
+        
         tw = self.get_table('topicword')
         twm = tw.set_index(['word_id', 'topic_id']).unstack().fillna(0)
         twm = twm / twm.sum()
@@ -571,18 +607,20 @@ class PoloMallet(PoloDb):
         twm = twm.T
 
         topics = self.get_table('topic')
-        topics['label'] = topics.apply(lambda x: "T{}:{}".format(x.name, x.topic_words).strip(), 1) 
+        topics['label'] = topics.apply(lambda x: "{1} T{0:02d}".format(x.name, x.topic_gloss).strip(), 1) 
 
-        # Cteate plots
+        # Create plots
         import plotly.figure_factory as ff
         fig = ff.create_dendrogram(twm, orientation='left', labels=topics.label.tolist(),
             distfun=lambda x: pdist(x, metric='euclidean'),
             linkagefun=lambda x: sch.linkage(x, method='ward'))
-        fig.update_layout(width=1200, height=25 * self.cfg_num_topics)
-        fig.layout.margin.update({'l':600})
+        fig.update_layout(width=650, height=25 * self.cfg_num_topics)
+        fig.layout.margin.update({'l':200})
         # fig.show()    
         fig.write_image('{}-{}-dendrogram.png'.format(self.cfg_slug, self.trial_name))
-        fig.write_image('{}-{}-dendrogram.svg'.format(self.cfg_slug, self.trial_name))
+
+        # todo: Put SVG in database 
+        # fig.write_image('{}-{}-dendrogram.svg'.format(self.cfg_slug, self.trial_name))
 
         # Put tree data in db
         sims = pdist(twm, metric='euclidean')

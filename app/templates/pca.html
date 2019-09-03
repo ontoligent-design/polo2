@@ -52,8 +52,10 @@ var expvar = {{pca_items.explained_variance.tolist() | tojson | safe}}
 
 // Get component and topic data for sample docs
 // Better to create a matrix in python code
+
 var pcdocs = []
 var topic_labels = []
+
 {% for t in topics.index %}
 topic_labels[{{t}}] = 'T{{t}} {{topics.loc[t].topic_gloss}}'
 pcdocs[{{t}}] = {}
@@ -65,14 +67,13 @@ pcdocs[{{t}}].comps.push({{pca_docs.loc[pca_docs.maxtopic == t, col].tolist() | 
 {% endfor %}
 {% endfor %}
 
-// OLD DATA METHOD
+// OLD DATA METHOD -- Still used for box plots ...
 pc = []
 {% for i in range(k) %}
 {% set col = 'PC{}'.format(i) %}
 pc.push( {{pca_docs[col].tolist() | tojson | safe }})
 {% endfor %}
-
-pc_docs = {{pca_docs.doc_id.tolist() | tojson | safe}}
+pc_docs = {{pca_docs.index.tolist() | tojson | safe}}
 
 // BOX PLOTS
 
@@ -101,20 +102,6 @@ bx_layout = {
 }
 {% for i in range(k) %}
 bx_traces.push({ y: pc[{{i}}], type: 'box', name: 'PC{{i}}' })
-/*
-Plotly.newPlot(
-    'pc_ev_box_{{i}}',
-    [
-        {
-            x: pc[{{i}}],
-            type: 'violin',
-            //boxpoints: 'all',
-            name: 'PC{{i}}'
-        }
-    ],
-    bx_layout
-)
-*/
 {% endfor %}
 
 var bx_layout = {
@@ -124,16 +111,6 @@ var bx_layout = {
 Plotly.newPlot('box-plot', bx_traces, bx_layout);
 
 // SCATTER PLOTS
-
-var labels = {{pca_docs.maxtopic.tolist() |  tojson | safe}}
-var uniques = {{topics.index.values.tolist() | tojson | safe}}
-
-//var labels = {{pca_labels.tolist() | tojson | safe}}
-//var uniques = {{pca_label_uniques.tolist() | tojson | safe}}
-
-//  What is this for?
-var tickvals = []
-for (i=0; i < {{ pca_label_uniques.shape[0]}}; i++) { tickvals.push(i) }
 
 function plot_pcas(pc_x, pc_y) {
 
@@ -153,27 +130,6 @@ function plot_pcas(pc_x, pc_y) {
         name: topic_labels[{{t}}]
     })
     {% endfor %}
-
-    /*
-    var trace1 = {
-        x: pc[pc_x],
-        y: pc[pc_y],
-        type: 'scatter',
-        mode: 'markers',
-        text: pc_docs,
-        marker: {
-            color: labels,
-            colorscale: 'Rainbow',
-            showscale: true,
-            colorbar: {
-                tickmode: 'arrays',
-                //nticks: {{pca_label_uniques.shape[0]}},
-                tickvals: uniques,
-                ticktext: uniques,
-            }
-        }
-    }
-    */
 
     var layout = {
         /* title: "PC" + x_lab + " and PC" + y_lab, */
@@ -236,27 +192,6 @@ traces_3d.push({
 // Plot the traces
 Plotly.newPlot(
     '3d_plot',
-    /*
-    [{
-        x: pc[0],
-        y: pc[1],
-        z: pc[2],
-        type: 'scatter3d',
-        mode: 'markers+text',
-        text: {{ pca_docs.doc_label.tolist() | tojson | safe  }},
-        marker: {
-            color: labels,
-            colorscale: 'Rainbow',
-            showscale: true,
-            colorbar: {
-                tickmode: 'arrays',
-                nticks: {{topics.shape[0]}},
-                tickvals: uniques,
-                ticktext: uniques,
-            }
-        }
-    }],
-    */
     traces_3d,
     {
         legends: false,

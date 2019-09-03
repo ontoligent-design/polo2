@@ -68,6 +68,19 @@ class Elements(object):
                                 params=(topic_id,)).topic_phrase.tolist())
         return phrases
 
+    def get_all_topic_phrases(self, limit=20):
+        sql = """
+        select topic_phrase, 
+            sum(phrase_count) as n, 
+            avg(phrase_weight) as w,
+            group_concat(topic_id, ',') as topics
+        from topicphrase
+        group by topic_phrase
+        order by n desc
+        limit ?
+        """
+        return pd.read_sql_query(sql, self.model.conn, params=(limit,)) 
+
     def get_topic_entropy_hist(self):
         doctopics = self.model.get_table('doctopic', set_index=True)
         doctopics.unstack()
@@ -363,24 +376,22 @@ class Elements(object):
 
     def get_pca_docs(self, n=1000):
         """Grab a random sample of n documents for plotting"""
+
         sql1 = "ATTACH '{}' AS m".format(self.model.dbfile)
+
+        # Replace with WITH statement that grabs the docs first?
         sql2 = """
         SELECT a.*, b.maxtopic 
         FROM  (
-            SELECT d.doc_label, p.* 
-            FROM pca_doc p 
-            JOIN doc d USING(doc_id) 
+            SELECT * FROM pca_doc
             ORDER BY RANDOM() LIMIT ?
         ) a 
         JOIN m.doc b ON a.doc_id = b.src_doc_id
         """
-        # sql = "SELECT d.doc_label, p.* " \
-        #       "FROM pca_doc p " \
-        #       "JOIN doc d USING(doc_id) " \
-        #       "ORDER BY RANDOM() LIMIT ?"
+
         try:
             self.corpus.conn.execute(sql1)
-            df = pd.read_sql_query(sql2, self.corpus.conn, params=(n,))
+            df = pd.read_sql_query(sql2, self.corpus.conn, params=(n,), index_col='doc_id')
             return df
         except:
             return None

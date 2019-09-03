@@ -28,6 +28,7 @@ table td .topic_gloss { font-size: 16pt; margin: 0 0 0 0; }
         <p class="w3-large">
             {{topic_count}} topics in {{doc_count}} documents.
             Topics listed in order of <b>&alpha;</b>. Trend graphs show topic weight <b>averages</b> within the feature {{src_ord_col}}.
+            <a href="file://{{pub_home}}/{{slug}}/{{slug}}-{{trial}}-dendrogram.png" target="_blank">[T]</a>    
         </p>
         <table class="w3-table">
             {% for topic_id in topics.sort_values('topic_alpha', ascending=False).index %}
@@ -67,6 +68,27 @@ table td .topic_gloss { font-size: 16pt; margin: 0 0 0 0; }
 
 <div class="w3-rest">
     <div class="w3-container">
+        <!-- Top Phrases -->
+        <h2>Top Phrases</h2>
+        <p class="w3-large">These are the top phrases associated with topics as discovered by MALLET.</p>
+        <table class="w3-table" style="width:100%;">
+            {% set max_phrase_count = phrases.n.max() %}
+            {% for i in phrases.index %}
+            {% set phrase = phrases.loc[i] %}
+            <tr>
+                <!-- <td style="width:20%;">
+                    <div class="bigram_trend_graph" id="phrase_trend_graph_{{i}}" style="height:100px;"></div>
+                </td> -->
+                <td style="width:80%;">
+                    <div class="w3-xlarge" _href="/projects/{{slug}}/{{trial}}/ngram/{{phrase.topic_phrase}}">
+                        {{phrase.topic_phrase | replace('_', '&nbsp;') | safe }}
+                        ({{phrase.topics | replace('(\\d+),', 'T\g<1>&nbsp;') | safe }})
+                    </div>
+                    <div class="w3-light-green" style="height:24px; width:{{ (phrase.n / max_phrase_count) * 100 | round(2) }}%">{{phrase.n}}</div>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
 
         <!-- Top Bigrams -->
         <h2>Top Bigrams</h2>
@@ -87,17 +109,13 @@ table td .topic_gloss { font-size: 16pt; margin: 0 0 0 0; }
                     <a class="w3-xlarge" href="/projects/{{slug}}/{{trial}}/ngram/{{bigram.ngram}}">
                         {{bigram.ngram | replace('_', '&nbsp;') | safe }}
                     </a>
-                <!--
-                </td>
-                <td>
-                -->
-                    <div class="w3-light-green" style="height:24px; width:{{bigrams.loc[i].ngram_percent}}%">{{bigrams.loc[i].score | round(4)}}</div>
+                        <div class="w3-light-green" style="height:24px; width:{{bigrams.loc[i].ngram_percent}}%">{{bigrams.loc[i].score | round(4)}}</div>
                 </td>
             </tr>
             {% endfor %}
         </table>
 
-                <h2>Model Information</h2>
+        <h2>Model Information</h2>
         <table class="w3-table">
             <!--
             <tr>

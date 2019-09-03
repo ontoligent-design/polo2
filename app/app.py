@@ -61,6 +61,7 @@ def project(slug, trial='trial1'):
     set_project_menu(cfg, slug, trial)
     data['slug'] = slug
     data['trial'] = trial
+    data['pub_home'] = os.environ['POLO_PUB']
     data['page_title'] = '{}, {}'.format(slug, trial)
     data['ini'] = cfg.ini['DEFAULT'] # Really?
     data['trials'] = cfg.get_trial_names()
@@ -70,6 +71,7 @@ def project(slug, trial='trial1'):
     data['topic_count'] = els.get_topic_count()
     data['topics'] = els.get_topics()
     data['bigrams'] = els.get_top_bigrams()
+    data['phrases'] = els.get_all_topic_phrases()
     #data['ngm'] = els.get_ngram_group_matrix(degree=2)
     src_ord_col = cfg.ini['DEFAULT']['src_ord_col']
     print(src_ord_col)
@@ -274,9 +276,6 @@ def pca_page(slug, trial='trial1'):
     data['page_title'] = 'PCA'
     data['pca_docs'] = els.get_pca_docs()
     data['pca_terms'] = els.get_pca_terms()
-    labels, uniques = data['pca_docs']['doc_label'].factorize()
-    data['pca_labels'] = labels
-    data['pca_label_uniques'] = uniques
     data['pca_items'] = els.get_pca_items()
     data['max_variance'] = data['pca_items']['explained_variance'].max()
     data['topics'] = els.get_topics()
@@ -295,7 +294,7 @@ def w2v_page(slug, trial='trial1', join='inner'):
     data['topics']  = els.get_topics()
     data['coords'] = els.get_tsne_coords(join=join)
     return render_template('w2v.html', **data)
-
+    
 
 # Helpers -- Consider moving to module
 def get_project_config_file(slug):
