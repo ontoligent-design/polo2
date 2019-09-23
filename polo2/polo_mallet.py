@@ -383,6 +383,7 @@ class PoloMallet(PoloDb):
         topicpair['cosim'] = topicpair.apply(lambda x: pm.cosine_sim(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
         topicpair['jscore'] = topicpair.apply(lambda x: pm.jscore(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
         topicpair['jsd'] = topicpair.apply(lambda x: pm.js_divergence(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
+        topicpair['euclidean'] = topicpair.apply(lambda x: pm.euclidean(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
 
         # Calculate PWMI
         def get_p_ab(a, b):
@@ -591,8 +592,8 @@ class PoloMallet(PoloDb):
         B = X.idxmin()
         C = pd.concat([A,B], 1)
         C.columns = ['max_pos_topic_id','max_neg_topic_id']
-        C.index.name  = 'pc_id'
         C.index = [int(idx.replace('PC','')) for idx in C.index]
+        C.index.name  = 'pc_id'
         self.put_table(C, 'topiccomp_pole', index=True)
 
     def add_topic_clustering(self):

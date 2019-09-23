@@ -12,8 +12,14 @@ class PoloMath():
     @staticmethod
     def cosine_sim(x, y):
         """ x and y are two comparable distribution vectors, e.g. words for a topic"""
-        return 1 - cosine(x, y)
+        return np.dot(x, y) / (np.sqrt(np.dot(x, x)) * np.sqrt(np.dot(y, y)))
+        # return 1 - cosine(x, y)
 
+    @staticmethod
+    def cosine_dist(x, y):
+        """ x and y are two comparable distribution vectors, e.g. words for a topic"""
+        return cosine(x, y)
+    
     @staticmethod
     def js_divergence(p1, p2):
         """Computes the Jensen-Shannon Divergence between two vectors (series)."""
