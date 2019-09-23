@@ -138,9 +138,9 @@ if __name__ == '__main__':
     # RETRO
     parser.retro = subparsers.add_parser('retro', help='Combines the corpus and model dbs for use in older Polo')
     parser.retro.add_argument('-c', '--corpus_dbfile', help="Corpus database name", action="store",
-                              type=str, default=None)
+                            type=str, default=None)
     parser.retro.add_argument('-m', '--model_dbfile', help="Mallet model database name", action="store",
-                              type=str, default=None)
+                            type=str, default=None)
 
     # SEQUENCE
     parser.sequence = subparsers.add_parser('sequence', help='Run a sequence of commands')
@@ -296,8 +296,8 @@ if __name__ == '__main__':
             ini_file = args.name
         if not os.path.isfile(ini_file):
             print("Creating INI file template `{}`. "
-                  "When this process is done, edit "
-                  "this file with sensible values.".format(ini_file))
+                "When this process is done, edit "
+                "this file with sensible values.".format(ini_file))
             config = PoloConfig(ini_file, create=True)
         else:
             print("INI file `{}` already exists.".format(ini_file))
@@ -331,3 +331,4 @@ if __name__ == '__main__':
     else:
         parser.print_help()
         sys.exit()
+        
