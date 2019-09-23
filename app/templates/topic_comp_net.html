@@ -1,0 +1,69 @@
+{% extends "layout.html" %}
+
+{% block styles %}
+#topic_comp_graph {
+  width: 100%;
+  height: 100%;
+  border: 1px solid lightgray;
+}
+{% endblock %}
+
+{% block scripts %}
+<script 
+    type="text/javascript" 
+    src="https://unpkg.com/vis-network@latest/dist/vis-network.min.js"></script>
+<link 
+    href="https://unpkg.com/vis-network@latest/dist/vis-network.min.css" 
+    rel="stylesheet" type="text/css" />
+{% endblock %}
+
+{% block main %}
+<div class="w3-row">
+    <div class="w3-container">
+        <div id="topic_comp_graph"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block code %}
+var nodes = new vis.DataSet({{nodes|safe}})
+var edges = new vis.DataSet({{edges|safe}})
+var container = document.getElementById('topic_comp_graph');
+var data = {
+    nodes: nodes,
+    edges: edges
+};
+var options = {
+    autoResize: true,
+    height: '1000px',
+    width: '100%',
+    nodes: {
+        shape: 'box',
+    },
+    edges: {
+        font: {
+            size: 10,
+            face: 'arial',
+            multi: false,
+        },
+        label: true
+    },
+    physics: {
+        enabled: true,
+        solver: 'forceAtlas2Based',
+        forceAtlas2Based: {
+            damping: .4,
+        }
+    },
+    event: {
+        doubleClick: {
+
+        }
+    }
+};
+var network = new vis.Network(container, data, options);
+network.on( 'doubleClick', function(properties) {
+    window.open('/projects/{{slug}}/{{trial}}/topic/'+properties.nodes)
+});
+
+{% endblock %}

@@ -275,11 +275,23 @@ def pca_page(slug, trial='trial1'):
     data['trial'] = trial
     data['page_title'] = 'PCA'
     data['pca_docs'] = els.get_pca_docs()
+    print(data['pca_docs'].head())
     data['pca_terms'] = els.get_pca_terms()
     data['pca_items'] = els.get_pca_items()
     data['max_variance'] = data['pca_items']['explained_variance'].max()
     data['topics'] = els.get_topics()
     return render_template('pca.html', **data)
+
+
+@app.route("/projects/<slug>/<trial>/topic_comp_net")
+def topic_comp_net(slug, trial):
+    cfg = get_project_config(slug)
+    els = Elements(cfg, trial)
+    data['slug'] = slug
+    data['trial'] = trial
+    data['page_title'] = 'Topic Component Net'
+    data['nodes'], data['edges'] = els.get_topic_comp_net()
+    return render_template('topic_comp_net.html', **data)
 
 
 @app.route("/projects/<slug>/<trial>/w2v")
@@ -294,7 +306,7 @@ def w2v_page(slug, trial='trial1', join='inner'):
     data['topics']  = els.get_topics()
     data['coords'] = els.get_tsne_coords(join=join)
     return render_template('w2v.html', **data)
-    
+
 
 # Helpers -- Consider moving to module
 def get_project_config_file(slug):

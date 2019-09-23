@@ -27,6 +27,17 @@ class Elements(object):
         self.corpus = PoloDb(corpus_db_file)
         self.model = PoloDb(model_db_file)
 
+    def get_table(self, table_name, db_conn):
+        df = self.get_sql("SELECT * FROM {}".format(table_name), db_conn)
+        return df
+
+    def get_sql(self, query, db_conn, params=()):
+        try:
+            df = pd.read_sql_query(query, db_conn, params=params)
+            return df
+        except:
+            return None
+
     def get_doc_count(self):
         self.doc_count = pd.read_sql_query('SELECT count(*) AS n FROM doc', self.corpus.conn).n.tolist()[0]
         return self.doc_count
@@ -376,25 +387,39 @@ class Elements(object):
 
     def get_pca_docs(self, n=1000):
         """Grab a random sample of n documents for plotting"""
-
         sql1 = "ATTACH '{}' AS m".format(self.model.dbfile)
-
-        # Replace with WITH statement that grabs the docs first?
         sql2 = """
         SELECT a.*, b.maxtopic 
-        FROM  (
-            SELECT * FROM pca_doc
-            ORDER BY RANDOM() LIMIT ?
-        ) a 
+        FROM pca_doc a
         JOIN m.doc b ON a.doc_id = b.src_doc_id
+        ORDER BY RANDOM() LIMIT ?
         """
-
         try:
             self.corpus.conn.execute(sql1)
             df = pd.read_sql_query(sql2, self.corpus.conn, params=(n,), index_col='doc_id')
+            print(df.head())
             return df
         except:
             return None
+
+    def get_topic_comp_net(self):
+        comps  = self.corpus.get_table('pca_item', set_index=True)
+        topics = self.model.get_table('topic', set_index=True)
+        poles = pd.read_sql_query('SELECT * FROM topiccomp_pole', self.model.conn,  index_col='pc_id')
+        # poles = self.model.get_table('topiccomp_pole', set_index=True) # WTF
+        corrs = self.model.get_table('topiccomp_corr', set_index=True)
+        tids = set(pd.concat([poles.max_pos_topic_id, poles.max_neg_topic_id]).values)
+        nodes = [{'id': t,
+                'title': "{}".format(topics.loc[t].topic_words),
+                'label': 'T{} {}'.format(t, topics.loc[t].topic_gloss),
+                'value': int((topics.loc[t].topic_alpha / topics.topic_alpha.max()) * 100)} 
+                for t in tids]
+        edges = [{'from': poles.loc[p].max_pos_topic_id,
+                'to':  poles.loc[p].max_neg_topic_id,
+                'value': comps.loc[p, 'explained_variance'],
+                'label': "PC{}".format(p)} 
+                for p in poles.index]
+        return nodes, edges
 
     def get_tsne_coords(self, join='left'):
         """Get the x and y values of the word_embeddings table to plot"""
