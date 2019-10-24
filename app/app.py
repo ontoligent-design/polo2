@@ -343,8 +343,8 @@ def set_project_menu(cfg, slug, trial):
                                     "Topic/{} Heatmap".format(group_field_label)))
     data['sub_menu'].append(("{}/topic_pair_net".format(path_prefix),
                              "Topic Pair Network"))
-    # data['sub_menu'].append(("{}/topic_pair_heatmap/jsd".format(path_prefix),
-    #                          "Topic Pair Similiarity Heatmap"))
+    data['sub_menu'].append(("{}/topic_pair_heatmap/gravity".format(path_prefix),
+                             "Topic Pair Gravity Heatmap"))
     # data['sub_menu'].append(("{}/topic_pair_heatmap/i_ab".format(path_prefix),
     #                          "Topic Pair Contiguity Heatmap"))
     data['sub_menu'].append(("{}/docs".format(path_prefix), "Documents"))
