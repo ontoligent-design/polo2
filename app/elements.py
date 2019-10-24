@@ -1,6 +1,7 @@
 from polo2 import PoloDb
 import pandas as pd
 import numpy as np
+import sqlite3
 
 class Corpus(object):
 
@@ -282,15 +283,16 @@ class Elements(object):
         return nodes, edges
 
     def get_topics_related(self, topic_id):
-        sql1 = "SELECT topic_b_id as topic_id, jsd, jscore, p_ab, p_aGb, p_bGa, i_ab " \
-               "FROM topicpair WHERE topic_a_id = ?".format(topic_id)
-        sql2 = "SELECT topic_a_id as topic_id, jsd, jscore, p_ab, p_aGb, p_bGa, i_ab " \
-               "FROM topicpair WHERE topic_b_id = ?".format(topic_id)
-        df1 = pd.read_sql_query(sql1, self.model.conn, params=(topic_id,))
-        df2 = pd.read_sql_query(sql2, self.model.conn, params=(topic_id,))
-        df1 = df2.append(df1)
-        df1.sort_values('topic_id', inplace=True)
-        df1.set_index('topic_id', inplace=True)
+        sql = """
+        SELECT topic_b_id as topic_id, jsd, jscore, p_ab, p_aGb, p_bGa, i_ab 
+        FROM topicpair WHERE topic_a_id = ?
+        UNION ALL
+        SELECT topic_a_id as topic_id, jsd, jscore, p_ab, p_aGb, p_bGa, i_ab 
+        FROM topicpair WHERE topic_b_id = ?
+        ORDER BY topic_id
+        """
+        df1 = pd.read_sql_query(sql, self.model.conn, 
+            params=(topic_id, topic_id), index_col='topic_id')
         return df1
 
     def get_group_matrix(self, group_field):
@@ -396,10 +398,16 @@ class Elements(object):
         """
         try:
             self.corpus.conn.execute(sql1)
+        except:
+            print("Cant't attach topic model.")
+            return None
+        try:
             df = pd.read_sql_query(sql2, self.corpus.conn, params=(n,), index_col='doc_id')
             print(df.head())
             return df
-        except:
+        except sqlite3.Error as e:
+            print(e)
+            print("Can't get PCA docs")
             return None
 
     def get_topic_comp_net(self):

@@ -14,14 +14,13 @@ class PoloMallet(PoloDb):
 
     def __init__(self, config, trial='trial1'):
         """Initialize MALLET with trial name"""
-
         if trial not in config.trials:
             raise ValueError("Invalid trail name `{}`.format(trial)")
 
         self.config = config
         self.trial = trial
         self.config.set_config_attributes(self)
-        self.config.set_config_attributes(self, trial)
+        self.config.set_config_attributes(self, self.trial)
 
         # todo: Put this in config.ini
         self.cfg_tw_quantile = 0.8
@@ -374,16 +373,19 @@ class PoloMallet(PoloDb):
         pairs = [pair for pair in combinations(topic.index, 2)]
         topicpair = pd.DataFrame(pairs, columns=['topic_a_id', 'topic_b_id'])
 
-        # Calculate distances by document vector
-        # topicpair['cosim_doc'] = topicpair.apply(lambda x: pm.cosine_sim(dtm[x.topic_a_id], dtm[x.topic_b_id]), axis=1)
-        # topicpair['jscore_doc'] = topicpair.apply(lambda x: pm.jscore(dtm[x.topic_a_id], dtm[x.topic_b_id]), axis=1)
-        # topicpair['jsd_doc'] = topicpair.apply(lambda x: pm.js_divergence(dtm[x.topic_a_id], dtm[x.topic_b_id]), axis=1)
-
-        # Calculate distances by word vector -- SHOULD BE MORE ACCURATE
+        # Calculate distances by word vector
         topicpair['cosim'] = topicpair.apply(lambda x: pm.cosine_sim(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
         topicpair['jscore'] = topicpair.apply(lambda x: pm.jscore(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
         topicpair['jsd'] = topicpair.apply(lambda x: pm.js_divergence(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
-        topicpair['euclidean'] = topicpair.apply(lambda x: pm.euclidean(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
+
+        # Keep these -- remove the above from the app
+        topicpair['cosine_dist'] = topicpair.apply(lambda x: pm.cosine_dist(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
+        topicpair['js_dist'] = topicpair.apply(lambda x: pm.js_dist(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
+        topicpair['jaccard_dist'] = topicpair.apply(lambda x: pm.jaccard_dist(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
+        topicpair['euclidean'] = topicpair.apply(lambda x: pm.euclidean_dist(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
+        # topicpair['seuclidean'] = topicpair.apply(lambda x: pm.standard_euclidean_dist(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
+        topicpair['chebyshev'] = topicpair.apply(lambda x: pm.chebyshev_dist(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
+        topicpair['manhattan'] = topicpair.apply(lambda x: pm.manhattan_dist(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
 
         # Calculate PWMI
         def get_p_ab(a, b):
@@ -399,6 +401,9 @@ class PoloMallet(PoloDb):
             return i_ab
         topicpair['i_ab'] = topicpair.apply(lambda x: get_pwmi(x.topic_a_id, x.topic_b_id, x.p_ab), axis=1)
         topicpair['x_ab'] = topicpair.apply(lambda x: (x.p_aGb + x.p_bGa) / 2, axis=1)
+
+        # Gravity
+        topicpair['gravity'] = topicpair.p_ab / topicpair.js_dist**2
 
         topicpair.set_index(['topic_a_id', 'topic_b_id'], inplace=True)
         self.put_table(topicpair, 'topicpair', index=True)
@@ -544,7 +549,7 @@ class PoloMallet(PoloDb):
         FROM doctopic
         GROUP BY doc_id
         """
-        doc['maxtopic'] = pd.read_sql_query(sql, self.conn).set_index('doc_id').sort_index()
+        doc['maxtopic'] = pd.read_sql_query(sql, self.conn, index_col='doc_id').sort_index()
         # doc['maxtopic'] = doctopic.topic_weight.unstack().fillna(0).T.idxmax()
         self.put_table(doc, 'doc', index=True)
 

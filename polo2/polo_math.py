@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.stats as sps
-from scipy.spatial.distance import cosine
+from scipy.spatial import distance 
+# from sklearn.metrics.pairwise import distance_metrics
 import math
 
 class PoloMath():
@@ -11,22 +12,50 @@ class PoloMath():
 
     @staticmethod
     def cosine_sim(x, y):
-        """ x and y are two comparable distribution vectors, e.g. words for a topic"""
+        """Cosine similarity between two vectors"""
         return np.dot(x, y) / (np.sqrt(np.dot(x, x)) * np.sqrt(np.dot(y, y)))
         # return 1 - cosine(x, y)
 
     @staticmethod
     def cosine_dist(x, y):
-        """ x and y are two comparable distribution vectors, e.g. words for a topic"""
-        return cosine(x, y)
+        """Cosine distance between two vectors. 1 - cosine similarity."""
+        return distance.cosine(x, y)
     
     @staticmethod
     def js_divergence(p1, p2):
-        """Computes the Jensen-Shannon Divergence between two vectors (series)."""
+        """Jennsen-Shannon Divergence."""
         p = sps.entropy(p1, p2, 2)
         q = sps.entropy(p2, p1, 2)
         jsd = (p + q) / 2
         return jsd
+
+    @staticmethod
+    def js_dist(x, y):
+        """Jennsen-Shannon Distance. Square root of the convergence."""  
+        return distance.jensenshannon(x, y)
+
+    @staticmethod
+    def jaccard_dist(x, y):
+        """Jaccard Distance. Square root of the convergence."""  
+        return distance.jaccard(x, y)
+
+    @staticmethod
+    def euclidean_dist(x, y):
+        """Simple Euclidean distance"""
+        # return math.sqrt(((s1 - s2)**2).sum())
+        return distance.euclidean(x, y)
+
+    @staticmethod
+    def standard_euclidean_dist(x, y, V):
+        return distance.seuclidean(x, y, V)
+
+    @staticmethod
+    def chebyshev_dist(x, y):
+        return distance.chebyshev(x, y)
+
+    @staticmethod
+    def manhattan_dist(x, y):
+        return distance.cityblock(x, y)
 
     @staticmethod
     def pwmi(p_a, p_b, p_ab, norm=.000001):
@@ -53,11 +82,6 @@ class PoloMath():
             return 1 - (len(A & B) / len(A | B))
         else:
             return -1  # Is this correct?
-
-    @staticmethod
-    def euclidean(s1, s2):
-        """Simple Euclidean distance"""
-        return math.sqrt(((s1 - s2)**2).sum())
 
     @staticmethod
     def kl_distance(s1, s2):
