@@ -14,3 +14,5 @@ dist/
 
 # Build stuff
 build/
+
+app/polo2.code-workspace
