@@ -33,7 +33,6 @@ class PoloCorpus(PoloDb):
 
     def import_table_doc(self, src_file_name=None, normalize=True):
         """Import source file into doc table"""
-
         if not src_file_name:
             src_file_name = self.cfg_src_file_name
         doc = pd.read_csv(src_file_name, header=0, sep=self.cfg_src_file_sep, lineterminator='\n')

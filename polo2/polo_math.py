@@ -62,7 +62,7 @@ class PoloMath():
         """Computes the adjusted point-wise mutual information of two items (a and b)
         that appear in container vectors of some kind, e.g. items in a shopping
         basket."""
-        # if p_ab == 0: p_ab = .000001  # To prevent craziness in prob calcs
+        # if p_ab == 0: p_ab = .000001  # To pr event craziness in prob calcs
         p_ab += norm
         i_ab = math.log2(p_ab / (p_a * p_b))  # Raw
         try:

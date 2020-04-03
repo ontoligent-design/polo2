@@ -29,9 +29,12 @@
                 <span class="w3-tag w3-green">{{group | replace('doc_', '')}}: {{group_val}}</span>
             </a>
             {% endfor %}
-            <a href="{# doc.doc_url.tolist()[0] | safe #}" target="_blank">
+            {% set doc_url = doc.doc_url.tolist()[0] %}
+            {% if 'http' in doc_url %}
+            <a href="{{ doc_url | safe }}" target="_blank">
                 <span class="w3-tag w3-blue">Original</span>                
             </a>
+            {% endif %}
         </div>        
     </div>
 </div>

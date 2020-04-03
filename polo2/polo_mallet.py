@@ -497,7 +497,7 @@ class PoloMallet(PoloDb):
         pair['jsd'] = pair.apply(lambda x: pm.js_divergence(gtm.loc[x.group_a], gtm.loc[x.group_b]), axis=1)
         pair['jscore'] = pair.apply(lambda x:
                                     pm.jscore(gtm.loc[x.group_a], gtm.loc[x.group_b], thresh=thresh), axis=1)
-        pair['euclidean'] = pair.apply(lambda x: pm.euclidean(gtm.loc[x.group_a], gtm.loc[x.group_b]), axis=1)
+        pair['euclidean'] = pair.apply(lambda x: pm.euclidean_dist(gtm.loc[x.group_a], gtm.loc[x.group_b]), axis=1)
         pair['kld'] = pair.apply(lambda x: pm.kl_distance(gtm.loc[x.group_a], gtm.loc[x.group_b]), axis=1)
         self.put_table(pair, 'topic{}_pairs'.format(group_field))
 
@@ -549,7 +549,7 @@ class PoloMallet(PoloDb):
         FROM doctopic
         GROUP BY doc_id
         """
-        doc['maxtopic'] = pd.read_sql_query(sql, self.conn, index_col='doc_id').sort_index()
+        doc['maxtopic'] = pd.read_sql_query(sql, self.conn, index_col='doc_id').sort_index().maxtopic
         # doc['maxtopic'] = doctopic.topic_weight.unstack().fillna(0).T.idxmax()
         self.put_table(doc, 'doc', index=True)
 

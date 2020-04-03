@@ -116,11 +116,13 @@ if __name__ == '__main__':
 
     # SETUP
     parser_setup = subparsers.add_parser('setup', help='Set up a project directory')
-    parser_setup.add_argument('project', help="Short name of project (no spaces, etc.)", action='store')
+    parser_setup.add_argument('project',
+                              help="Short name of project (no spaces, etc.)", action='store')
 
     # INI
     parser_ini = subparsers.add_parser('ini', help='Create a config file')
-    parser_ini.add_argument('-n', '--name', help="Name of config file if not `config.ini`.", action='store')
+    parser_ini.add_argument('-n', '--name',
+                            help="Name of config file if not `config.ini`.", action='store')
 
     # INFO
     parser_info = subparsers.add_parser('info', help='Get project info')
@@ -136,7 +138,8 @@ if __name__ == '__main__':
     parser_mallet.add_argument('-i', "--iters", help="Number of iterations (override ini)", action="store", type=int)
 
     # RETRO
-    parser.retro = subparsers.add_parser('retro', help='Combines the corpus and model dbs for use in older Polo')
+    parser.retro = subparsers.add_parser('retro',
+                                         help='Combines the corpus and model dbs for use in older Polo')
     parser.retro.add_argument('-c', '--corpus_dbfile', help="Corpus database name", action="store",
                             type=str, default=None)
     parser.retro.add_argument('-m', '--model_dbfile', help="Mallet model database name", action="store",
@@ -331,4 +334,4 @@ if __name__ == '__main__':
     else:
         parser.print_help()
         sys.exit()
-        
+
