@@ -18,23 +18,27 @@
         <h2>Description</h2>
         <div class="w3-large">{{doc.doc_original.tolist()[0] | safe}}</div>
         <div class="w3-margin-top">
+
             {% set h = doc.topic_entropy.tolist()[0] | round(2) %}
             {% set label = doc.doc_label.tolist()[0] %}            
             <a href="/projects/{{slug}}/{{trial}}/docs/h/{{h}}">
                 <span class="w3-tag w3-green">h: {{h}}</span>
             </a>
+            
             {% for group in groups %}
             {% set group_val = doc[group].tolist()[0] | safe %}
             <a href="/projects/{{slug}}/{{trial}}/groups/{{group}}/{{group_val}}">
                 <span class="w3-tag w3-green">{{group | replace('doc_', '')}}: {{group_val}}</span>
             </a>
             {% endfor %}
+
             {% set doc_url = doc.doc_url.tolist()[0] %}
-            {% if 'http' in doc_url %}
+            {% if doc_url is defined %}
             <a href="{{ doc_url | safe }}" target="_blank">
                 <span class="w3-tag w3-blue">Original</span>                
             </a>
             {% endif %}
+
         </div>        
     </div>
 </div>
