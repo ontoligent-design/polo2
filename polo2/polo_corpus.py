@@ -273,6 +273,20 @@ class PoloCorpus(PoloDb):
         self.put_table(ngram, 'ngram{}'.format(type), index=True)
         self.put_table(ndm, 'ngram{}doc_group_matrix'.format(type), index=True)
 
+    def save_ngrams_as_replacements(self, type='bi'):
+        """Creatte replacement files from ngram tables"""
+        table = "ngram{}".format(type)
+        sql1 = "SELECT AVG(idf), AVG(freq), AVG(entropy) FROM {}".format(table)
+        params = pd.read_sql_query(sql1, self.conn).iloc[0].tolist()
+        sql2 = """
+        SELECT REPLACE(n.ngram, '_', ' ') FROM {} n
+        WHERE n.idf < ? AND n.freq > ? AND n.entropy > ? 
+	    ORDER BY FREQ DESC LIMIT 5000
+        """.format(table)
+        replacements = pd.read_sql_query(sql2, self.conn, params=params)
+        outfilename = 'corpus/replacements_{}.txt'.format(table)
+        replacements.to_csv(outfilename, index=False, header=False)
+
     def add_tables_ngram_and_docngram_old(self, n = 2):
         """Create ngram and docngram tables for n"""
         """This may seem slow, but it doesn't hang like Gensim's version"""
@@ -448,6 +462,39 @@ class PoloCorpus(PoloDb):
             .to_frame().unstack()
         loadings.columns = loadings.columns.droplevel(0)
         return loadings
+
+    def get_perceptron_models(self, max_v=4000):
+        """Run a perceptron classifier using labels"""
+        from sklearn.linear_model import Perceptron
+        
+        sql1 = """
+        SELECT doc_id, token_str, token_id, tfidf FROM doctokenbow as bow
+        JOIN (SELECT token_id, token_str FROM token WHERE token_str NOT IN 
+            (SELECT token_str FROM stopword) ORDER BY tfidf_sum 
+            DESC LIMIT ?) as vocab USING (token_id)
+        """
+        bow = pd.read_sql_query(sql1, self.conn, params=(max_v,),
+            index_col=['doc_id', 'token_id'])
+        vocab = bow.reset_index()[['token_id', 'token_str']]\
+            .drop_duplicates().set_index('token_id')    
+        dtm = bow['tfidf'].unstack(fill_value=0)
+
+        sql2 = "SELECT doc_id, doc_label FROM doc"
+        docs = pd.read_sql_query(sql2, self.conn, index_col='doc_id')
+    
+        X = dtm.values
+        y = docs.loc[dtm.index, 'doc_label'].fillna('NO_LABEL').values
+
+        # pd.DataFrame(X).to_csv('X.csv')
+        # pd.DataFrame(y).to_csv('y.csv')
+        
+        model = Perceptron(tol=1e-3, random_state=0)
+        model.fit(X, y)
+        weights = pd.DataFrame(model.coef_, 
+            index=model.classes_, 
+            columns=vocab.loc[dtm.columns].token_str.values).T
+        self.put_table(weights,'perceptron_weights', index=True, index_label='token_str')
+    
 
     # def add_nnmf_tables(self, k=20):
     #     from sklearn.preprocessing import normalize

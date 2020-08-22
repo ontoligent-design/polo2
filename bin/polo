@@ -239,6 +239,7 @@ if __name__ == '__main__':
         run_funcs(mallet, funcs)
 
         groups = config.get_group_fields()
+        print('Groups', groups)
         for group in groups:
             # mallet.create_topicdoc_group_matrix(group_field=group)
             run_funcs(mallet, ['create_topicdoc_group_matrix'], arg_dict=dict(group_field=group))

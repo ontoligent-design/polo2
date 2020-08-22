@@ -19,7 +19,7 @@ class PoloMallet(PoloDb):
 
         self.config = config
         self.trial = trial
-        self.config.set_config_attributes(self)
+        self.config.set_config_attributes(self) # Prefixes keys with cfg_
         self.config.set_config_attributes(self, self.trial)
 
         # todo: Put this in config.ini
@@ -31,6 +31,13 @@ class PoloMallet(PoloDb):
             setattr(self, att, int(getattr(self, att)))
         self.cfg_thresh = float(self.cfg_thresh)
 
+        # Get replacment files
+        # todo: Fix order; higher ngrams should go first ... argues for sortable names
+        self.replacement_files = self.cfg_replacements
+        for filename in os.listdir('corpus'):
+            if 'replacements_' in filename:
+                self.replacement_files += ' corpus/' + filename
+
         self.trial_name = self.trial  # HACK
         self.file_prefix = '{}/{}'.format(self.cfg_mallet_out_dir, self.trial_name)
         self.mallet = {'import-file': {}, 'train-topics': {}}
@@ -38,6 +45,7 @@ class PoloMallet(PoloDb):
 
         dbfile = self.config.generate_model_db_file_path(self.trial)
         PoloDb.__init__(self, dbfile)
+
 
     # todo: Remove or replace
     def generate_trial_name(self):
@@ -55,6 +63,7 @@ class PoloMallet(PoloDb):
         self.mallet['import-file']['output'] = '{}/mallet-corpus.mallet'.format(self.cfg_mallet_out_dir) # Put this in corpus?
         self.mallet['import-file']['keep-sequence'] = 'TRUE' # todo: Control this by config
         self.mallet['import-file']['remove-stopwords'] = 'FALSE' # todo: Control this by config
+        self.mallet['import-file']['replacement-files'] = self.replacement_files
 
         self.mallet['train-topics']['num-topics'] = self.cfg_num_topics
         self.mallet['train-topics']['num-top-words'] = self.cfg_num_top_words
@@ -341,6 +350,9 @@ class PoloMallet(PoloDb):
     def create_table_topicpair(self):
         """Create topicpair table"""
         thresh = self.get_thresh()
+        # thresh = self.cfg_thresh
+        # if thresh == 0: #fixme: Why is the zero?
+        # thresh = .5
 
         # Get doc count to calculate topic frequencies
         r = self.conn.execute("select count() from doc")
@@ -508,13 +520,17 @@ class PoloMallet(PoloDb):
             self.create_topicdoc_group_pairs(group_field)
 
     def get_thresh(self):
+        # fixme: The computed thresh is broken, returns 0
         """Compute the topic weight threshold"""
-        config = self.get_table('config')
-        if len(config[config.key == 'computed_thresh'].values):
-            thresh = config[config.key == 'computed_thresh']['value'].astype('float').tolist()[0]
-        else:
-            thresh = self.cfg_thresh
-        return thresh
+        # config = self.get_table('config')
+        # if len(config[config.key == 'computed_thresh'].values):
+        #     thresh = config[config.key == 'computed_thresh']['value'].astype('float').tolist()[0]
+        #     print('A', thresh)
+        # else:
+        #     thresh = self.cfg_thresh
+        #     print('B', thresh)
+        # return thresh
+        return self.cfg_thresh
 
     def add_topic_alpha_stats(self):
         """Add topic alpha stats to config table"""
@@ -613,11 +629,14 @@ class PoloMallet(PoloDb):
         twm = twm.T
 
         topics = self.get_table('topic')
-        topics['label'] = topics.apply(lambda x: "{1} T{0:02d}".format(x.name, x.topic_gloss).strip(), 1) 
+        topics['label'] = topics.apply(lambda x: "{1} T{0:02d}".format(x.name, x.topic_gloss).strip(), 1)
 
         # Create plots
-        import plotly.figure_factory as ff
-        fig = ff.create_dendrogram(twm, orientation='left', labels=topics.label.tolist(),
+        # import plotly.figure_factory as ff
+        from plotly.figure_factory import create_dendrogram
+        # fig = create_dendrogram(twm)
+        fig = create_dendrogram(twm, orientation='left',
+                                   labels=topics.label.tolist(),
             distfun=lambda x: pdist(x, metric='euclidean'),
             linkagefun=lambda x: sch.linkage(x, method='ward'))
         fig.update_layout(width=650, height=25 * self.cfg_num_topics)
