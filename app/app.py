@@ -16,9 +16,9 @@ app.config.from_object('config')
 
 # Define some things used in the handlers
 
-projects_dir = os.environ.get('POLO_PROJ')
-if not projects_dir:
-    projects_dir = app.config['PROJECTS_DIR']
+projects_dir = os.environ.get('POLO_PUB')
+# if not projects_dir:
+#     projects_dir = app.config['PROJECTS_DIR']
 data = {} # Use to store variables to pass to templates
 data['main_menu'] = {
     '/projects': 'Projects'
