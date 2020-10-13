@@ -59,6 +59,7 @@ class PoloMallet(PoloDb):
         if not os.path.exists(self.cfg_mallet_path):
             raise ValueError('Mallet cannot be found.')
 
+        print('Import file:', self.cfg_mallet_corpus_input)
         self.mallet['import-file']['input'] = self.cfg_mallet_corpus_input
         self.mallet['import-file']['output'] = '{}/mallet-corpus.mallet'.format(self.cfg_mallet_out_dir) # Put this in corpus?
         self.mallet['import-file']['keep-sequence'] = 'TRUE' # todo: Control this by config
@@ -238,8 +239,8 @@ class PoloMallet(PoloDb):
     def add_topic_glosses(self):
         """Add glosses to topic table"""
         sql = """
-        SELECT topic_id, topic_phrase as topic_gloss, 
-            MAX(phrase_weight) as max_phrase_weight
+        SELECT topic_id, topic_phrase AS topic_gloss, 
+            MAX(phrase_weight) AS max_phrase_weight
         FROM topicphrase
         GROUP BY topic_id
         """
@@ -561,7 +562,7 @@ class PoloMallet(PoloDb):
         doc = doc.set_index('doc_id')
         doc = doc.sort_index()
         sql = """
-        SELECT doc_id, topic_id as maxtopic, MAX(topic_weight) as maxweight
+        SELECT doc_id, topic_id AS maxtopic, MAX(topic_weight) AS maxweight
         FROM doctopic
         GROUP BY doc_id
         """

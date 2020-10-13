@@ -106,15 +106,16 @@ class PoloCorpus(PoloDb):
         docs['token_count'] = doctokenbow.groupby('doc_id').token_count.sum()
         self.put_table(docs, 'doc', if_exists='replace', index=True)
 
-    def _get_replacments(self):
-        reps = []
-        rfile_name = '{}/{}'.format(self.cfg_base_path, self.cfg_replacements)
-        if os.path.exists(rfile_name):
-            rfile = PoloFile(rfile_name)
-            reps = [tuple(line.strip().split('|')) for line in rfile.read_lines()]
-        else:
-            print(rfile_name, 'not found')
-        return reps
+    # todo: Find out where this is used
+    # def get_replacements(self):
+    #     reps = []
+    #     rfile_name = '{}/{}'.format(self.cfg_base_path, self.cfg_replacements)
+    #     if os.path.exists(rfile_name):
+    #         rfile = PoloFile(rfile_name)
+    #         reps = [tuple(line.strip().split('|')) for line in rfile.read_lines()]
+    #     else:
+    #         print(rfile_name, 'not found')
+    #     return reps
 
     # fixme: TOKEN should be the TERM table (aka VOCAB) 
     def add_table_token(self):
@@ -183,34 +184,50 @@ class PoloCorpus(PoloDb):
         self.put_table(doc, 'doc', index=True)
 
     def add_tables_ngram_and_docngram(self, n=2):
-        """Create ngram and docngram tables for n"""
+        """Create ngram and docngram tables for n (using stems)"""
+        key = {2:'bi', 3:'tri'}
+        try:
+            infix = key[n]
+        except KeyError as e:
+            print('Invalid ngram length. Must be 2 or 3')
+            return False
 
-        if n == 2:
-            sql = """
-            SELECT x.doc_id, x.token_str || '_' || y.token_str as ngram, count() as tf
-            FROM doctoken x JOIN doctoken y ON (
-                x.doc_id = y.doc_id AND x.sentence_id = y.sentence_id 
-                AND y.rowid = (x.rowid + 1))
-            GROUP BY x.doc_id, ngram
-            """
-            infix = 'bi'
+        sql = {}
+        sql['bi'] = """
+        SELECT dt_x.doc_id AS doc_id, 
+            t_x.token_stem_porter AS tx, 
+            t_y.token_stem_porter AS ty, 
+            t_x.token_stem_porter || '_' || t_y.token_stem_porter AS ngram, 
+            count() AS tf
+        FROM doctoken dt_x 
+        JOIN doctoken dt_y ON (dt_x.doc_id = dt_y.doc_id 
+            AND dt_x.sentence_id = dt_y.sentence_id 
+            AND dt_y.rowid = (dt_x.rowid + 1))
+        JOIN token t_x ON dt_x.token_str = t_x.token_str
+        JOIN token t_y ON dt_y.token_str = t_y.token_str
+        GROUP BY dt_x.doc_id, ngram
+        """
+        sql['tri'] = """
+        SELECT dt_x.doc_id AS doc_id, 
+            t_x.token_stem_porter AS tx, 
+            t_y.token_stem_porter AS ty, 
+            t_z.token_stem_porter AS tz,
+            t_x.token_stem_porter || '_' || t_y.token_stem_porter || '_' || t_z.token_stem_porter AS ngram, 
+            count() AS tf
+        FROM doctoken dt_x 
+        JOIN doctoken dt_y ON (dt_x.doc_id = dt_y.doc_id 
+            AND dt_x.sentence_id = dt_y.sentence_id 
+            AND dt_y.rowid = (dt_x.rowid + 1))
+        JOIN doctoken dt_z ON (dt_x.doc_id = dt_z.doc_id 
+            AND dt_x.sentence_id = dt_z.sentence_id 
+            AND dt_z.rowid = (dt_y.rowid + 1)) 
+        JOIN token t_x ON dt_x.token_str = t_x.token_str
+        JOIN token t_y ON dt_y.token_str = t_y.token_str            
+        JOIN token t_z ON dt_z.token_str = t_z.token_str            
+        GROUP BY dt_x.doc_id, ngram
+        """
 
-        elif n == 3:
-            sql = """
-            SELECT x.doc_id, x.token_str || '_' || y.token_str || '_' || z.token_str as ngram, count() as tf
-            FROM doctoken x JOIN doctoken y ON (
-                x.doc_id = y.doc_id AND x.sentence_id = y.sentence_id 
-                AND y.rowid = (x.rowid + 1))
-                JOIN doctoken z ON (
-                    x.doc_id = z.doc_id AND x.sentence_id = z.sentence_id
-                    AND z.rowid = (y.rowid + 1)) 
-            GROUP BY x.doc_id, ngram
-            """
-            infix = 'tri'
-        else:
-            return None
-
-        docngrams = pd.read_sql(sql, self.conn)
+        docngrams = pd.read_sql(sql[infix], self.conn)
         self.put_table(docngrams, 'ngram{}doc'.format(infix), index=False)
 
     def add_stats_to_ngrams(self, type='bi'):
@@ -242,6 +259,7 @@ class PoloCorpus(PoloDb):
         GROUP BY ngram
         ORDER BY c DESC
         """.format(type)
+
         docngram = pd.read_sql_query(sql1, self.conn, index_col='doc_id')
         labelngram = pd.read_sql_query(sql2, self.conn,  index_col=['ngram','doc_label'])
         ngramstats = pd.read_sql_query(sql3, self.conn,  index_col=['ngram'])
@@ -528,8 +546,9 @@ class PoloCorpus(PoloDb):
         # self.conn.commit()
         # mallet_corpus = pd.read_sql_query('SELECT * FROM mallet_corpus', self.conn)
 
+        # REPLACED token_str WITH token_atem_porter
         mallet_corpus_sql = """
-        SELECT dt.doc_id, d.doc_label, GROUP_CONCAT(token_str, ' ') AS doc_content
+        SELECT dt.doc_id, d.doc_label, GROUP_CONCAT(t.token_stem_porter, ' ') AS doc_content
         FROM doctoken dt 
         JOIN doc d USING (doc_id) 
         JOIN token t USING (token_str)
