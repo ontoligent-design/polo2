@@ -32,8 +32,8 @@
             </a>
             {% endfor %}
 
+            {% if doc.doc_url is defined %}
             {% set doc_url = doc.doc_url.tolist()[0] %}
-            {% if doc_url is defined %}
             <a href="{{ doc_url | safe }}" target="_blank">
                 <span class="w3-tag w3-blue">Original</span>                
             </a>
