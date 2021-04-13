@@ -75,7 +75,7 @@ class PoloConfig():
 
         self.trials = self.ini.sections()
 
-        # Import groups info
+        # Import groups info -- NOT USED?
         self.groups_ini = configparser.ConfigParser()
         self.groups_ini._interpolation = configparser.ExtendedInterpolation()
         self.groups_ini.read('{}/{}'.format(self.ini['DEFAULT']['base_path'],

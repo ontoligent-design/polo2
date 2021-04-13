@@ -22,7 +22,8 @@ class PoloCorpus(PoloDb):
             raise ValueError("Missing source file. Check value of `src_file_name` in INI file.")
         self.dbfile = config.generate_corpus_db_file_path()
         PoloDb.__init__(self, self.dbfile)
-        if self.cfg_nltk_data_path: nltk.data.path.append(self.cfg_nltk_data_path)
+        if self.cfg_nltk_data_path: 
+            nltk.data.path.append(self.cfg_nltk_data_path)
 
         # For tokenizing into sentences
         # fixme: TOKENIZER ASSUMES ENGLISH -- PARAMETIZE THIS
