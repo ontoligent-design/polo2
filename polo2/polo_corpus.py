@@ -53,9 +53,9 @@ class PoloCorpus(PoloDb):
 
         # todo: Put this in a separate and configurable function for general text normalization.
         # Preliminary normalization of documents
-        doc['doc_content'] = doc.doc_content.str.replace(r'\n+', ' ')  # Remove newlines
-        doc['doc_content'] = doc.doc_content.str.replace(r'<[^>]+>', ' ')  # Remove tags
-        doc['doc_content'] = doc.doc_content.str.replace(r'\s+', ' ')  # Collapse spaces
+        doc['doc_content'] = doc.doc_content.str.replace(r'\n+', ' ', regex=True)  # Remove newlines
+        doc['doc_content'] = doc.doc_content.str.replace(r'<[^>]+>', ' ', regex=True)  # Remove tags
+        doc['doc_content'] = doc.doc_content.str.replace(r'\s+', ' ', regex=True)  # Collapse spaces
 
         # Remove empty docs
         doc = doc[~doc.doc_content.isnull()]
@@ -96,7 +96,7 @@ class PoloCorpus(PoloDb):
 
         # Normalize
         doctokens.token_str = doctokens.token_str.str.lower()
-        doctokens.token_str = doctokens.token_str.str.replace(r'[^a-z]+', '')
+        doctokens.token_str = doctokens.token_str.str.replace(r'[^a-z]+', '', regex=True)
         doctokens = doctokens[~doctokens.token_str.str.match(r'^\s*$')]
 
         # todo: Instead of removing stopwords, identify with feature
@@ -160,18 +160,17 @@ class PoloCorpus(PoloDb):
         from numpy import log
         doctokenbow = self.get_table('doctokenbow', set_index=True)
         tokens = self.get_table('token', set_index=True)
-        docs = pd.read_sql_query("SELECT doc_id, token_count FROM doc", self.conn, index_col='doc_id')
+        docs = pd.read_sql_query("SELECT doc_id, token_count FROM doc", self.conn, index_col='doc_id') # Why not use self.get_table()?
         num_docs = docs.index.size
 
         # Compute local and gloabl token (actually term) significance
         self.alpha = .4
+        print("NEW")
         doc_max = doctokenbow.groupby('doc_id').token_count.max()
-        df = doctokenbow.groupby('token_id').token_count.count()
-        n_docs = len(doctokenbow.index.levels[0])
-        idf = np.log2(n_docs/df)
-        tokens['dfidf'] = df * idf
-        # doctokenbow['tf'] = doctokenbow.token_count.divide(docs.token_count)
-        # doctokenbow['tfidf'] = doctokenbow.tf.multiply(1 + log(num_docs / tokens.doc_count))
+        tokens['df'] = doctokenbow.groupby('token_id').token_count.count()
+        # n_docs = len(doctokenbow.index.levels[0])
+        tokens['idf'] = np.log2(num_docs/tokens.df)
+        tokens['dfidf'] = tokens.df * tokens.idf
         doctokenbow['tf'] = self.alpha + (1 - self.alpha) * (doctokenbow.token_count / doc_max)
         doctokenbow['tfidf'] = doctokenbow.tf * tokens.idf
         doctokenbow['tfidf_l2'] = doctokenbow['tfidf'] / doctokenbow.groupby(['doc_id']).apply(lambda x: norm(x.tfidf, 2))
@@ -429,22 +428,43 @@ class PoloCorpus(PoloDb):
 
     def add_pca_tables(self, k_components=10, n_terms=1000):
         """Create a PCA table with k components, n terms from doctokenbow table"""
+        
         from sklearn.preprocessing import normalize
         from sklearn.decomposition import PCA
 
+        # sql = """
+        # SELECT doc_id, token_id, token_str, tfidf 
+        # FROM doctokenbow 
+        # JOIN token USING (token_id)
+        # WHERE token_id IN (
+        #     SELECT token_id FROM token
+        #     ORDER BY doc_count DESC
+        #     LIMIT ?
+        # )
+        # """
+
         sql = """
-        SELECT doc_id, token_id, token_str, tfidf 
+        SELECT doc_id, token_id, token_str, tfidf_l2 as tfidf 
         FROM doctokenbow 
         JOIN token USING (token_id)
         WHERE token_id IN (
-            SELECT token_id FROM token
-            ORDER BY doc_count DESC
+            SELECT token_id 
+            FROM token 
+            ORDER BY tfidf_sum DESC 
             LIMIT ?
         )
+        """    
+        sql_vocab = """
+        SELECT token_id, token_str 
+        FROM token 
+        ORDER BY tfidf_sum DESC 
+        LIMIT ?
         """
 
         doctokenbow = pd.read_sql_query(sql, self.conn, params=(n_terms,), index_col=['doc_id', 'token_id'])
-        vocab = doctokenbow.reset_index()[['token_id', 'token_str']].drop_duplicates().set_index('token_id')
+        # vocab = doctokenbow.reset_index()[['token_id', 'token_str']].drop_duplicates().set_index('token_id')
+        vocab = pd.read_sql_query(sql_vocab, self.conn, params=(n_terms,), index_col='token_id')
+        
         docs = doctokenbow['tfidf'].unstack().fillna(0)
 
         pca = PCA(n_components=k_components)
