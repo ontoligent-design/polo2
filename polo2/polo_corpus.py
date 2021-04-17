@@ -1,10 +1,14 @@
 import os
 import pandas as pd
 import numpy as np
+
 import nltk
 import nltk.data
 from nltk.tokenize import sent_tokenize
-from textblob import TextBlob
+from textblob import TextBlob # Consider changing
+# from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from scipy.linalg import norm
+
 from polo2 import PoloDb
 from polo2 import PoloFile
 
@@ -16,6 +20,7 @@ class PoloCorpus(PoloDb):
     def __init__(self, config):
         """Initialize corpus object"""
 
+        # Import Configs
         self.config = config
         self.config.set_config_attributes(self)
         if not os.path.isfile(self.cfg_src_file_name):
@@ -34,6 +39,8 @@ class PoloCorpus(PoloDb):
 
     def import_table_doc(self, src_file_name=None, normalize=True):
         """Import source file into doc table"""
+
+        # Read in file content
         if not src_file_name:
             src_file_name = self.cfg_src_file_name
         doc = pd.read_csv(src_file_name, header=0, sep=self.cfg_src_file_sep, lineterminator='\n')
@@ -79,6 +86,7 @@ class PoloCorpus(PoloDb):
         docs = self.get_table('doc', set_index=True)
 
         # todo: Consider dividing this in two parts, the first to create a Phrase model with Gensim
+        # This takes a long time
         doctokens = pd.DataFrame([(sentences[0], j, k, token[0], token[1])
             for sentences in docs.apply(lambda x: (x.name, sent_tokenize(x.doc_content)), 1)
             for j, sentence in enumerate(sentences[1])
@@ -87,7 +95,6 @@ class PoloCorpus(PoloDb):
         doctokens = doctokens.set_index(['doc_id', 'sentence_id', 'token_ord'])
 
         # Normalize
-        # doctokens = doctokens[doctokens.token_pos.str.match(r'^(NN|JJ|VB)')]
         doctokens.token_str = doctokens.token_str.str.lower()
         doctokens.token_str = doctokens.token_str.str.replace(r'[^a-z]+', '')
         doctokens = doctokens[~doctokens.token_str.str.match(r'^\s*$')]
@@ -149,21 +156,29 @@ class PoloCorpus(PoloDb):
 
     def add_tfidf_to_doctokenbow(self):
         """Add TFIDF data to doctokenbow table"""
-        # t = token
-        # TFIDF(t) = TF(t) × IDF(t)
-        # TF(t)  = measure of frequency of t in document
-        # IDF(t) = measure of how few documents contain t
-        #        = log(NumberOfDocuments/NumberOfDocumentsContaining (t))
+
         from numpy import log
         doctokenbow = self.get_table('doctokenbow', set_index=True)
         tokens = self.get_table('token', set_index=True)
         docs = pd.read_sql_query("SELECT doc_id, token_count FROM doc", self.conn, index_col='doc_id')
         num_docs = docs.index.size
-        doctokenbow['tf'] = doctokenbow.token_count.divide(docs.token_count)
-        doctokenbow['tfidf'] = doctokenbow.tf.multiply(1 + log(num_docs / tokens.doc_count))
-        self.put_table(doctokenbow, 'doctokenbow', if_exists='replace', index=True)
+
+        # Compute local and gloabl token (actually term) significance
+        self.alpha = .4
+        doc_max = doctokenbow.groupby('doc_id').token_count.max()
+        df = doctokenbow.groupby('token_id').token_count.count()
+        n_docs = len(doctokenbow.index.levels[0])
+        idf = np.log2(n_docs/df)
+        tokens['dfidf'] = df * idf
+        # doctokenbow['tf'] = doctokenbow.token_count.divide(docs.token_count)
+        # doctokenbow['tfidf'] = doctokenbow.tf.multiply(1 + log(num_docs / tokens.doc_count))
+        doctokenbow['tf'] = self.alpha + (1 - self.alpha) * (doctokenbow.token_count / doc_max)
+        doctokenbow['tfidf'] = doctokenbow.tf * tokens.idf
+        doctokenbow['tfidf_l2'] = doctokenbow['tfidf'] / doctokenbow.groupby(['doc_id']).apply(lambda x: norm(x.tfidf, 2))
         tokens['tfidf_sum'] = doctokenbow.groupby('token_id').tfidf.sum()
         tokens['tfidf_avg'] = doctokenbow.groupby('token_id').tfidf.mean()
+
+        self.put_table(doctokenbow, 'doctokenbow', if_exists='replace', index=True)
         self.put_table(tokens, 'token', if_exists='replace', index=True)
 
     def add_stems_to_token(self):
