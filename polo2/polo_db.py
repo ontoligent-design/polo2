@@ -39,7 +39,7 @@ class PoloDb:
             # fixme: Change ValueErrors to proper errors
             raise ValueError('Read-only mode for safety.')
 
-    def get_table(self, table_name='', set_index=False):
+    def get_table(self, table_name='', set_index=False, cols=None):
         if self.cache_mode and table_name in self.tables:
             df = self.tables[table_name]
             if set_index:
@@ -50,7 +50,10 @@ class PoloDb:
             cur.execute("select count(*) from sqlite_master where type='table' and name=?", (table_name,))
             sql_check = cur.fetchone()[0]
             if sql_check:
-                sql = 'select * from {}'.format(table_name)
+                col_str = '*'
+                if cols:
+                    col_str = ', '.join(cols)
+                sql = f'select {col_str} from {table_name}'
                 df = pd.read_sql_query(sql, self.conn)
                 if set_index:
                     # fixme: This call fails when cache_mode = True
