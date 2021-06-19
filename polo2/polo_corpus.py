@@ -1,13 +1,26 @@
 import os
 import pandas as pd
+from pandas.api.types import is_string_dtype
+
 import numpy as np
+from numpy import log
+
+from scipy.linalg import norm
+from scipy.stats import entropy
 
 import nltk
 import nltk.data
 from nltk.tokenize import sent_tokenize
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+
 from textblob import TextBlob # Consider changing
-# from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-from scipy.linalg import norm
+from gensim.models import word2vec
+
+from sklearn.manifold import TSNE
+from sklearn.preprocessing import normalize
+from sklearn.decomposition import PCA
+from sklearn.linear_model import Perceptron
 
 from polo2 import PoloDb
 from polo2 import PoloFile
@@ -27,6 +40,9 @@ class PoloCorpus(PoloDb):
             raise ValueError("Missing source file. Check value of `src_file_name` in INI file.")
         self.dbfile = config.generate_corpus_db_file_path()
         PoloDb.__init__(self, self.dbfile)
+
+        # self.db = PoloDb(self.dbfile) # Why not do this?
+
         if self.cfg_nltk_data_path: 
             nltk.data.path.append(self.cfg_nltk_data_path)
 
@@ -70,7 +86,6 @@ class PoloCorpus(PoloDb):
         # fixme: Cast integers in config object
         # fixme: Parametize language
         if int(self.cfg_use_nltk) == 1:
-            from nltk.corpus import stopwords
             nltk_stopwords = set(stopwords.words('english'))
             swset.update(nltk_stopwords)
         if self.cfg_extra_stops and os.path.isfile(self.cfg_extra_stops):
@@ -114,17 +129,6 @@ class PoloCorpus(PoloDb):
         docs['token_count'] = doctokenbow.groupby('doc_id').token_count.sum()
         self.put_table(docs, 'doc', if_exists='replace', index=True)
 
-    # todo: Find out where this is used
-    # def get_replacements(self):
-    #     reps = []
-    #     rfile_name = '{}/{}'.format(self.cfg_base_path, self.cfg_replacements)
-    #     if os.path.exists(rfile_name):
-    #         rfile = PoloFile(rfile_name)
-    #         reps = [tuple(line.strip().split('|')) for line in rfile.read_lines()]
-    #     else:
-    #         print(rfile_name, 'not found')
-    #     return reps
-
     # fixme: TOKEN should be the TERM table (aka VOCAB) 
     def add_table_token(self):
         """Get token data from doctoken and doctokenbow"""
@@ -134,6 +138,10 @@ class PoloCorpus(PoloDb):
         token.reset_index(inplace=True)
         token.columns = ['token_str', 'token_count']
         token.index.name = 'token_id'
+
+        # Add pos_max to token
+        pos_max = doctoken.groupby(['token_str', 'pos']).pos.count().unstack().idxmax(1)
+        token['pos_max'] = token.token_str.map(pos_max)
 
         # Replace token_str with token_id in doctokenbow
         token.reset_index(inplace=True)
@@ -149,6 +157,7 @@ class PoloCorpus(PoloDb):
         token['doc_count'] = doctokenbow.groupby('token_id').count()
         self.put_table(token, 'token', index=True)
 
+
     # fixme: Use a better sentiment detector
     def _get_sentiment(self, doc):
         doc2 = TextBlob(doc)
@@ -157,15 +166,13 @@ class PoloCorpus(PoloDb):
     def add_tfidf_to_doctokenbow(self):
         """Add TFIDF data to doctokenbow table"""
 
-        from numpy import log
         doctokenbow = self.get_table('doctokenbow', set_index=True)
         tokens = self.get_table('token', set_index=True)
-        docs = pd.read_sql_query("SELECT doc_id, token_count FROM doc", self.conn, index_col='doc_id') # Why not use self.get_table()?
+        docs = pd.read_sql_query("SELECT doc_id, token_count FROM doc", self.conn, index_col='doc_id')
         num_docs = docs.index.size
 
         # Compute local and gloabl token (actually term) significance
         self.alpha = .4
-        print("NEW")
         doc_max = doctokenbow.groupby('doc_id').token_count.max()
         tokens['df'] = doctokenbow.groupby('token_id').token_count.count()
         # n_docs = len(doctokenbow.index.levels[0])
@@ -174,16 +181,16 @@ class PoloCorpus(PoloDb):
         doctokenbow['tf'] = self.alpha + (1 - self.alpha) * (doctokenbow.token_count / doc_max)
         doctokenbow['tfidf'] = doctokenbow.tf * tokens.idf
         doctokenbow['tfidf_l2'] = doctokenbow['tfidf'] / doctokenbow.groupby(['doc_id']).apply(lambda x: norm(x.tfidf, 2))
-        tokens['tfidf_sum'] = doctokenbow.groupby('token_id').tfidf.sum()
-        tokens['tfidf_avg'] = doctokenbow.groupby('token_id').tfidf.mean()
+        tokens['tfidf_sum'] = doctokenbow.groupby('token_id').tfidf_l2.sum()
+        tokens['tfidf_avg'] = doctokenbow.groupby('token_id').tfidf_l2.mean()
 
         self.put_table(doctokenbow, 'doctokenbow', if_exists='replace', index=True)
         self.put_table(tokens, 'token', if_exists='replace', index=True)
 
     def add_stems_to_token(self):
         """Add stems to token table"""
+
         # We only use one stemmer since stemmers suck anyway :-)
-        from nltk.stem.porter import PorterStemmer
         porter_stemmer = PorterStemmer()
         tokens = self.get_table('token', set_index=True)
         tokens['token_stem_porter'] = tokens.token_str.apply(porter_stemmer.stem)
@@ -191,6 +198,7 @@ class PoloCorpus(PoloDb):
 
     def add_sentimant_to_doc(self):
         """Add sentiment to doc table"""
+
         doc = self.get_table('doc', set_index=True)
         doc['doc_sentiment'] = doc.doc_content.apply(self._get_sentiment)
         doc['doc_sentiment_polarity'] = doc.doc_sentiment.apply(lambda x: round(x[0], 1))
@@ -247,8 +255,6 @@ class PoloCorpus(PoloDb):
 
     def add_stats_to_ngrams(self, type='bi'):
         """Create distinct ngram tables with stats"""
-
-        from scipy.stats import entropy
 
         sql1 = """
         SELECT g.doc_id, d.doc_label, g.ngram, g.tf
@@ -308,14 +314,17 @@ class PoloCorpus(PoloDb):
 
     def save_ngrams_as_replacements(self, type='bi'):
         """Creatte replacement files from ngram tables"""
+    
         table = "ngram{}".format(type)
         sql1 = "SELECT AVG(idf), AVG(freq), AVG(entropy) FROM {}".format(table)
         params = pd.read_sql_query(sql1, self.conn).iloc[0].tolist()
+    
         sql2 = """
         SELECT REPLACE(n.ngram, '_', ' ') FROM {} n
         WHERE n.idf < ? AND n.freq > ? AND n.entropy > ? 
 	    ORDER BY FREQ DESC LIMIT 5000
         """.format(table)
+
         replacements = pd.read_sql_query(sql2, self.conn, params=params)
         outfilename = 'corpus/replacements_{}.txt'.format(table)
         replacements.to_csv(outfilename, index=False, header=False)
@@ -323,6 +332,7 @@ class PoloCorpus(PoloDb):
     def add_tables_ngram_and_docngram_old(self, n = 2):
         """Create ngram and docngram tables for n"""
         """This may seem slow, but it doesn't hang like Gensim's version"""
+        
         if n not in range(2, 5):
             raise ValueError("n not in range. Must be between 2 and 4 inclusive.")
         doctoken = self.get_table('doctoken')
@@ -365,7 +375,6 @@ class PoloCorpus(PoloDb):
 
         # fixme: Create fuction here
         # Get ngrams sorted by special sauce
-        from scipy.stats import entropy
         docs = pd.read_sql_query("SELECT doc_id, doc_label FROM doc", self.conn, index_col='doc_id')
         docngram = docngram.join(docs.doc_label)
         ndm = docngram.groupby(['doc_label', 'ngram']).ngram.count()
@@ -403,8 +412,6 @@ class PoloCorpus(PoloDb):
                         perplexity=40, n_components=2,
                         init='pca', n_iter=2500, random_state=23):
         """Use Gensim to generate word2vec model from doctoken table"""
-        from gensim.models import word2vec
-        from sklearn.manifold import TSNE
         
         doctoken = self.get_table('doctoken', set_index=True)
         corpus = doctoken.groupby('doc_id').apply(lambda x: x.token_str.tolist()).values.tolist()
@@ -429,46 +436,37 @@ class PoloCorpus(PoloDb):
     def add_pca_tables(self, k_components=10, n_terms=1000):
         """Create a PCA table with k components, n terms from doctokenbow table"""
         
-        from sklearn.preprocessing import normalize
-        from sklearn.decomposition import PCA
+        sql_vocab = """
+        SELECT token_id, token_str 
+        FROM token 
+        WHERE pos_max NOT LIKE 'NNP%'
+        ORDER BY tfidf_sum DESC 
+        LIMIT ?
+        """
 
-        # sql = """
-        # SELECT doc_id, token_id, token_str, tfidf 
-        # FROM doctokenbow 
-        # JOIN token USING (token_id)
-        # WHERE token_id IN (
-        #     SELECT token_id FROM token
-        #     ORDER BY doc_count DESC
-        #     LIMIT ?
-        # )
-        # """
-
-        sql = """
+        sql_bow = """
         SELECT doc_id, token_id, token_str, tfidf_l2 as tfidf 
         FROM doctokenbow 
         JOIN token USING (token_id)
         WHERE token_id IN (
             SELECT token_id 
             FROM token 
+            WHERE pos_max NOT LIKE 'NNP%'   
             ORDER BY tfidf_sum DESC 
-            LIMIT ?
-        )
-        """    
-        sql_vocab = """
-        SELECT token_id, token_str 
-        FROM token 
-        ORDER BY tfidf_sum DESC 
-        LIMIT ?
+            LIMIT ?            
+        ) 
         """
+        # note: Should parametize exclusion of NNP    
 
-        doctokenbow = pd.read_sql_query(sql, self.conn, params=(n_terms,), index_col=['doc_id', 'token_id'])
-        # vocab = doctokenbow.reset_index()[['token_id', 'token_str']].drop_duplicates().set_index('token_id')
+        doctokenbow = pd.read_sql_query(sql_bow, self.conn, params=(n_terms,), index_col=['doc_id', 'token_id'])
         vocab = pd.read_sql_query(sql_vocab, self.conn, params=(n_terms,), index_col='token_id')
-        
         docs = doctokenbow['tfidf'].unstack().fillna(0)
 
+        print(vocab)
+
         pca = PCA(n_components=k_components)
-        projected = pca.fit_transform(normalize(docs.values, norm='l2'))
+        # projected = pca.fit_transform(normalize(docs.values, norm='l2'))
+        projected = pca.fit_transform(docs.values) # Normalized already
         pccols = ["PC{}".format(i) for i in range(k_components)]
         pca_doc = pd.DataFrame(projected, columns=pccols, index=docs.index)
         pca_term = pd.DataFrame((pca.components_.T * np.sqrt(pca.explained_variance_)),
@@ -499,7 +497,7 @@ class PoloCorpus(PoloDb):
     def _get_pca_terms(self, V, k=10, n=15):
         loadings = []
         for i in range(k):
-            PC = 'PC{}'.format(i)
+            PC = f'PC{i}'
             cols = ['token_str', PC]
             pos = V.sort_values(PC, ascending=False).iloc[:n][cols].copy()
             neg = V.sort_values(PC, ascending=True).iloc[:n][cols].copy()
@@ -515,17 +513,22 @@ class PoloCorpus(PoloDb):
         loadings = loadings.groupby(['pc_id', 'val']).token_str.apply(lambda x: ' '.join(x)) \
             .to_frame().unstack()
         loadings.columns = loadings.columns.droplevel(0)
+
+        print(loadings)
         return loadings
 
     def get_perceptron_models(self, max_v=4000):
         """Run a perceptron classifier using labels"""
-        from sklearn.linear_model import Perceptron
         
         sql1 = """
-        SELECT doc_id, token_str, token_id, tfidf FROM doctokenbow as bow
-        JOIN (SELECT token_id, token_str FROM token WHERE token_str NOT IN 
-            (SELECT token_str FROM stopword) ORDER BY tfidf_sum 
-            DESC LIMIT ?) as vocab USING (token_id)
+        SELECT doc_id, token_str, token_id, tfidf_l2 as tfidf 
+        FROM doctokenbow as bow
+        JOIN (SELECT token_id, token_str 
+            FROM token 
+            WHERE token_str NOT IN (SELECT token_str FROM stopword) 
+                ORDER BY tfidf_sum 
+                DESC LIMIT ?) as vocab 
+            USING (token_id)
         """
         bow = pd.read_sql_query(sql1, self.conn, params=(max_v,),
             index_col=['doc_id', 'token_id'])
@@ -593,8 +596,7 @@ class PoloCorpus(PoloDb):
         """
         mallet_corpus = pd.read_sql_query(mallet_corpus_sql, self.conn)
 
-        from pandas.api.types import is_string_dtype
         if is_string_dtype(mallet_corpus['doc_label']):
-            mallet_corpus['doc_label'] = mallet_corpus['doc_label'].str.replace(r'\s+', '_')
+            mallet_corpus['doc_label'] = mallet_corpus['doc_label'].str.replace(r'\s+', '_', regex=True)
             
         mallet_corpus.to_csv(self.cfg_mallet_corpus_input, index=False, header=False, sep=',')
