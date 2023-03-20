@@ -24,6 +24,7 @@ from sklearn.linear_model import Perceptron
 
 from polo2 import PoloDb
 from polo2 import PoloFile
+from polo2 import PoloConfig
 
 
 class PoloCorpus(PoloDb):
@@ -50,6 +51,7 @@ class PoloCorpus(PoloDb):
         # fixme: TOKENIZER ASSUMES ENGLISH -- PARAMETIZE THIS
         nltk.download('punkt')
         nltk.download('tagsets')
+        nltk.download('stopwords')
         nltk.download('averaged_perceptron_tagger')
         self.tokenizer = nltk.data.load('nltk:tokenizers/punkt/english.pickle')
 
@@ -129,7 +131,7 @@ class PoloCorpus(PoloDb):
         docs['token_count'] = doctokenbow.groupby('doc_id').token_count.sum()
         self.put_table(docs, 'doc', if_exists='replace', index=True)
 
-    # fixme: TOKEN should be the TERM table (aka VOCAB) 
+    # fixme: TOKEN should be the TERM table (aka VOCAB)
     def add_table_token(self):
         """Get token data from doctoken and doctokenbow"""
         doctoken = self.get_table('doctoken')
@@ -416,10 +418,10 @@ class PoloCorpus(PoloDb):
         doctoken = self.get_table('doctoken', set_index=True)
         corpus = doctoken.groupby('doc_id').apply(lambda x: x.token_str.tolist()).values.tolist()
         model = word2vec.Word2Vec(corpus,
-                                  size=k, window=window,
+                                  vector_size=k, window=window,
                                   min_count=min_count, workers=workers)
         del corpus
-        df = pd.DataFrame(model.wv.vectors, index=model.wv.index2entity)
+        df = pd.DataFrame(model.wv.vectors, index=model.wv.index_to_key)
         del model
         df.columns = ['F{}'.format(i) for i in range(k)]
         df.index.name = 'token_str'  # todo: Later change this to term_str
@@ -450,7 +452,7 @@ class PoloCorpus(PoloDb):
         JOIN token USING (token_id)
         WHERE token_id IN (
             SELECT token_id 
-            FROM token 
+            FROM token
             WHERE pos_max NOT LIKE 'NNP%'   
             ORDER BY tfidf_sum DESC 
             LIMIT ?            
