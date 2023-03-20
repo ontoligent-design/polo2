@@ -127,18 +127,51 @@ $(document).ready(function() {
 });
 
 // Topic Trend Graph
+
 var layout = {
     title: "Average Topic Weight Trend",
-    xaxis: {title: '', tickangle: 45, visible: true, showgrid: false, showline: true, showticklabels: true, tickmode:'linear'},
-    yaxis: {title: '', visible: true, showgrid: true, showline: true, showticklabels: true},
+    xaxis: {    
+        title: '', 
+        tickangle: 45, 
+        visible: true, 
+        showgrid: false, 
+        showline: true, 
+        showticklabels: true, 
+        tickmode:'linear'
+    },
+    yaxis: {
+        title: '', 
+        visible: true, 
+        showgrid: true, 
+        showline: true, 
+        showticklabels: true
+    },
     margin: {l: 50, r: 50, b: 100, t: 30, pad: 10}
 }
-var config = {displaylogo: false, displayModeBar: false, scrollZoom: false, editable: false, staticPlot: false}
+
+var config = {
+    displaylogo: false, 
+    displayModeBar: false, 
+    scrollZoom: false, 
+    editable: false, 
+    staticPlot: false
+}
+
 var x = {{ trend.sort_values('topic_weight', ascending=False).doc_group.tolist() | tojson | safe }}
 var y = {{ trend.sort_values('topic_weight', ascending=False).topic_weight.values.tolist() | tojson | safe }}
-var data = [{x:x, y:y, type:'bar', hoverinfo: 'x+y', showlegend: false}]
+var data = [
+    {
+        x: x, 
+        y: y, 
+        type: 'bar', 
+        hoverinfo: 'x+y', 
+        showlegend: false
+    }
+]
+
 Plotly.newPlot("topic-trend-graph", data, layout, config)
 
+// Add interactivity
 plot = document.getElementById("topic-trend-graph")
 plot.on('plotly_click', function(data) {
     url = '/projects/{{slug}}/{{trial}}/groups/{{group_label}}/' + data.points[0].x
