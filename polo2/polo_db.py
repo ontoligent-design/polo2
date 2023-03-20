@@ -14,8 +14,6 @@ class PoloDb:
     def __init__(self, dbfile, read_only=False):
         self.dbfile = dbfile
         self.read_only = read_only
-        if not os.path.isfile(self.dbfile):
-            raise ValueError(f"DB file {self.dbfile} not found.")
         try:
             self.conn = sqlite3.connect(self.dbfile)
             self.conn.row_factory = sqlite3.Row
