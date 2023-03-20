@@ -131,6 +131,9 @@ if __name__ == '__main__':
     # CORPUS
     parser_corpus = subparsers.add_parser('corpus', help='Generates a corpus db')
 
+    # TEST
+    parser_test = subparsers.add_parser('test', help='Runs a test block (varies)')
+
     # MALLET
     parser_mallet = subparsers.add_parser('mallet', help='Runs mallet based on ini and saves to db')
     parser_mallet.add_argument('trial', help="Trial name (see ini)", action="store", type=str, nargs='?', default=None)
@@ -197,6 +200,18 @@ if __name__ == '__main__':
             run_funcs(corpus, ['add_stats_to_ngrams'], arg_dict=dict(type='tri'))
 
         run_funcs(corpus, ['export_mallet_corpus'])
+
+        mallet = PoloMallet(config)
+        print('Converting corpus for mallet')
+        mallet.mallet_import()
+
+    elif args.cmd == 'test':
+
+        print("Importing config")
+        config = load_config(args.ini)
+
+        print("Initializing corpus")
+        corpus = load_corpus(config)
 
         mallet = PoloMallet(config)
         print('Converting corpus for mallet')
