@@ -385,7 +385,7 @@ class PoloMallet(PoloDb):
         #from itertools import combinations
         pairs = [pair for pair in combinations(topic.index, 2)]
         topicpair = pd.DataFrame(pairs, columns=['topic_a_id', 'topic_b_id'])
-
+ 
         # Calculate distances by word vector
         topicpair['cosim'] = topicpair.apply(lambda x: pm.cosine_sim(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
         topicpair['jscore'] = topicpair.apply(lambda x: pm.jscore(twm[x.topic_a_id], twm[x.topic_b_id]), axis=1)
