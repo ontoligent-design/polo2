@@ -196,6 +196,11 @@ Plotly.newPlot('doc_ord_counts',
         }
     }
 )
+plot_doc_counts = document.getElementById('doc_ord_counts')
+plot_doc_counts.on('plotly_click', function(data) {
+    url = '/projects/{{slug}}/{{trial}}/groups/{{group_label}}/' + data.points[0].x 
+    window.open(url, '_self')
+})
 
 
 // Topic Alpha Histogram
