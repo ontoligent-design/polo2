@@ -174,7 +174,6 @@ class PoloCorpus(PoloDb):
         num_docs = docs.index.size
 
         # Compute local and gloabl token (actually term) significance
-        from sklearn.preprocessing import normalize
 
         self.alpha = .4
         doc_max = doctokenbow.groupby('doc_id').token_count.max()
