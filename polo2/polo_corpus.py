@@ -174,6 +174,8 @@ class PoloCorpus(PoloDb):
         num_docs = docs.index.size
 
         # Compute local and gloabl token (actually term) significance
+        from sklearn.preprocessing import normalize
+
         self.alpha = .4
         doc_max = doctokenbow.groupby('doc_id').token_count.max()
         tokens['df'] = doctokenbow.groupby('token_id').token_count.count()
@@ -182,7 +184,10 @@ class PoloCorpus(PoloDb):
         tokens['dfidf'] = tokens.df * tokens.idf
         doctokenbow['tf'] = self.alpha + (1 - self.alpha) * (doctokenbow.token_count / doc_max)
         doctokenbow['tfidf'] = doctokenbow.tf * tokens.idf
-        doctokenbow['tfidf_l2'] = doctokenbow['tfidf'] / doctokenbow.groupby(['doc_id']).apply(lambda x: norm(x.tfidf, 2))
+        doctokenbow['tfidf_l2'] = pd.DataFrame(normalize(doctokenbow['tfidf']), 
+                                               columns=doctokenbow['tfidf'].columns, 
+                                               index=doctokenbow['tfidf'].index)
+        # doctokenbow['tfidf_l2'] = doctokenbow['tfidf'] / doctokenbow.groupby(['doc_id']).apply(lambda x: norm(x.tfidf, 2))
         tokens['tfidf_sum'] = doctokenbow.groupby('token_id').tfidf_l2.sum()
         tokens['tfidf_avg'] = doctokenbow.groupby('token_id').tfidf_l2.mean()
 
@@ -588,13 +593,22 @@ class PoloCorpus(PoloDb):
         # mallet_corpus = pd.read_sql_query('SELECT * FROM mallet_corpus', self.conn)
 
         # REPLACED token_str WITH token_atem_porter
+        # mallet_corpus_sql = """
+        # SELECT dt.doc_id, d.doc_label, GROUP_CONCAT(t.token_stem_porter, ' ') AS doc_content
+        # FROM doctoken dt 
+        # JOIN doc d USING (doc_id) 
+        # JOIN token t USING (token_str)
+        # GROUP BY dt.doc_id
+        # ORDER BY dt.doc_id
+        # """
+
+        # No stemming; only nouns ...
         mallet_corpus_sql = """
-        SELECT dt.doc_id, d.doc_label, GROUP_CONCAT(t.token_stem_porter, ' ') AS doc_content
-        FROM doctoken dt 
-        JOIN doc d USING (doc_id) 
-        JOIN token t USING (token_str)
+        SELECT dt.doc_id, d.doc_label, GROUP_CONCAT(dt.token_str , ' ') AS doc_content
+        FROM doctoken dt JOIN doc d USING (doc_id)
+        WHERE dt.pos LIKE "NN%"
         GROUP BY dt.doc_id
-        ORDER BY dt.doc_id
+        ORDER BY dt.doc_id        
         """
         mallet_corpus = pd.read_sql_query(mallet_corpus_sql, self.conn)
 
