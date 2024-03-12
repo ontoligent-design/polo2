@@ -31,7 +31,7 @@ class PoloCorpus(PoloDb):
 
     ngram_prefixes = ['no', 'uni', 'bi', 'tri', 'quadri']
 
-    def __init__(self, config):
+    def __init__(self, config:PoloConfig):
         """Initialize corpus object"""
 
         # Import Configs
@@ -177,7 +177,7 @@ class PoloCorpus(PoloDb):
 
         self.alpha = .4
         doc_max = doctokenbow.groupby('doc_id').token_count.max()
-        tokens['df'] = doctokenbow.groupby('token_id').token_count.count()
+        tokens['df'] = doctokenbow.groupby('token_id').token_count.count() # THIS SHOULD ALREADY BE IN VOCAB
         # n_docs = len(doctokenbow.index.levels[0])
         tokens['idf'] = np.log2(num_docs/tokens.df)
         tokens['dfidf'] = tokens.df * tokens.idf
