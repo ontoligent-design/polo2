@@ -327,7 +327,7 @@ class Elements(object):
                "FROM {} WHERE group_b = ?".format(table_name)
         df1 = pd.read_sql_query(sql1, self.model.conn, params=(group_name,))
         df2 = pd.read_sql_query(sql2, self.model.conn, params=(group_name,))
-        return df1.append(df2).sort_values('doc_group').set_index('doc_group')
+        return df1.join(df2, rsuffix='_2').sort_values('doc_group').set_index('doc_group')
 
     def get_max_topic_weight(self):
         sql = "SELECT value as 'max_tw' FROM config WHERE key = 'doctopic_weight_max'"
