@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import sqlite3
 
+# fixme: This class does not appear to be used
+# It is instantiated in elements.py and app.py but the object is unused in both cases
 class Corpus(object):
 
     def __init__(self, config):
@@ -10,8 +12,13 @@ class Corpus(object):
         self.corpus = PoloDb(corpus_db_file)
 
 class Elements(object):
+    """
+    This class creates various data elements that can be used in the display. 
+    Considr moving some of the elements upstream to this.
+    """
 
     def __init__(self, config, trial_name='trial1'):
+        "Initialize with the config and a mallet trial name."
 
         # Set some values
         if trial_name not in config.trials:
@@ -28,11 +35,15 @@ class Elements(object):
         self.corpus = PoloDb(corpus_db_file)
         self.model = PoloDb(model_db_file)
 
+    # fixme: This appears to be unused
     def get_table(self, table_name, db_conn):
+        "Convert a db table into a dataframe."
         df = self.get_sql("SELECT * FROM {}".format(table_name), db_conn)
         return df
 
+    # fixme: This appears to be unused, except by get_table, which is also unused
     def get_sql(self, query, db_conn, params=()):
+        "Convert a db query into a dataframe."
         try:
             df = pd.read_sql_query(query, db_conn, params=params)
             return df
