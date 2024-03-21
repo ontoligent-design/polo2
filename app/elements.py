@@ -255,16 +255,15 @@ class Elements(object):
          sim values include cosim, jscore, and i_ab"""
         pairs = self.model.get_table('topicpair', set_index=True)
         if symmetric:
-            tpm = pairs.append(pairs.reorder_levels(['topic_b_id', 'topic_a_id'])).unstack()
+            tpm = pd.concat([pairs, pairs.reorder_levels(['topic_b_id', 'topic_a_id'])]).unstack()
         else:
             tpm = pairs.unstack()
-
         if sim:
             return tpm[sim]
         else:
             return tpm
 
-    def get_topicpair_net(self, thresh=.5, n=100):
+    def get_topicpair_net(self, thresh=.1, n=100):
         topics = self.model.get_table('topic')
         pairs = self.model.get_table('topicpair', set_index=False)
         # pairs = pairs.loc[pairs.i_ab >= thresh, ['topic_a_id', 'topic_b_id', 'i_ab']]

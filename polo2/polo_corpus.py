@@ -183,10 +183,10 @@ class PoloCorpus(PoloDb):
         tokens['dfidf'] = tokens.df * tokens.idf
         doctokenbow['tf'] = self.alpha + (1 - self.alpha) * (doctokenbow.token_count / doc_max)
         doctokenbow['tfidf'] = doctokenbow.tf * tokens.idf
-        doctokenbow['tfidf_l2'] = pd.DataFrame(normalize(doctokenbow['tfidf']), 
-                                               columns=doctokenbow['tfidf'].columns, 
-                                               index=doctokenbow['tfidf'].index)
-        # doctokenbow['tfidf_l2'] = doctokenbow['tfidf'] / doctokenbow.groupby(['doc_id']).apply(lambda x: norm(x.tfidf, 2))
+        # doctokenbow['tfidf_l2'] = pd.DataFrame(normalize(doctokenbow['tfidf']), 
+        #                                        columns=doctokenbow['tfidf'].columns, 
+        #                                        index=doctokenbow['tfidf'].index)
+        doctokenbow['tfidf_l2'] = doctokenbow['tfidf'] / doctokenbow.groupby(['doc_id']).apply(lambda x: norm(x.tfidf, 2))
         tokens['tfidf_sum'] = doctokenbow.groupby('token_id').tfidf_l2.sum()
         tokens['tfidf_avg'] = doctokenbow.groupby('token_id').tfidf_l2.mean()
 
@@ -479,7 +479,7 @@ class PoloCorpus(PoloDb):
                                 columns=pccols, index=docs.columns)
         pca_term['token_str'] = vocab['token_str']
         pca_item = self._get_pca_terms(pca_term, k_components)
-        pca_term = pca_term.drop('token_str', 1)
+        pca_term = pca_term.drop('token_str', axis=1)
         pca_item['explained_variance'] = pd.DataFrame(pca.explained_variance_)
         pca_item['explained_variance_ratio'] = pd.DataFrame(pca.explained_variance_ratio_)
 

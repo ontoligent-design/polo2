@@ -520,8 +520,8 @@ class PoloMallet(PoloDb):
             self.create_topicdoc_group_matrix(group_field)
             self.create_topicdoc_group_pairs(group_field)
 
+    # fixme: The computed thresh is broken, returns 0
     def get_thresh(self):
-        # fixme: The computed thresh is broken, returns 0
         """Compute the topic weight threshold"""
         # config = self.get_table('config')
         # if len(config[config.key == 'computed_thresh'].values):
