@@ -2,6 +2,7 @@ import os
 import time
 import re
 import pandas as pd
+import numpy as np
 from itertools import combinations
 from lxml import etree
 from scipy import stats
@@ -236,6 +237,23 @@ class PoloMallet(PoloDb):
         topicphrase.set_index(['topic_id', 'topic_phrase'], inplace=True)
         self.put_table(topicphrase, 'topicphrase', index=True)
 
+
+    def add_topic_significance(self, λ = .5, n_terms = 7, k = .001):
+        """Weight topic words by significance"""
+        word = self.get_table('word').set_index('word_id')
+        topicword = self.get_table('topicword').set_index(['word_id', 'topic_id'])
+        topic = self.get_table('topic').set_index('topic_id')
+        WTM = topicword.unstack(fill_value=0) + k
+        WTM.columns = WTM.columns.droplevel(0)
+        PWT = WTM / WTM.sum()
+        PW = WTM.T.sum() / WTM.T.sum().sum()
+        SIG = λ * np.log(PWT.T) + (1 - λ) * np.log(PWT.T/PW.T)
+        PHI = SIG.T.join(word.word_str).set_index('word_str')
+        topic['topic_sig_words'] = topic\
+            .apply(lambda x: ', '.join(PHI[x.name].sort_values(ascending=False).head(n_terms).index), axis=1)
+        self.put_table(topic, 'topic', index=True)
+
+   
     def add_topic_glosses(self):
         """Add glosses to topic table"""
         sql = """

@@ -414,7 +414,7 @@ class PoloCorpus(PoloDb):
         self.add_tables_ngram_and_docngram(n=3)
 
     def add_word2vec_table(self, k=246, window=5,
-                        min_count=100, workers=4,
+                        min_count=10, workers=4,
                         perplexity=40, n_components=2,
                         init='pca', n_iter=2500, random_state=23):
         """Use Gensim to generate word2vec model from doctoken table"""
@@ -430,7 +430,7 @@ class PoloCorpus(PoloDb):
         df.columns = ['F{}'.format(i) for i in range(k)]
         df.index.name = 'token_str'  # todo: Later change this to term_str
         
-        tsne_model = TSNE(perplexity=perplexity,
+        tsne_model = TSNE(perplexity=min(perplexity, df.shape[0]),
                           n_components=n_components, init=init,
                           n_iter=n_iter, random_state=random_state)
         tsne_values = tsne_model.fit_transform(df)
@@ -468,7 +468,7 @@ class PoloCorpus(PoloDb):
         vocab = pd.read_sql_query(sql_vocab, self.conn, params=(n_terms,), index_col='token_id')
         docs = doctokenbow['tfidf'].unstack().fillna(0)
 
-        print(vocab)
+        # print(vocab)
 
         pca = PCA(n_components=k_components)
         # projected = pca.fit_transform(normalize(docs.values, norm='l2'))
@@ -520,7 +520,7 @@ class PoloCorpus(PoloDb):
             .to_frame().unstack()
         loadings.columns = loadings.columns.droplevel(0)
 
-        print(loadings)
+        # print(loadings)
         return loadings
 
     def get_perceptron_models(self, max_v=4000):

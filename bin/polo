@@ -99,6 +99,7 @@ add_group_field_tables
 add_topic_alpha_stats
 add_doctopic_weight_stats
 add_doctopic_entropy_stats
+# add_topic_significance
 add_topic_glosses
 del_mallet_files
 """.split()
@@ -186,6 +187,7 @@ if __name__ == '__main__':
         add_pca_tables
         add_word2vec_table
         """.split()
+        
         run_funcs(corpus, funcs)
 
         if 'sentiment' in config.ini['DEFAULT'] and int(config.ini['DEFAULT']['sentiment']) == 1:
@@ -246,6 +248,7 @@ if __name__ == '__main__':
         add_topic_alpha_stats
         add_doctopic_weight_stats
         add_doctopic_entropy_stats
+        add_topic_significance        
         add_topic_glosses
         add_maxtopic_to_word
         add_maxtopic_to_doc

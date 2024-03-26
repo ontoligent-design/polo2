@@ -16,15 +16,13 @@ class PoloGensim:
         self.gs_corpus = [[(row[0], row[1])
                            for row in doctokenbow.loc[doc_id == doc_id, ['token_id', 'token_count']].values]
                            for doc_id in doctokenbow.index.unique()]
-        """
         # Old school loop way
-        self.gs_corpus = []
-        for doc_id in doctokenbow.index.unique():
-            doc = []
-            for row in doctokenbow.loc[doc_id, ['token_id', 'token_count']].values:
-                doc.append((row[0], row[1]))
-            self.gs_corpus.append(doc)
-        """
+        # self.gs_corpus = []
+        # for doc_id in doctokenbow.index.unique():
+        #     doc = []
+        #     for row in doctokenbow.loc[doc_id, ['token_id', 'token_count']].values:
+        #         doc.append((row[0], row[1]))
+        #     self.gs_corpus.append(doc)
 
     def make_gs_dict(self):
         token = self.db.get_table('token')
@@ -41,6 +39,7 @@ class PoloGensim:
 
         # todo: Go the next step and extract topic with word with freqs above a thresh
         thresh = 0.0005
+        
         # Sometimes it's easier to use SQL than to figure out how to something
         # like this in Pandas
         sql = """
@@ -52,7 +51,7 @@ class PoloGensim:
         hdp_topics = pd.read_sql_query(sql, self.db.conn)
         self.db.put_table(hdp_topics, 'hdp_topics')
 
-        thresh = 0.005 # Note this is different from what's in config.ini
+        # thresh = 0.005 # Note this is different from what's in config.ini
         #hdp_dfn = hpd_dfn[htp_dfn.topic_freq >= thresh]
 
 

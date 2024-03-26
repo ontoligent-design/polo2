@@ -46,7 +46,7 @@ def test():
 @app.route('/projects/<slug>/corpus')
 def corpus(slug):
     cfg = get_project_config_file(slug)
-    cps = Corpus(cfg)
+    cps = Corpus(cfg) # UNUSED
 
 @app.route("/projects/<slug>")
 @app.route("/projects/<slug>/<trial>")
