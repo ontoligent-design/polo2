@@ -35,7 +35,8 @@ class PoloMallet(PoloDb):
         # Get replacment files
         # todo: Fix order; higher ngrams should go first ... argues for sortable names
         self.replacement_files = self.cfg_replacements
-        for filename in os.listdir('corpus'):
+        self.base_path = self.config.ini['DEFAULT']['base_path']
+        for filename in os.listdir(f'{self.base_path}/corpus'):
             if 'replacements_' in filename:
                 self.replacement_files += ' corpus/' + filename
 
@@ -54,6 +55,8 @@ class PoloMallet(PoloDb):
         ts = time.time()
         self.trial_name = '{}-model-t{}-i{}-{}'.format(self.trial, self.cfg_num_topics,
                                                               self.cfg_num_iterations, int(ts))
+    
+    
     def mallet_init(self):
         """Initialize command line arguments for MALLET"""
         # todo: Consider putting trunhis in the init for the object itself
@@ -87,6 +90,7 @@ class PoloMallet(PoloDb):
         self.mallet['train-topics']['doc-topics-max'] = self.cfg_doc_topics_max
         self.mallet['train-topics']['show-topics-interval'] = self.cfg_show_topics_interval
 
+    
     def mallet_run_command(self, op):
         """Run a MALLET command (e.g. import-file or train-topics)"""
         my_args = ['--{} {}'.format(arg,self.mallet[op][arg]) for arg in self.mallet[op]]
@@ -97,14 +101,17 @@ class PoloMallet(PoloDb):
         except:
             raise ValueError('Command would not execute:', my_cmd)
 
+    
     def mallet_import(self):
         """Import contents of MALLET output files into Polo DB"""
         self.mallet_run_command('import-file')
 
+    
     def mallet_train(self):
         """Train MALLET by running train-topics"""
         self.mallet_run_command('train-topics')
 
+    
     def clean_up(self):
         """Clean up files created by MALLET"""
         file_mask = '{}-*.*'.format(self.file_prefix)
@@ -114,6 +121,7 @@ class PoloMallet(PoloDb):
         except:
             raise ValueError('Unable to delete files: {}'.format(file_mask))
 
+    
     # TABLE IMPORT METHODS
 
     def tables_to_db(self):
@@ -125,6 +133,7 @@ class PoloMallet(PoloDb):
         self.import_table_doctopic()
         self.import_table_topicphrase()
 
+    
     def import_table_state(self, src_file=None):
         """Import the state file into docword table"""
         if not src_file:
@@ -138,6 +147,7 @@ class PoloMallet(PoloDb):
             docword.set_index(['doc_id', 'word_id'], inplace=True)
             self.put_table(docword, 'docword', index=True)
 
+    
     def import_table_topic(self, src_file=None):
         """Import data into topic table"""
         if not src_file: src_file = self.mallet['train-topics']['output-topic-keys']
@@ -148,6 +158,7 @@ class PoloMallet(PoloDb):
         topic['topic_gloss'] = 'TBA'
         self.put_table(topic, 'topic', index=True)
 
+    
     def import_tables_topicword_and_word(self, src_file=None):
         """Import data into topicword and word tables"""
         if not src_file: src_file = self.mallet['train-topics']['word-topic-counts-file']
@@ -168,6 +179,7 @@ class PoloMallet(PoloDb):
         self.put_table(word, 'word', index=True)
         self.put_table(topicword, 'topicword', index=True)
 
+    
     def import_table_doctopic(self, src_file=None):
         """Import data into doctopic table"""
         if not src_file: src_file = self.mallet['train-topics']['output-doc-topics']
@@ -219,6 +231,7 @@ class PoloMallet(PoloDb):
         # todo: Revisit this; in the best place to do this?
         self.set_config_item('computed_thresh', self.computed_thresh)
 
+    
     def import_table_topicphrase(self, src_file=None):
         """Import data into topicphrase table"""
         if not src_file: src_file = self.mallet['train-topics']['xml-topic-phrase-report']
@@ -239,18 +252,37 @@ class PoloMallet(PoloDb):
 
 
     def add_topic_significance(self, λ = .5, n_terms = 7, k = .001):
-        """Weight topic words by significance"""
+        """Weight topic words by TFIDF significance"""
+        # Pull in the tables 
         word = self.get_table('word').set_index('word_id')
         topicword = self.get_table('topicword').set_index(['word_id', 'topic_id'])
         topic = self.get_table('topic').set_index('topic_id')
-        WTM = topicword.unstack(fill_value=0) + k
-        WTM.columns = WTM.columns.droplevel(0)
-        PWT = WTM / WTM.sum()
-        PW = WTM.T.sum() / WTM.T.sum().sum()
-        SIG = λ * np.log(PWT.T) + (1 - λ) * np.log(PWT.T/PW.T)
-        PHI = SIG.T.join(word.word_str).set_index('word_str')
-        topic['topic_sig_words'] = topic\
-            .apply(lambda x: ', '.join(PHI[x.name].sort_values(ascending=False).head(n_terms).index), axis=1)
+
+        # TFIDF 
+        TF = topicword.unstack(fill_value=0)  
+        DF = TF.astype(bool).T.sum()
+        N = len(TF.T)
+        TFIDF = (TF.T * np.log2(N/DF)).T
+        TFIDF.columns = TFIDF.columns.droplevel(0)
+        TFIDF = TFIDF.join(word.word_str, on='word_id').set_index('word_str')
+        topic['topic_words'] = topic\
+            .apply(lambda x: ', '.join(TFIDF[x.name].sort_values(ascending=False).head(n_terms).index), axis=1)
+
+        # Significance
+        # # Transform tables for computation
+        # WTM = topicword.unstack(fill_value=0) + k
+        # WTM.columns = WTM.columns.droplevel(0)
+        # PWT = WTM / WTM.sum()
+        # PW = WTM.T.sum() / WTM.T.sum().sum()
+        # # Compute significance
+        # SIG = λ * np.log(PWT.T) + (1 - λ) * np.log(PWT.T/PW.T)
+        # PHI = SIG.T.join(word.word_str).set_index('word_str')
+        # # Park in the right place
+        # # fixme: This overwrites the other topic_words!
+        # topic['topic_words'] = topic\
+        #     .apply(lambda x: ', '.join(PHI[x.name].sort_values(ascending=False).head(n_terms).index), axis=1)
+        
+        # Save the modified table
         self.put_table(topic, 'topic', index=True)
 
    
@@ -268,6 +300,7 @@ class PoloMallet(PoloDb):
         topic['topic_gloss'] = topicphrase.topic_gloss
         self.put_table(topic, 'topic', index=True)
 
+    
     def import_table_config(self):
         """Import data into config table"""
         # fixme: Make this automatic; find a way to dump all values
@@ -282,6 +315,7 @@ class PoloMallet(PoloDb):
         config = pd.DataFrame({'key': list(cfg.keys()), 'value': list(cfg.values())})
         self.put_table(config, 'config')
 
+    
     def add_diagnostics(self, src_file=None):
         """Add diagnostics data to topics and topicword_diags tables"""
         if not src_file: src_file = self.mallet['train-topics']['diagnostics-file']
@@ -340,6 +374,7 @@ class PoloMallet(PoloDb):
         topicword_diags.set_index(['topic_id', 'word_id'], inplace=True)
         self.put_table(topicword_diags, 'topicword_diag', index=True)
 
+    
     # fixme: Deleting mallet files seems not to be working
     def del_mallet_files(self):
         """Delete MALLET files"""
@@ -354,6 +389,7 @@ class PoloMallet(PoloDb):
 
     # UPDATE OR ADD TABLES WITH STATS
 
+    
     # todo: Consider moving into method that creates doc and doctopic tables
     def add_topic_entropy(self):
         """Add entropy to topic table"""
@@ -366,6 +402,7 @@ class PoloMallet(PoloDb):
         doc.set_index('doc_id', inplace=True)
         self.put_table(doc, 'doc', index=True)
 
+    
     def create_table_topicpair(self):
         """Create topicpair table"""
         thresh = self.get_thresh()
@@ -439,6 +476,7 @@ class PoloMallet(PoloDb):
         topicpair.set_index(['topic_a_id', 'topic_b_id'], inplace=True)
         self.put_table(topicpair, 'topicpair', index=True)
 
+    
     # fixme: Remove deprecated function
     def create_topicdoc_col_matrix(self, group_col):
         """Create topicdoc matrix table for a group column"""
@@ -484,6 +522,7 @@ class PoloMallet(PoloDb):
         dtm_counts.name = 'doc_count'
         self.put_table(dtm_counts, 'topicdoc{}_matrix_counts'.format(group_col), index=True)
 
+    
     def create_topicdoc_group_matrix(self, group_field='doc_label'):
         """Create topicdoc group matrix table"""
 
@@ -517,6 +556,7 @@ class PoloMallet(PoloDb):
         dtm_counts.name = 'doc_count'
         self.put_table(dtm_counts, 'topic{}_matrix_counts'.format(group_field), index=True)
 
+    
     def create_topicdoc_group_pairs(self, group_field='doc_label'):
         """Create topicdoc group pairs table"""
         thresh = self.get_thresh()
@@ -532,12 +572,14 @@ class PoloMallet(PoloDb):
         pair['kld'] = pair.apply(lambda x: pm.kl_distance(gtm.loc[x.group_a], gtm.loc[x.group_b]), axis=1)
         self.put_table(pair, 'topic{}_pairs'.format(group_field))
 
+    
     def add_group_field_tables(self):
         """Create topicdoc group matrix tables for group fields in INI"""
         for group_field in self.config.get_group_fields():
             self.create_topicdoc_group_matrix(group_field)
             self.create_topicdoc_group_pairs(group_field)
 
+    
     # fixme: The computed thresh is broken, returns 0
     def get_thresh(self):
         """Compute the topic weight threshold"""
@@ -551,6 +593,7 @@ class PoloMallet(PoloDb):
         # return thresh
         return self.cfg_thresh
 
+    
     def add_topic_alpha_stats(self):
         """Add topic alpha stats to config table"""
         topic = self.get_table('topic')
@@ -561,6 +604,7 @@ class PoloMallet(PoloDb):
         )
         self.set_config_items(items)
 
+    
     def add_maxtopic_to_word(self):
         """Add idxmax topic for each word"""
         topicword = self.get_table('topicword')
@@ -572,6 +616,7 @@ class PoloMallet(PoloDb):
         word['maxtopic'] = twm.T.idxmax()
         self.put_table(word, 'word', index_label='word_id')
 
+    
     def add_maxtopic_to_doc(self):
         """Add idmax topic for each doc"""
         # todo: Put this in the method that creates doctopic
@@ -588,6 +633,7 @@ class PoloMallet(PoloDb):
         # doc['maxtopic'] = doctopic.topic_weight.unstack().fillna(0).T.idxmax()
         self.put_table(doc, 'doc', index=True)
 
+    
     def add_doctopic_weight_stats(self):
         """Add doctopic weight stats to config table"""
         doctopic = self.get_table('doctopic')
@@ -598,6 +644,7 @@ class PoloMallet(PoloDb):
         )
         self.set_config_items(items)
 
+    
     def add_doctopic_entropy_stats(self):
         """Add doctopic entropy stats to config table"""
         doc = self.get_table('doc')
@@ -608,6 +655,7 @@ class PoloMallet(PoloDb):
         )
         self.set_config_items(items)
 
+    
     def add_topiccompcorr(self):
         """Add topic component correlation table"""
         corpus_db_file = self.config.generate_corpus_db_file_path()
@@ -636,6 +684,7 @@ class PoloMallet(PoloDb):
         C.index.name  = 'pc_id'
         self.put_table(C, 'topiccomp_pole', index=True)
 
+    
     def add_topic_clustering(self):
         """Apply Ward clustering of topics based on topicword matrix"""
         import scipy.cluster.hierarchy as sch
@@ -673,11 +722,13 @@ class PoloMallet(PoloDb):
         tree.index.name = 'iter_id'
         self.put_table(tree, 'topictree', index=True)
 
+    
     def set_config_items(self, items = dict()):
         """Add config items to config table"""
         for key in items.keys():
             self.set_config_item(key, items[key])
 
+    
     sql_config_delete = "DELETE FROM config WHERE key = ?"
     sql_config_insert = "INSERT INTO config (key, value) VALUES (?,?)"
     def set_config_item(self, key, val):
@@ -686,6 +737,7 @@ class PoloMallet(PoloDb):
         self.conn.execute(self.sql_config_insert, (key, val))
         self.conn.commit()
 
+    
     sql_config_select = "SELECT FROM config WHERE key = ?"
     def get_config_item(self, key):
         """Get an item from the config table"""
