@@ -32,7 +32,7 @@ class PoloMallet(PoloDb):
             setattr(self, att, int(getattr(self, att)))
         self.cfg_thresh = float(self.cfg_thresh)
 
-        # Get replacment files
+        # Get replacment filesll
         # todo: Fix order; higher ngrams should go first ... argues for sortable names
         self.replacement_files = self.cfg_replacements
         self.base_path = self.config.ini['DEFAULT']['base_path']
