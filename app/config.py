@@ -1,1 +1,1 @@
-#PROJECTS_DIR = "/Users/rca2t1/Dropbox/CODE/polo2-test/PUB"
+PROJECTS_DIR = "/Users/rca2t/Dropbox/CODE/polo2-test/PUB" # Why not call this POLO_PUB? Also, put ALL paths here.

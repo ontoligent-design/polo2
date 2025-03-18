@@ -17,8 +17,8 @@ app.config.from_object('config')
 # Define some things used in the handlers
 
 projects_dir = os.environ.get('POLO_PUB')
-# if not projects_dir:
-#     projects_dir = app.config['PROJECTS_DIR']
+if not projects_dir:
+    projects_dir = app.config['PROJECTS_DIR']
 data = {} # Use to store variables to pass to templates
 data['main_menu'] = {
     '/projects': 'Projects'
@@ -61,7 +61,8 @@ def project(slug, trial='trial1'):
     set_project_menu(cfg, slug, trial)
     data['slug'] = slug
     data['trial'] = trial
-    data['pub_home'] = os.environ['POLO_PUB']
+    # data['pub_home'] = os.environ['POLO_PUB']
+    data['pub_home'] = projects_dir # Already grabbed POLO_PUB above
     data['page_title'] = '{}, {}'.format(slug, trial)
     data['ini'] = cfg.ini['DEFAULT'] # Really?
     data['trials'] = cfg.get_trial_names()
