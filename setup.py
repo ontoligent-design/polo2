@@ -10,13 +10,12 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-
     name = 'polo2',
     version = '0.2', # Versions should comply with PEP440.
     description = 'Polo lets you play with Mallet and much more',
     long_description = long_description,
     url = 'https://github.com/ontoligent-design/polo2',
-    author = 'Raf Alvarado',
+    author = 'Rafael C. Alvarado',
     author_email = 'ontoligent@gmail.com',
     license = 'MIT',
     keywords = 'natural language processing, text mining, digital humanities',
