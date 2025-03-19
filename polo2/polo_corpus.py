@@ -224,9 +224,9 @@ class PoloCorpus(PoloDb):
         sql = {}
         sql['bi'] = """
         SELECT dt_x.doc_id AS doc_id, 
-            t_x.token_stem_porter AS tx, 
-            t_y.token_stem_porter AS ty, 
-            t_x.token_stem_porter || '_' || t_y.token_stem_porter AS ngram, 
+            t_x.token_str AS tx, 
+            t_y.token_str AS ty, 
+            t_x.token_str || '_' || t_y.token_str AS ngram, 
             count() AS tf
         FROM doctoken dt_x 
         JOIN doctoken dt_y ON (dt_x.doc_id = dt_y.doc_id 
@@ -238,10 +238,10 @@ class PoloCorpus(PoloDb):
         """
         sql['tri'] = """
         SELECT dt_x.doc_id AS doc_id, 
-            t_x.token_stem_porter AS tx, 
-            t_y.token_stem_porter AS ty, 
-            t_z.token_stem_porter AS tz,
-            t_x.token_stem_porter || '_' || t_y.token_stem_porter || '_' || t_z.token_stem_porter AS ngram, 
+            t_x.token_str AS tx, 
+            t_y.token_str AS ty, 
+            t_z.token_str AS tz,
+            t_x.token_str || '_' || t_y.token_str || '_' || t_z.token_str AS ngram, 
             count() AS tf
         FROM doctoken dt_x 
         JOIN doctoken dt_y ON (dt_x.doc_id = dt_y.doc_id 
@@ -255,6 +255,40 @@ class PoloCorpus(PoloDb):
         JOIN token t_z ON dt_z.token_str = t_z.token_str            
         GROUP BY dt_x.doc_id, ngram
         """
+
+        # sql['bi'] = """
+        # SELECT dt_x.doc_id AS doc_id, 
+        #     t_x.token_stem_porter AS tx, 
+        #     t_y.token_stem_porter AS ty, 
+        #     t_x.token_stem_porter || '_' || t_y.token_stem_porter AS ngram, 
+        #     count() AS tf
+        # FROM doctoken dt_x 
+        # JOIN doctoken dt_y ON (dt_x.doc_id = dt_y.doc_id 
+        #     AND dt_x.sentence_id = dt_y.sentence_id 
+        #     AND dt_y.rowid = (dt_x.rowid + 1))
+        # JOIN token t_x ON dt_x.token_str = t_x.token_str
+        # JOIN token t_y ON dt_y.token_str = t_y.token_str
+        # GROUP BY dt_x.doc_id, ngram
+        # """
+        # sql['tri'] = """
+        # SELECT dt_x.doc_id AS doc_id, 
+        #     t_x.token_stem_porter AS tx, 
+        #     t_y.token_stem_porter AS ty, 
+        #     t_z.token_stem_porter AS tz,
+        #     t_x.token_stem_porter || '_' || t_y.token_stem_porter || '_' || t_z.token_stem_porter AS ngram, 
+        #     count() AS tf
+        # FROM doctoken dt_x 
+        # JOIN doctoken dt_y ON (dt_x.doc_id = dt_y.doc_id 
+        #     AND dt_x.sentence_id = dt_y.sentence_id 
+        #     AND dt_y.rowid = (dt_x.rowid + 1))
+        # JOIN doctoken dt_z ON (dt_x.doc_id = dt_z.doc_id 
+        #     AND dt_x.sentence_id = dt_z.sentence_id 
+        #     AND dt_z.rowid = (dt_y.rowid + 1)) 
+        # JOIN token t_x ON dt_x.token_str = t_x.token_str
+        # JOIN token t_y ON dt_y.token_str = t_y.token_str            
+        # JOIN token t_z ON dt_z.token_str = t_z.token_str            
+        # GROUP BY dt_x.doc_id, ngram
+        # """
 
         docngrams = pd.read_sql(sql[infix], self.conn)
         self.put_table(docngrams, 'ngram{}doc'.format(infix), index=False)
