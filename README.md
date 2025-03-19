@@ -167,7 +167,7 @@ At the end of this process, you should now have two SQLite databases with all of
 One you have generated your databases for a project, you can see them in a web application. To run the application, you need to enter two environment variables. In Linux or Mac,  do this:
 
 ```
-export POLO_HOME=<path_to_polo_application_directory>/app/app.py
+export POLO_HOME=<path_to_polo_application_directory>
 export POLO_PUB=<path_to_polo_project_directory>
 alias polo-run='python3 $POLO_HOME/app/app.py'
 ```
